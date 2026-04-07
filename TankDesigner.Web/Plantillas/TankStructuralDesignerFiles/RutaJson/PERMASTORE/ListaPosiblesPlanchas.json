@@ -1,0 +1,112 @@
+[
+  {
+    "Fabricante": "BALMORAL",
+    "Material": "S235",
+    "Fy": 227.56,
+    "Fu": 341.25,
+    "Altura": 1400.0,
+    "Ancho": 2682.0,
+    "Espesor": [ 2.5 ],
+    "Precio": [ 170.0 ],
+    "Acabado": "GFS"
+  },
+  {
+    "Fabricante": "BALMORAL",
+    "Material": "HSLA4",
+    "Fy": 400.0,
+    "Fu": 440.0,
+    "Altura": 1400.0,
+    "Ancho": 2682.0,
+    "Espesor": [ 2.5, 3.0, 3.5, 4.0, 5.0, 6.0 ],
+    "Precio": [ 185.0, 210.0, 234.0, 256.0, 210.0, 234.0 ],
+    "Acabado": "GFS"
+  },
+  {
+    "Fabricante": "BALMORAL",
+    "Material": "HSLA5",
+    "Fy": 460.0,
+    "Fu": 520.0,
+    "Altura": 1400.0,
+    "Ancho": 2682.0,
+    "Espesor": [ 2.5, 3.0, 3.5, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0],
+    "Precio": [ 185.0, 210.0, 234.0, 256.0, 210.0, 234.0, 285.0, 310.0, 334.0],
+    "Acabado": "GFS"
+  },
+  {
+    "Fabricante": "BALMORAL",
+    "Material": "Grade 80",
+    "Fy": 551.5,
+    "Fu": 620.5,
+    "Altura": 1400.0,
+    "Ancho": 2682.0,
+    "Espesor": [ 2.5, 3.0, 3.5, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 12.0, 12.7, 14.0, 16.0, 18.0, 20.0, 30.0 ],
+    "Precio": [ 185.0, 210.0, 234.0, 256.0, 210.0, 234.0, 285.0, 310.0, 334.0, 456.0, 510.0, 534.0, 310.0, 334.0, 456.0, 510.0, 534.0 ],
+    "Acabado": "GFS"
+  },
+  {
+    "Fabricante": "BALMORAL",
+    "Material": "S235",
+    "Fy": 227.56,
+    "Fu": 341.25,
+    "Altura": 662.0,
+    "Ancho": 2682.0,
+    "Espesor": [ 2.5 ],
+    "Precio": [ 89.0 ],
+    "Acabado": "GFS"
+  },
+  {
+    "Fabricante": "BALMORAL",
+    "Material": "HSLA4",
+    "Fy": 400.0,
+    "Fu": 440.0,
+    "Altura": 662.0,
+    "Ancho": 2682.0,
+    "Espesor": [ 2.5, 3.0, 3.5, 4.0, 5.0, 6.0 ],
+    "Precio": [ 185.0, 210.0, 234.0, 256.0, 210.0, 234.0 ],
+    "Acabado": "GFS"
+  },
+  {
+    "Fabricante": "BALMORAL",
+    "Material": "HSLA5",
+    "Fy": 460.0,
+    "Fu": 520.0,
+    "Altura": 662.0,
+    "Ancho": 2682.0,
+    "Espesor": [ 2.5, 3.0, 3.5, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 12.0, 12.7 ],
+    "Precio": [ 185.0, 210.0, 234.0, 256.0, 210.0, 234.0, 285.0, 310.0, 334.0, 456.0, 510.0, 534.0 ],
+    "Acabado": "GFS"
+  },
+  {
+    "Fabricante": "BALMORAL",
+    "Material": "S235",
+    "Fy": 227.56,
+    "Fu": 341.25,
+    "Altura": 577.0,
+    "Ancho": 2682.0,
+    "Espesor": [ 2.5 ],
+    "Precio": [ 89.0 ],
+    "Acabado": "GFS"
+  },
+  {
+    "Fabricante": "BALMORAL",
+    "Material": "HSLA4",
+    "Fy": 400.0,
+    "Fu": 440.0,
+    "Altura": 577.0,
+    "Ancho": 2682.0,
+    "Espesor": [ 2.5, 3.0, 3.5, 4.0, 5.0, 6.0 ],
+    "Precio": [ 185.0, 210.0, 234.0, 256.0, 210.0, 234.0 ],
+    "Acabado": "GFS"
+  },
+  {
+    "Fabricante": "BALMORAL",
+    "Material": "HSLA5",
+    "Fy": 460.0,
+    "Fu": 520.0,
+    "Altura": 577.0,
+    "Ancho": 2682.0,
+    "Espesor": [ 2.5, 3.0, 3.5, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 12.0, 12.7 ],
+    "Precio": [ 185.0, 210.0, 234.0, 256.0, 210.0, 234.0, 285.0, 310.0, 334.0, 456.0, 510.0, 534.0 ],
+    "Acabado": "GFS"
+  }
+]

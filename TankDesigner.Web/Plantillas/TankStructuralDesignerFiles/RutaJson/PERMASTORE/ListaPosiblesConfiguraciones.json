@@ -1,0 +1,72 @@
+[
+  {
+    "Fabricante": "BALMORAL",
+    "Nombre": "S",
+    "S": 75.202,
+    "R": 1.0,
+    "NumeroTornillosUnionVertical": 19,
+    "NumeroTornillosUnionHorizontal": 22,
+    "NumeroTornillosUnionHorizontalCalculo": 21,
+    "DiametroAgujero": 13.8
+  },
+  {
+    "Fabricante": "BALMORAL",
+    "Nombre": "D",
+    "S": 37.551,
+    "R": 1,
+    "NumeroTornillosUnionVertical": 38,
+    "NumeroTornillosUnionHorizontal": 22,
+    "NumeroTornillosUnionHorizontalCalculo": 21,
+    "DiametroAgujero": 13.8
+  },
+  {
+    "Fabricante": "BALMORAL",
+    "Nombre": "TR",
+    "S": 112.81,
+    "R": 0.25,
+    "NumeroTornillosUnionVertical": 43,
+    "NumeroTornillosUnionHorizontal": 22,
+    "NumeroTornillosUnionHorizontalCalculo": 21,
+    "DiametroAgujero": 14.0
+  },
+  {
+    "Fabricante": "BALMORAL",
+    "Nombre": "QR",
+    "S": 112.81,
+    "R": 0.2,
+    "NumeroTornillosUnionVertical": 54,
+    "NumeroTornillosUnionHorizontal": 22,
+    "NumeroTornillosUnionHorizontalCalculo": 21,
+    "DiametroAgujero": 14.0
+  },
+  {
+    "Fabricante": "BALMORAL",
+    "Nombre": "FR",
+    "S": 112.81,
+    "R": 0.15,
+    "NumeroTornillosUnionVertical": 65,
+    "NumeroTornillosUnionHorizontal": 22,
+    "NumeroTornillosUnionHorizontalCalculo": 21,
+    "DiametroAgujero": 14.0
+  },
+  {
+    "Fabricante": "BALMORAL",
+    "Nombre": "6R",
+    "S": 112.81,
+    "R": 0.1,
+    "NumeroTornillosUnionVertical": 80,
+    "NumeroTornillosUnionHorizontal": 22,
+    "NumeroTornillosUnionHorizontalCalculo": 21,
+    "DiametroAgujero": 14.0
+  },
+  {
+    "Fabricante": "BALMORAL",
+    "Nombre": "7R",
+    "S": 112.81,
+    "R": 0.08,
+    "NumeroTornillosUnionVertical": 100,
+    "NumeroTornillosUnionHorizontal": 22,
+    "NumeroTornillosUnionHorizontalCalculo": 21,
+    "DiametroAgujero": 14.0
+  }
+]

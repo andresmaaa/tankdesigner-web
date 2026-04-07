@@ -1,0 +1,149 @@
+﻿@page "/admin/usuarios"
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using TankDesigner.Web.Data
+@using TankDesigner.Web.Services
+@attribute [Authorize(Roles = RolesAplicacion.SuperAdmin)]
+
+@inject AdminService AdminService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Administración - Usuarios</PageTitle>
+
+<div class="informes-page">
+    <div class="page-header">
+        <h1>Administración de usuarios</h1>
+        <p>Gestiona los permisos de acceso de la plataforma.</p>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_mensaje))
+    {
+        <div class="alert-box">
+            <div class="alert-box__title">Gestión de usuarios</div>
+            <div>@_mensaje</div>
+        </div>
+    }
+
+    <article class="td-panel">
+        <div class="td-panel__header">
+            <div>
+                <div class="section-kicker">Panel de administración</div>
+                <h2>Usuarios registrados</h2>
+                <p>Solo el SuperAdmin puede asignar o retirar permisos de administrador.</p>
+            </div>
+        </div>
+
+        @if (_usuarios.Count == 0)
+        {
+            <p>No hay usuarios registrados.</p>
+        }
+        else
+        {
+            <div class="summary-list">
+                @foreach (var usuario in _usuarios)
+                {
+                    <div class="summary-row" style="align-items:center; gap:18px; flex-wrap:wrap;">
+                        <div style="min-width:260px;">
+                            <div class="summary-row__label">Correo</div>
+                            <div class="summary-row__value">@usuario.Email</div>
+                        </div>
+
+                        <div style="min-width:160px;">
+                            <div class="summary-row__label">Nombre</div>
+                            <div class="summary-row__value">
+                                @(string.IsNullOrWhiteSpace(usuario.NombreCompleto) ? "—" : usuario.NombreCompleto)
+                            </div>
+                        </div>
+
+                        <div style="min-width:180px;">
+                            <div class="summary-row__label">Rol actual</div>
+                            <div class="summary-row__value">
+                                @if (usuario.EsSuperAdmin)
+                                {
+                                    <span>SuperAdmin</span>
+                                }
+                                else if (usuario.EsAdmin)
+                                {
+                                    <span>Admin</span>
+                                }
+                                else
+                                {
+                                    <span>Usuario</span>
+                                }
+                            </div>
+                        </div>
+
+                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                            @if (usuario.EsSuperAdmin)
+                            {
+                                <button type="button" class="action-btn action-btn--gray" disabled>
+                                    SuperAdmin protegido
+                                </button>
+                            }
+                            else if (!usuario.EsAdmin)
+                            {
+                                <button type="button" class="action-btn action-btn--primary" @onclick="() => HacerAdmin(usuario.Id)">
+                                    Hacer admin
+                                </button>
+                            }
+                            else
+                            {
+                                <button type="button" class="action-btn action-btn--gray" @onclick="() => QuitarAdmin(usuario.Id)">
+                                    Quitar admin
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </article>
+</div>
+
+@code {
+    private List<UsuarioAdminDto> _usuarios = new();
+    private string _mensaje = string.Empty;
+    private ClaimsPrincipal? _usuarioActual;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        _usuarioActual = authState.User;
+
+        await CargarUsuarios();
+    }
+
+    private async Task CargarUsuarios()
+    {
+        _usuarios = await AdminService.ObtenerUsuariosAsync();
+    }
+
+    private async Task HacerAdmin(string userId)
+    {
+        if (_usuarioActual is null)
+            return;
+
+        var ok = await AdminService.HacerAdminAsync(userId, _usuarioActual);
+
+        _mensaje = ok
+            ? "Usuario actualizado a administrador."
+            : "No tienes permisos para realizar esta acción o el usuario está protegido.";
+
+        await CargarUsuarios();
+    }
+
+    private async Task QuitarAdmin(string userId)
+    {
+        if (_usuarioActual is null)
+            return;
+
+        var ok = await AdminService.QuitarAdminAsync(userId, _usuarioActual);
+
+        _mensaje = ok
+            ? "Rol de administrador eliminado correctamente."
+            : "No tienes permisos para realizar esta acción o el usuario está protegido.";
+
+        await CargarUsuarios();
+    }
+}

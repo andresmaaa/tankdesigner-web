@@ -1,0 +1,36 @@
+[
+  {
+    "Fabricante": "VITKOVICE",
+    "CalidadTornillo": "8.8",
+    "FyTornillos": 210.0,
+    "FuTornillos": 500.0,
+    "Diametro": 12.0,
+    "Longitud": [ 25.0, 30.0, 35.0, 40.0, 45.0, 50.0, 55.0, 60.0, 65.0, 70.0, 75.0, 80.0 ],
+    "Precio": [ 0.41, 0.41, 0.41, 0.41, 0.41, 0.41, 0.41, 0.41, 0.41, 0.41, 0.41, 0.41 ],
+    "ArandelaSpanish": "Arandela",
+    "ArandelaEnglish": "Washer",
+    "PrecioArandela": 0.1,
+    "TuercaSpanish": "Tuerca",
+    "TuercaEnglish": "Nut",
+    "PrecioTuerca": 0.2,
+    "Precio": [ 0.2, 0.21, 0.23, 0.3, 0.31, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35 ],
+    "Peso": [ 0.2, 0.21, 0.23, 0.3, 0.31, 0.35, 0.37, 0.4, 0.42, 0.45, 0.47, 0.5 ]
+  },
+  {
+    "Fabricante": "VITKOVICE",
+    "CalidadTornillo": "8.8",
+    "FyTornillos": 450.0,
+    "FuTornillos": 700.0,
+    "Diametro": 12.0,
+    "Longitud": [ 25.0, 30.0, 35.0, 40.0, 45.0, 50.0, 55.0, 60.0, 65.0, 70.0, 75.0, 80.0 ],
+    "Precio": [ 0.41, 0.41, 0.41, 0.41, 0.41, 0.41, 0.41, 0.41, 0.41, 0.41, 0.41, 0.41 ],
+    "ArandelaSpanish": "Arandela",
+    "ArandelaEnglish": "Washer",
+    "PrecioArandela": 0.1,
+    "TuercaSpanish": "Tuerca",
+    "TuercaEnglish": "Nut",
+    "PrecioTuerca": 0.2,
+    "Precio": [ 0.2, 0.21, 0.23, 0.3, 0.31, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35 ],
+    "Peso": [ 0.2, 0.21, 0.23, 0.3, 0.31, 0.35, 0.37, 0.4, 0.42, 0.45, 0.47, 0.5 ]
+  }
+]

@@ -1,0 +1,52 @@
+[
+  {
+    "Fabricante": "BALMORAL",
+    "CalidadTornillo": "8.8",
+    "FyTornillos": 640.0,
+    "FuTornillos": 827.2,
+    "Diametro": 12.7,
+    "Longitud": [ 25.4 ],
+    "ArandelaSpanish": "Arandela",
+    "ArandelaEnglish": "Washer",
+    "PrecioArandela": 0.1,
+    "PesoArandela": 0.1,
+    "TuercaSpanish": "Tuerca",
+    "TuercaEnglish": "Nut",
+    "PrecioTuerca": 0.1,
+    "PesoTuerca": 0.1,
+    "Precio": [ 0.3 ],
+    "Peso": [ 0.3 ]
+  },
+  {
+    "Fabricante": "BALMORAL",
+    "CalidadTornillo": "10.9",
+    "FyTornillos": 900.0,
+    "FuTornillos": 1000.0,
+    "Diametro": 12.7,
+    "Longitud": [ 25.4, 31.75, 38.1, 44.45, 50.8, 57.15, 100.0, 200.0, 300.0 ],
+    "ArandelaSpanish": "Arandela",
+    "ArandelaEnglish": "Washer",
+    "PrecioArandela": 0.1,
+    "TuercaSpanish": "Tuerca",
+    "TuercaEnglish": "Nut",
+    "PrecioTuerca": 0.2,
+    "Precio": [ 0.2, 0.21, 0.23, 0.3, 0.31, 0.35, 0.31, 0.35, 0.35 ],
+    "Peso": [ 0.2, 0.21, 0.23, 0.3, 0.31, 0.35, 0.31, 0.35, 0.35 ]
+  },
+  {
+    "Fabricante": "BALMORAL",
+    "CalidadTornillo": "12.9",
+    "FyTornillos": 1080.0,
+    "FuTornillos": 1200.0,
+    "Diametro": 12.7,
+    "Longitud": [ 25.4, 31.75, 38.1, 44.45, 50.8, 57.15, 100.0, 200.0, 300.0 ],
+    "ArandelaSpanish": "Arandela",
+    "ArandelaEnglish": "Washer",
+    "PrecioArandela": 0.1,
+    "TuercaSpanish": "Tuerca",
+    "TuercaEnglish": "Nut",
+    "PrecioTuerca": 0.2,
+    "Precio": [ 0.2, 0.21, 0.23, 0.3, 0.31, 0.35, 0.31, 0.35, 0.35 ],
+    "Peso": [ 0.2, 0.21, 0.23, 0.3, 0.31, 0.35, 0.31, 0.35, 0.35 ]
+  }
+]

@@ -1,0 +1,26 @@
+[
+  {
+    "Fabricante": "BALMORAL",
+    "Altura": 180.0,
+    "DistanciaF": 60.0,
+    "ShearKeysPerLine": 21,
+    "F": [ 1.0 ],
+    "MaxShearKeysPerSheet": [ 21.0 ]
+  },
+  {
+    "Fabricante": "BALMORAL",
+    "Altura": 360.0,
+    "DistanciaF": 60.0 ,
+    "ShearKeysPerLine": 21,
+    "F": [ 1.0, 2.0, 3.0, 4.0 ],
+    "MaxShearKeysPerSheet": [ 84.0, 63.0, 42.0, 21.0 ]
+  },
+  {
+    "Fabricante": "BALMORAL",
+    "Altura": 540.0,
+    "DistanciaF": 60.0,
+    "ShearKeysPerLine": 21,
+    "F": [ 2.0, 3.0, 4.0 ],
+    "MaxShearKeysPerSheet": [ 126.0, 105.0, 84.0 ]
+  }
+]

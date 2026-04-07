@@ -1,0 +1,100 @@
+﻿@page "/admin/proyectos"
+@attribute [Authorize(Roles = RolesAplicacion.Admin)]
+@using Microsoft.AspNetCore.Authorization
+@using TankDesigner.Web.Data
+@using TankDesigner.Web.Services
+@inject AdminService AdminService
+
+<PageTitle>Administración - Proyectos</PageTitle>
+
+<div class="informes-page">
+    <div class="page-header">
+        <h1>Administración de proyectos</h1>
+        <p>Consulta y elimina proyectos de cualquier usuario del sistema.</p>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_mensaje))
+    {
+        <div class="alert-box">
+            <div class="alert-box__title">Gestión de proyectos</div>
+            <div>@_mensaje</div>
+        </div>
+    }
+
+    <article class="td-panel">
+        <div class="td-panel__header">
+            <div>
+                <div class="section-kicker">Panel de administración</div>
+                <h2>Todos los proyectos</h2>
+                <p>Vista global de los proyectos guardados en la plataforma.</p>
+            </div>
+        </div>
+
+        @if (_proyectos.Count == 0)
+        {
+            <p>No hay proyectos guardados.</p>
+        }
+        else
+        {
+            <div class="summary-list">
+                @foreach (var proyecto in _proyectos)
+                {
+                    <div class="summary-row" style="align-items:center; gap:18px; flex-wrap:wrap;">
+                        <div style="min-width:220px;">
+                            <div class="summary-row__label">Proyecto</div>
+                            <div class="summary-row__value">@proyecto.Nombre</div>
+                        </div>
+
+                        <div style="min-width:220px;">
+                            <div class="summary-row__label">Usuario</div>
+                            <div class="summary-row__value">@proyecto.EmailUsuario</div>
+                        </div>
+
+                        <div style="min-width:160px;">
+                            <div class="summary-row__label">Cliente</div>
+                            <div class="summary-row__value">@((string.IsNullOrWhiteSpace(proyecto.Cliente) ? "—" : proyecto.Cliente))</div>
+                        </div>
+
+                        <div style="min-width:140px;">
+                            <div class="summary-row__label">Normativa</div>
+                            <div class="summary-row__value">@((string.IsNullOrWhiteSpace(proyecto.Normativa) ? "—" : proyecto.Normativa))</div>
+                        </div>
+
+                        <div style="min-width:140px;">
+                            <div class="summary-row__label">Fabricante</div>
+                            <div class="summary-row__value">@((string.IsNullOrWhiteSpace(proyecto.Fabricante) ? "—" : proyecto.Fabricante))</div>
+                        </div>
+
+                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                            <button type="button" class="action-btn action-btn--gray" @onclick="() => EliminarProyecto(proyecto.Id)">
+                                Eliminar
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </article>
+</div>
+
+@code {
+    private List<ProyectoAdminDto> _proyectos = new();
+    private string _mensaje = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarProyectos();
+    }
+
+    private async Task CargarProyectos()
+    {
+        _proyectos = await AdminService.ObtenerTodosLosProyectosAsync();
+    }
+
+    private async Task EliminarProyecto(int proyectoId)
+    {
+        var ok = await AdminService.EliminarProyectoAsync(proyectoId);
+        _mensaje = ok ? "Proyecto eliminado correctamente." : "No se pudo eliminar el proyecto.";
+        await CargarProyectos();
+    }
+}

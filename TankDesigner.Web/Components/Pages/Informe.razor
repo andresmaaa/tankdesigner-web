@@ -1,0 +1,853 @@
+﻿@page "/informe"
+@using Microsoft.JSInterop
+@using System.IO.Compression
+@using TankDesigner.Core.Models
+@using TankDesigner.Core.Services
+@using TankDesigner.Web.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using TankDesigner.Web.Data
+@using TankDesigner.Web.Services.Ai
+
+@inject AiEngineeringService AiEngineeringService
+@inject UserManager<ApplicationUser> UserManager
+@inject ProyectoPersistenciaService ProyectoPersistenciaService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+@inject ProyectoState EstadoProyecto
+@inject CalculoWebService CalculoWebService
+@inject FormularioValidacionService ValidacionService
+@inject InformeHtmlService InformeHtmlService
+@inject PdfRenderService PdfRenderService
+@inject IJSRuntime JS
+
+<PageTitle>Informe</PageTitle>
+
+<div class="informes-page">
+    <div class="page-header">
+        <h1>Informe</h1>
+        <p>Generación, vista previa y exportación de la documentación técnica del proyecto.</p>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_mensaje))
+    {
+        <div class="alert-box">
+            <div class="alert-box__title">Aviso del módulo de informes</div>
+            <div>@_mensaje</div>
+        </div>
+    }
+
+    <div class="page-layout">
+        <section class="main-column">
+            <article class="td-panel">
+                <div class="td-panel__header td-panel__header--split">
+                    <div>
+                        <div class="section-kicker">Bloque 01</div>
+                        <h2>Control de informes</h2>
+                        <p>
+                            Selecciona el tipo de documento, idioma de salida y acciones
+                            de vista previa o exportación.
+                        </p>
+                    </div>
+
+                    <div class="toolbar-actions">
+                        <div class="idioma-switch">
+                            <button type="button" class="@ClaseIdioma("ES")" @onclick='() => CambiarIdioma("ES")'>ES</button>
+                            <button type="button" class="@ClaseIdioma("EN")" @onclick='() => CambiarIdioma("EN")'>EN</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="report-type-grid">
+                    <button type="button" class="@ClaseInforme("calculo")" @onclick='() => CambiarInforme("calculo")'>
+                        <span class="report-card__title">Cálculo estructural</span>
+                        <span class="report-card__text">Memoria técnica principal con tablas de cálculo y resultados.</span>
+                    </button>
+
+                    <button type="button" class="@ClaseInforme("presupuesto")" @onclick='() => CambiarInforme("presupuesto")'>
+                        <span class="report-card__title">Presupuesto</span>
+                        <span class="report-card__text">Resumen económico basado en precios reales de catálogo disponibles.</span>
+                    </button>
+
+                    <button type="button" class="@ClaseInforme("materiales")" @onclick='() => CambiarInforme("materiales")'>
+                        <span class="report-card__title">Listado de materiales</span>
+                        <span class="report-card__text">Desglose de planchas, tornillería y elementos auxiliares del tanque.</span>
+                    </button>
+                </div>
+
+                <div class="actions-grid">
+                    <button type="button" class="action-btn action-btn--primary" @onclick="RecalcularProyecto">
+                        Recalcular proyecto
+                    </button>
+
+                    <button type="button" class="action-btn action-btn--dark" @onclick="VistaPreviaVentana">
+                        Abrir vista previa
+                    </button>
+
+                    <button type="button" class="action-btn action-btn--blue" @onclick="DescargarPdfActual">
+                        Descargar PDF actual
+                    </button>
+
+                    <button type="button" class="action-btn action-btn--gray" @onclick="DescargarTodosPdf">
+                        Descargar ZIP con los 3 informes
+                    </button>
+                </div>
+            </article>
+
+            <article class="td-panel">
+                <div class="td-panel__header">
+                    <div>
+                        <div class="section-kicker">Bloque 02</div>
+                        <h2>Vista previa del documento</h2>
+                        <p>
+                            Documento activo: <strong>@TituloActual()</strong>.
+                            La vista previa usa el idioma guardado en el proyecto.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="preview-shell">
+                    <iframe class="preview-frame" srcdoc="@_htmlActual"></iframe>
+                </div>
+            </article>
+        </section>
+
+        <aside class="side-column">
+            <article class="td-panel td-panel--compact td-panel--sticky">
+                <div class="td-panel__header">
+                    <div>
+                        <div class="section-kicker">Resumen vivo</div>
+                        <h2>Estado del informe</h2>
+                        <p>Información rápida del proyecto y del resultado actual.</p>
+                    </div>
+                </div>
+
+                <div class="summary-list">
+                    <div class="summary-row">
+                        <span class="summary-row__label">Estado del cálculo</span>
+                        <span class="summary-row__value @ClaseEstadoTexto()">@TextoEstadoCalculo()</span>
+                    </div>
+
+                    <div class="summary-row">
+                        <span class="summary-row__label">Idioma</span>
+                        <span class="summary-row__value">@IdiomaVisible()</span>
+                    </div>
+
+                    <div class="summary-row">
+                        <span class="summary-row__label">Informe activo</span>
+                        <span class="summary-row__value">@TituloActual()</span>
+                    </div>
+
+                    <div class="summary-row">
+                        <span class="summary-row__label">Proyecto</span>
+                        <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Proyecto?.NombreProyecto)</span>
+                    </div>
+
+                    <div class="summary-row">
+                        <span class="summary-row__label">Cliente</span>
+                        <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Proyecto?.ClienteReferencia)</span>
+                    </div>
+
+                    <div class="summary-row">
+                        <span class="summary-row__label">Fabricante</span>
+                        <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Proyecto?.Fabricante)</span>
+                    </div>
+
+                    <div class="summary-row">
+                        <span class="summary-row__label">Normativa</span>
+                        <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Proyecto?.Normativa)</span>
+                    </div>
+
+                    <div class="summary-row">
+                        <span class="summary-row__label">Modelo</span>
+                        <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Tanque?.Modelo)</span>
+                    </div>
+
+                    <div class="summary-row">
+                        <span class="summary-row__label">Anillos calculados</span>
+                        <span class="summary-row__value">@(EstadoProyecto.Resultado?.Anillos?.Count ?? 0)</span>
+                    </div>
+
+                    <div class="summary-row">
+                        <span class="summary-row__label">Resultado válido</span>
+                        <span class="summary-row__value">@((EstadoProyecto.Resultado?.EsValido ?? false) ? "Sí" : "No")</span>
+                    </div>
+
+                    <button type="button" class="action-btn action-btn--primary" @onclick="GuardarProyecto">
+                        Guardar proyecto
+                    </button>
+
+                    <div class="summary-row">
+                        <span class="summary-row__label">Resumen</span>
+                        <span class="summary-row__value">@ResumenEstadoCalculo()</span>
+                    </div>
+                </div>
+            </article>
+        </aside>
+    </div>
+</div>
+
+<button type="button" class="ia-fab" @onclick="AbrirPanelIa" title="Asistente IA">
+    IA
+</button>
+
+@if (_mostrarPanelIa)
+{
+    <div class="ia-modal-overlay" @onclick="CerrarPanelIa"></div>
+
+    <div class="ia-modal-shell">
+        <section class="ia-modal" @onclick:stopPropagation="true">
+            <div class="ia-modal__header">
+                <div class="ia-modal__title-wrap">
+                    <div class="section-kicker">Asistente técnico</div>
+                    <h2>Análisis inteligente del informe</h2>
+                    <p>
+                        Revisa coherencia, advertencias e inconsistencias del proyecto actual
+                        a partir de los datos cargados en el sistema.
+                    </p>
+                </div>
+
+                <button type="button" class="ia-modal__close" @onclick="CerrarPanelIa">×</button>
+            </div>
+
+            <div class="ia-modal__toolbar">
+                <button type="button"
+                        class="action-btn action-btn--blue ia-modal__analyze-btn"
+                        @onclick="AnalizarProyectoConIa"
+                        disabled="@_analizandoIa">
+                    @(_analizandoIa ? "Analizando..." : "Analizar informe")
+                </button>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(_errorIa))
+            {
+                <div class="ia-status ia-status--error">
+                    <strong>Error:</strong> @_errorIa
+                </div>
+            }
+
+            @if (_analizandoIa)
+            {
+                <div class="ia-loading-box">
+                    <div class="ia-loading-box__spinner"></div>
+                    <div class="ia-loading-box__text">
+                        <h3>Analizando proyecto</h3>
+                        <p>La IA está revisando los datos técnicos actuales.</p>
+                    </div>
+                </div>
+            }
+            else if (_resultadoIa is not null)
+            {
+                <div class="ia-results">
+                    <div class="ia-results__top">
+                        <div class="ia-summary-card">
+                            <div class="ia-summary-card__label">Resumen general</div>
+                            <p>@_resultadoIa.ResumenGeneral</p>
+                        </div>
+
+                        <div class="ia-risk-card ia-risk-card--@((_resultadoIa.NivelRiesgo ?? "").ToLower())">
+                            <span class="ia-risk-card__label">Nivel de riesgo</span>
+                            <strong>@_resultadoIa.NivelRiesgo</strong>
+                        </div>
+                    </div>
+
+                    @if (_resultadoIa.Hallazgos?.Any() == true)
+                    {
+                        <div class="ia-finding-list">
+                            @foreach (var hallazgo in _resultadoIa.Hallazgos.OrderByDescending(h => h.Prioridad))
+                            {
+                                <article class="ia-finding-card ia-finding-card--@((hallazgo.Tipo ?? "").ToLower())">
+                                    <div class="ia-finding-card__head">
+                                        <span class="ia-chip ia-chip--@((hallazgo.Tipo ?? "").ToLower())">
+                                            @hallazgo.Tipo
+                                        </span>
+                                        <span class="ia-finding-card__priority">
+                                            Prioridad @hallazgo.Prioridad
+                                        </span>
+                                    </div>
+
+                                    <h3>@hallazgo.Titulo</h3>
+
+                                    @if (!string.IsNullOrWhiteSpace(hallazgo.Campo))
+                                    {
+                                        <div class="ia-finding-card__field">
+                                            Campo: @hallazgo.Campo
+                                        </div>
+                                    }
+
+                                    <p>@hallazgo.Descripcion</p>
+
+                                    @if (!string.IsNullOrWhiteSpace(hallazgo.Recomendacion))
+                                    {
+                                        <div class="ia-finding-card__recommendation">
+                                            <strong>Recomendación:</strong> @hallazgo.Recomendacion
+                                        </div>
+                                    }
+                                </article>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="ia-status">
+                            No se han detectado hallazgos para mostrar.
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="ia-empty-state">
+                    <div class="ia-empty-state__icon">✦</div>
+                    <h3>Asistente listo</h3>
+                    <p>
+                        Pulsa en <strong>Analizar informe</strong> para revisar el proyecto actual.
+                    </p>
+                </div>
+            }
+        </section>
+    </div>
+
+    <div class="ia-question-box">
+        <div class="ia-question-box__header">
+            <h3>Consulta técnica</h3>
+            <p>Haz una pregunta concreta sobre el proyecto actual y su resultado.</p>
+        </div>
+
+        <textarea class="ia-question-box__textarea"
+                  @bind="_preguntaIa"
+                  placeholder="Ejemplo: ¿Qué incoherencias detectas entre las cargas y el resultado del cálculo?">
+        </textarea>
+
+        <div class="ia-question-box__actions">
+            <button type="button"
+                    class="action-btn action-btn--dark"
+                    @onclick="PreguntarIa"
+                    disabled="@_preguntandoIa">
+                @(_preguntandoIa ? "Consultando..." : "Preguntar a la IA")
+            </button>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(_respuestaIa))
+        {
+            <div class="ia-answer-box">
+                <div class="ia-answer-box__label">Respuesta de la IA</div>
+                <p>@_respuestaIa</p>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private string _informeSeleccionado = "calculo";
+    private string _htmlActual = "";
+    private string _mensaje = "";
+
+    private bool _mostrarPanelIa = false;
+    private bool _analizandoIa = false;
+    private bool _preguntandoIa = false;
+
+    private string? _errorIa;
+    private AiAnalisisResultadoDto? _resultadoIa;
+    private string _preguntaIa = string.Empty;
+    private string? _respuestaIa;
+
+    private void AbrirPanelIa()
+    {
+        _mostrarPanelIa = true;
+    }
+
+    private void CerrarPanelIa()
+    {
+        _mostrarPanelIa = false;
+    }
+
+    private async Task AnalizarProyectoConIa()
+    {
+        _analizandoIa = true;
+        _errorIa = null;
+        _resultadoIa = null;
+
+        try
+        {
+            if (EstadoProyecto.Proyecto is null ||
+                EstadoProyecto.Tanque is null ||
+                EstadoProyecto.Cargas is null ||
+                EstadoProyecto.Instalacion is null)
+            {
+                _errorIa = "Faltan datos del proyecto para poder analizarlo con IA.";
+                return;
+            }
+
+            _resultadoIa = await AiEngineeringService.AnalizarProyectoAsync(
+                EstadoProyecto.Proyecto,
+                EstadoProyecto.Tanque,
+                EstadoProyecto.Cargas,
+                EstadoProyecto.Instalacion,
+                EstadoProyecto.Resultado);
+        }
+        catch (Exception ex)
+        {
+            _errorIa = ex.Message;
+        }
+        finally
+        {
+            _analizandoIa = false;
+        }
+    }
+
+    private async Task PreguntarIa()
+    {
+        _preguntandoIa = true;
+        _errorIa = null;
+        _respuestaIa = null;
+
+        try
+        {
+            if (EstadoProyecto.Proyecto is null ||
+                EstadoProyecto.Tanque is null ||
+                EstadoProyecto.Cargas is null ||
+                EstadoProyecto.Instalacion is null)
+            {
+                _errorIa = "Faltan datos del proyecto para consultar a la IA.";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(_preguntaIa))
+            {
+                _errorIa = "Escribe una pregunta antes de enviarla.";
+                return;
+            }
+
+            _respuestaIa = await AiEngineeringService.PreguntarSobreProyectoAsync(
+                EstadoProyecto.Proyecto,
+                EstadoProyecto.Tanque,
+                EstadoProyecto.Cargas,
+                EstadoProyecto.Instalacion,
+                EstadoProyecto.Resultado,
+                _preguntaIa);
+        }
+        catch (Exception ex)
+        {
+            _errorIa = ex.Message;
+        }
+        finally
+        {
+            _preguntandoIa = false;
+        }
+    }
+
+    private async Task GuardarProyecto()
+    {
+        try
+        {
+            _mensaje = "";
+
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var usuario = await UserManager.GetUserAsync(authState.User);
+
+            if (usuario == null)
+            {
+                RedirigirALogin();
+                return;
+            }
+
+            if (!AsegurarResultadoActual())
+                return;
+
+            var id = await ProyectoPersistenciaService.GuardarAsync(
+                usuario.Id,
+                EstadoProyecto.ProyectoIdActual,
+                EstadoProyecto.Proyecto,
+                EstadoProyecto.Tanque,
+                EstadoProyecto.Cargas,
+                EstadoProyecto.Instalacion,
+                EstadoProyecto.Resultado);
+
+            EstadoProyecto.ProyectoIdActual = id;
+            _mensaje = "Proyecto guardado correctamente.";
+        }
+        catch (Exception ex)
+        {
+            _mensaje = $"Error al guardar el proyecto: {ex.Message}";
+        }
+    }
+
+    private async Task<bool> UsuarioAutenticadoAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        return authState.User?.Identity?.IsAuthenticated ?? false;
+    }
+
+    private void RedirigirALogin()
+    {
+        var rutaActual = new Uri(NavigationManager.Uri).PathAndQuery;
+        var destino = $"/login?returnUrl={Uri.EscapeDataString(rutaActual)}";
+        NavigationManager.NavigateTo(destino, forceLoad: true);
+    }
+
+    protected override void OnInitialized()
+    {
+        EstadoProyecto.Proyecto ??= new ProyectoGeneralModel();
+        EstadoProyecto.Tanque ??= new TankModel();
+        EstadoProyecto.Cargas ??= new CargasModel();
+        EstadoProyecto.Instalacion ??= new InstalacionModel();
+        EstadoProyecto.Resultado ??= new ResultadoCalculoModel();
+
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.IdiomaInforme))
+            EstadoProyecto.Proyecto.IdiomaInforme = "ES";
+
+        AsegurarCalculoInicial();
+        GenerarHtmlActual();
+    }
+
+    private void AsegurarCalculoInicial()
+    {
+        try
+        {
+            if (HayResultadoUtilizable())
+                return;
+
+            var errores = ValidacionService.ValidarTodo(
+                EstadoProyecto.Proyecto,
+                EstadoProyecto.Tanque,
+                EstadoProyecto.Cargas,
+                EstadoProyecto.Instalacion);
+
+            if (errores.Count > 0)
+            {
+                _mensaje = "Todavía no se puede calcular el proyecto: " + string.Join(" | ", errores);
+                return;
+            }
+
+            EstadoProyecto.Resultado = CalculoWebService.Calcular(
+                EstadoProyecto.Proyecto,
+                EstadoProyecto.Tanque,
+                EstadoProyecto.Cargas,
+                EstadoProyecto.Instalacion);
+
+            if (!string.IsNullOrWhiteSpace(EstadoProyecto.Resultado?.Mensaje))
+                _mensaje = EstadoProyecto.Resultado.Mensaje;
+        }
+        catch (Exception ex)
+        {
+            _mensaje = $"Error al preparar el cálculo inicial: {ex.Message}";
+        }
+    }
+
+    private bool HayResultadoUtilizable()
+    {
+        var r = EstadoProyecto.Resultado;
+
+        if (r == null)
+            return false;
+
+        if (!r.EsValido)
+            return false;
+
+        if (r.Anillos != null && r.Anillos.Count > 0)
+            return true;
+
+        return r.Diametro > 0
+            && r.AlturaTotal > 0
+            && r.AlturaPanelBase > 0
+            && r.NumeroAnillos > 0
+            && r.ChapasPorAnillo > 0;
+    }
+
+    private bool RecalcularProyectoInterno()
+    {
+        var errores = ValidacionService.ValidarTodo(
+            EstadoProyecto.Proyecto,
+            EstadoProyecto.Tanque,
+            EstadoProyecto.Cargas,
+            EstadoProyecto.Instalacion);
+
+        if (errores.Count > 0)
+        {
+            _mensaje = "No se puede calcular hasta corregir estos datos: " + string.Join(" | ", errores);
+            return false;
+        }
+
+        EstadoProyecto.Resultado = CalculoWebService.Calcular(
+            EstadoProyecto.Proyecto,
+            EstadoProyecto.Tanque,
+            EstadoProyecto.Cargas,
+            EstadoProyecto.Instalacion);
+
+        _mensaje = EstadoProyecto.Resultado?.Mensaje ?? "Cálculo ejecutado.";
+        return EstadoProyecto.Resultado != null;
+    }
+
+    private async Task RecalcularProyecto()
+    {
+        try
+        {
+            _mensaje = "";
+            RecalcularProyectoInterno();
+            GenerarHtmlActual();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            _mensaje = $"Error al calcular: {ex.Message}";
+        }
+    }
+
+    private bool AsegurarResultadoActual()
+    {
+        if (HayResultadoUtilizable())
+            return true;
+
+        return RecalcularProyectoInterno();
+    }
+
+    private void CambiarInforme(string tipo)
+    {
+        _informeSeleccionado = tipo;
+        GenerarHtmlActual();
+        _mensaje = "";
+    }
+
+    private void CambiarIdioma(string idioma)
+    {
+        EstadoProyecto.Proyecto.IdiomaInforme = idioma;
+        GenerarHtmlActual();
+        _mensaje = "";
+    }
+
+    private ResultadoCalculoModel ResultadoActual()
+    {
+        return EstadoProyecto.Resultado ?? new ResultadoCalculoModel();
+    }
+
+    private void GenerarHtmlActual()
+    {
+        var resultado = ResultadoActual();
+
+        _htmlActual = _informeSeleccionado switch
+        {
+            "presupuesto" => InformeHtmlService.GenerarInformePresupuesto(
+                EstadoProyecto.Proyecto,
+                EstadoProyecto.Tanque,
+                EstadoProyecto.Cargas,
+                EstadoProyecto.Instalacion,
+                resultado),
+
+            "materiales" => InformeHtmlService.GenerarInformeMateriales(
+                EstadoProyecto.Proyecto,
+                EstadoProyecto.Tanque,
+                EstadoProyecto.Cargas,
+                EstadoProyecto.Instalacion,
+                resultado),
+
+            _ => InformeHtmlService.GenerarInformeCalculo(
+                EstadoProyecto.Proyecto,
+                EstadoProyecto.Tanque,
+                EstadoProyecto.Cargas,
+                EstadoProyecto.Instalacion,
+                resultado)
+        };
+    }
+
+    private async Task VistaPreviaVentana()
+    {
+        try
+        {
+            if (!AsegurarResultadoActual())
+                return;
+
+            GenerarHtmlActual();
+
+            var ok = await JS.InvokeAsync<bool>(
+                "tankInformes.openPreview",
+                TituloActual(),
+                _htmlActual);
+
+            if (!ok)
+                _mensaje = "No se pudo abrir la vista previa. Revisa si el navegador ha bloqueado la ventana emergente.";
+        }
+        catch (Exception ex)
+        {
+            _mensaje = $"Error al abrir la vista previa: {ex.Message}";
+        }
+    }
+
+    private async Task DescargarPdfActual()
+    {
+        try
+        {
+            _mensaje = "";
+
+            if (!await UsuarioAutenticadoAsync())
+            {
+                RedirigirALogin();
+                return;
+            }
+
+            if (!AsegurarResultadoActual())
+                return;
+
+            GenerarHtmlActual();
+
+            var pdf = await PdfRenderService.GenerarPdfDesdeHtmlAsync(_htmlActual);
+
+            var nombre = _informeSeleccionado switch
+            {
+                "presupuesto" => EstadoProyecto.Proyecto.IdiomaInforme == "EN" ? "budget.pdf" : "presupuesto.pdf",
+                "materiales" => EstadoProyecto.Proyecto.IdiomaInforme == "EN" ? "materials-list.pdf" : "listado-materiales.pdf",
+                _ => EstadoProyecto.Proyecto.IdiomaInforme == "EN" ? "structural-calculation.pdf" : "calculo-estructural.pdf"
+            };
+
+            var ok = await JS.InvokeAsync<bool>(
+                "tankInformes.downloadFileFromBytes",
+                nombre,
+                "application/pdf",
+                Convert.ToBase64String(pdf));
+
+            if (!ok)
+                _mensaje = "No se pudo descargar el PDF.";
+        }
+        catch (Exception ex)
+        {
+            _mensaje = $"Error al descargar PDF: {ex.Message}";
+        }
+    }
+
+    private async Task DescargarTodosPdf()
+    {
+        try
+        {
+            _mensaje = "";
+
+            if (!await UsuarioAutenticadoAsync())
+            {
+                RedirigirALogin();
+                return;
+            }
+
+            if (!AsegurarResultadoActual())
+                return;
+
+            var resultado = ResultadoActual();
+
+            var htmlCalculo = InformeHtmlService.GenerarInformeCalculo(
+                EstadoProyecto.Proyecto,
+                EstadoProyecto.Tanque,
+                EstadoProyecto.Cargas,
+                EstadoProyecto.Instalacion,
+                resultado);
+
+            var htmlPresupuesto = InformeHtmlService.GenerarInformePresupuesto(
+                EstadoProyecto.Proyecto,
+                EstadoProyecto.Tanque,
+                EstadoProyecto.Cargas,
+                EstadoProyecto.Instalacion,
+                resultado);
+
+            var htmlMateriales = InformeHtmlService.GenerarInformeMateriales(
+                EstadoProyecto.Proyecto,
+                EstadoProyecto.Tanque,
+                EstadoProyecto.Cargas,
+                EstadoProyecto.Instalacion,
+                resultado);
+
+            var pdfCalculo = await PdfRenderService.GenerarPdfDesdeHtmlAsync(htmlCalculo);
+            var pdfPresupuesto = await PdfRenderService.GenerarPdfDesdeHtmlAsync(htmlPresupuesto);
+            var pdfMateriales = await PdfRenderService.GenerarPdfDesdeHtmlAsync(htmlMateriales);
+
+            using var ms = new MemoryStream();
+
+            using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, true))
+            {
+                var nombreCalculo = EstadoProyecto.Proyecto.IdiomaInforme == "EN"
+                    ? "structural-calculation.pdf"
+                    : "calculo-estructural.pdf";
+
+                var nombrePresupuesto = EstadoProyecto.Proyecto.IdiomaInforme == "EN"
+                    ? "budget.pdf"
+                    : "presupuesto.pdf";
+
+                var nombreMateriales = EstadoProyecto.Proyecto.IdiomaInforme == "EN"
+                    ? "materials-list.pdf"
+                    : "listado-materiales.pdf";
+
+                var e1 = zip.CreateEntry(nombreCalculo);
+                await using (var s1 = e1.Open())
+                    await s1.WriteAsync(pdfCalculo, 0, pdfCalculo.Length);
+
+                var e2 = zip.CreateEntry(nombrePresupuesto);
+                await using (var s2 = e2.Open())
+                    await s2.WriteAsync(pdfPresupuesto, 0, pdfPresupuesto.Length);
+
+                var e3 = zip.CreateEntry(nombreMateriales);
+                await using (var s3 = e3.Open())
+                    await s3.WriteAsync(pdfMateriales, 0, pdfMateriales.Length);
+            }
+
+            var zipBytes = ms.ToArray();
+
+            var zipNombre = EstadoProyecto.Proyecto.IdiomaInforme == "EN"
+                ? "tank-reports.zip"
+                : "informes-tanque.zip";
+
+            var ok = await JS.InvokeAsync<bool>(
+                "tankInformes.downloadFileFromBytes",
+                zipNombre,
+                "application/zip",
+                Convert.ToBase64String(zipBytes));
+
+            if (!ok)
+                _mensaje = "No se pudo descargar el ZIP con los informes.";
+        }
+        catch (Exception ex)
+        {
+            _mensaje = $"Error al descargar todos los informes: {ex.Message}";
+        }
+    }
+
+    private string ClaseInforme(string tipo) =>
+        _informeSeleccionado == tipo ? "report-card report-card--active" : "report-card";
+
+    private string ClaseIdioma(string idioma) =>
+        EstadoProyecto.Proyecto.IdiomaInforme == idioma ? "lang active" : "lang";
+
+    private string TituloActual() => _informeSeleccionado switch
+    {
+        "presupuesto" => EstadoProyecto.Proyecto.IdiomaInforme == "EN" ? "Budget" : "Presupuesto",
+        "materiales" => EstadoProyecto.Proyecto.IdiomaInforme == "EN" ? "Materials list" : "Listado de materiales",
+        _ => EstadoProyecto.Proyecto.IdiomaInforme == "EN" ? "Structural calculation" : "Cálculo estructural"
+    };
+
+    private string IdiomaVisible() =>
+        EstadoProyecto.Proyecto.IdiomaInforme == "EN" ? "English" : "Español";
+
+    private string TextoSeguro(string? texto) =>
+        string.IsNullOrWhiteSpace(texto) ? "—" : texto.Trim();
+
+    private string TextoEstadoCalculo()
+    {
+        if (EstadoProyecto.Resultado?.EsValido == true)
+            return "Resultado disponible";
+
+        return "Pendiente de revisión";
+    }
+
+    private string ClaseEstadoTexto()
+    {
+        if (EstadoProyecto.Resultado?.EsValido == true)
+            return "summary-value-ok";
+
+        return "summary-value-warn";
+    }
+
+    private string ResumenEstadoCalculo()
+    {
+        var anillos = EstadoProyecto.Resultado?.Anillos?.Count ?? 0;
+
+        if (EstadoProyecto.Resultado?.EsValido == true)
+            return $"Se han obtenido {anillos} anillos con datos de cálculo disponibles.";
+
+        return "Todavía faltan datos válidos o el cálculo debe revisarse.";
+    }
+}

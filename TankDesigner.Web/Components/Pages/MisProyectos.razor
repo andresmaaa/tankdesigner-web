@@ -1,0 +1,1010 @@
+﻿@page "/mis-proyectos"
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Newtonsoft.Json
+@using TankDesigner.Core.Models
+@using TankDesigner.Web.Data
+@using TankDesigner.Web.Services
+@inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UserManager<ApplicationUser> UserManager
+@inject ProyectoPersistenciaService ProyectoPersistenciaService
+@inject ProyectoState EstadoProyecto
+@inject NavigationManager NavigationManager
+@inject AdminService AdminService
+
+<PageTitle>Mis proyectos</PageTitle>
+
+<div class="gestion-proyectos-page">
+    <section class="gestion-hero">
+        <div>
+            <div class="gestion-kicker">Centro de gestión</div>
+            <h1>Mis proyectos</h1>
+            <p>
+                Accede a tus proyectos, continúa el flujo técnico de diseño y administra la información
+                guardada de la plataforma desde un único punto de entrada.
+            </p>
+        </div>
+
+        <div class="gestion-hero__actions">
+            @if (_modoActivo == "mis")
+            {
+                <button type="button" class="btn-pro btn-pro--primary" @onclick="NuevoProyecto">
+                    Nuevo proyecto
+                </button>
+
+                @if (_misProyectos.Any())
+                {
+                    <button type="button" class="btn-pro btn-pro--dark" @onclick="AbrirProyectoReciente">
+                        Continuar último proyecto
+                    </button>
+                }
+            }
+        </div>
+    </section>
+
+    @if (!string.IsNullOrWhiteSpace(_mensaje))
+    {
+        <div class="gestion-alerta">
+            <strong>Centro de gestión</strong>
+            <span>@_mensaje</span>
+        </div>
+    }
+
+    <section class="gestion-tabs">
+        <button type="button" class="@ClaseModo("mis")" @onclick='() => CambiarModo("mis")'>
+            <span class="tab-title">Mis proyectos</span>
+            <span class="tab-subtitle">Trabajo personal</span>
+        </button>
+
+        @if (_esAdmin)
+        {
+            <button type="button" class="@ClaseModo("todos")" @onclick='() => CambiarModo("todos")'>
+                <span class="tab-title">Todos los proyectos</span>
+                <span class="tab-subtitle">Vista global</span>
+            </button>
+
+            <button type="button" class="@ClaseModo("usuarios")" @onclick='() => CambiarModo("usuarios")'>
+                <span class="tab-title">Usuarios</span>
+                <span class="tab-subtitle">Permisos y roles</span>
+            </button>
+        }
+    </section>
+
+    @if (_modoActivo == "mis")
+    {
+        <section class="gestion-bloque">
+            <div class="bloque-header">
+                <div>
+                    <div class="gestion-kicker">Bloque 01</div>
+                    <h2>Proyectos del usuario</h2>
+                    <p>Listado de proyectos asociados al usuario actual.</p>
+                </div>
+
+                <div class="bloque-meta">
+                    <span class="pill pill--soft">@MisProyectosFiltrados.Count() resultado(s)</span>
+                </div>
+            </div>
+
+            <div class="search-toolbar">
+                <div class="search-box">
+                    <span class="search-box__icon">⌕</span>
+                    <input class="search-box__input"
+                           type="text"
+                           placeholder="Buscar por nombre, cliente, normativa o fabricante..."
+                           @bind="_busquedaMisProyectos"
+                           @bind:event="oninput" />
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(_busquedaMisProyectos))
+                {
+                    <button type="button" class="btn-inline btn-inline--neutral" @onclick="LimpiarBusquedaMisProyectos">
+                        Limpiar
+                    </button>
+                }
+            </div>
+
+            @if (_misProyectos.Count == 0)
+            {
+                <div class="empty-state">
+                    <h3>No tienes proyectos guardados todavía</h3>
+                    <p>
+                        Crea un proyecto nuevo desde aquí o guarda uno desde el módulo de informe.
+                    </p>
+                    <button type="button" class="btn-pro btn-pro--primary" @onclick="NuevoProyecto">
+                        Crear proyecto
+                    </button>
+                </div>
+            }
+            else if (!MisProyectosFiltrados.Any())
+            {
+                <div class="empty-state empty-state--small">
+                    <h3>No se han encontrado proyectos</h3>
+                    <p>Prueba con otro término de búsqueda o limpia el filtro actual.</p>
+                </div>
+            }
+            else
+            {
+                <div class="cards-grid">
+                    @foreach (var proyecto in MisProyectosFiltrados.OrderByDescending(p => p.FechaModificacion))
+                    {
+                        var score = CalcularScoreTecnico(proyecto);
+                        var estadoProyecto = ObtenerEstadoProyecto(score);
+
+                        <article class="project-card project-card--score">
+                            <div class="project-card__top">
+                                <div>
+                                    <span class="project-badge">Proyecto</span>
+                                    <h3>@proyecto.Nombre</h3>
+
+                                    <div class="project-card__status-row">
+                                        <span class="project-status @estadoProyecto.ClaseCss">
+                                            @estadoProyecto.Texto
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="project-card__date">
+                                    @proyecto.FechaModificacion.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                </div>
+                            </div>
+
+                            <div class="project-card__body">
+                                <div class="project-info">
+                                    <span class="project-info__label">Cliente</span>
+                                    <span class="project-info__value">
+                                        @(string.IsNullOrWhiteSpace(proyecto.Cliente) ? "—" : proyecto.Cliente)
+                                    </span>
+                                </div>
+
+                                <div class="project-info">
+                                    <span class="project-info__label">Normativa</span>
+                                    <span class="project-info__value">
+                                        @(string.IsNullOrWhiteSpace(proyecto.Normativa) ? "—" : proyecto.Normativa)
+                                    </span>
+                                </div>
+
+                                <div class="project-info">
+                                    <span class="project-info__label">Fabricante</span>
+                                    <span class="project-info__value">
+                                        @(string.IsNullOrWhiteSpace(proyecto.Fabricante) ? "—" : proyecto.Fabricante)
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="project-score">
+                                <div class="project-score__head">
+                                    <div>
+                                        <span class="project-score__eyebrow">Score técnico</span>
+                                        <div class="project-score__value">@score.Porcentaje%</div>
+                                    </div>
+
+                                    <span class="score-status @score.ClaseEstado">
+                                        @score.EstadoTexto
+                                    </span>
+                                </div>
+
+                                <div class="project-score__bar">
+                                    <div class="project-score__bar-fill @score.ClaseEstado"
+                                         style="width:@($"{score.Porcentaje}%")">
+                                    </div>
+                                </div>
+
+                                <div class="project-score__meta">
+                                    <span>@score.Resumen</span>
+                                </div>
+
+                                @if (score.Recomendaciones.Any())
+                                {
+                                    <div class="project-score__tips">
+                                        @foreach (var recomendacion in score.Recomendaciones.Take(3))
+                                        {
+                                            <div class="project-score__tip">@recomendacion</div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="project-card__actions">
+                                <button type="button" class="btn-pro btn-pro--dark" @onclick="() => AbrirMiProyecto(proyecto.Id)">
+                                    Abrir
+                                </button>
+
+                                <button type="button" class="btn-pro btn-pro--primary-soft" @onclick="() => DuplicarMiProyecto(proyecto.Id)">
+                                    Duplicar
+                                </button>
+
+                                <button type="button" class="btn-pro btn-pro--ghost" @onclick="() => ConfirmarEliminarMiProyecto(proyecto.Id)">
+                                    Eliminar
+                                </button>
+                            </div>
+                        </article>
+                    }
+                </div>
+            }
+        </section>
+    }
+
+    @if (_modoActivo == "todos" && _esAdmin)
+    {
+        <section class="gestion-bloque">
+            <div class="bloque-header">
+                <div>
+                    <div class="gestion-kicker">Bloque 02</div>
+                    <h2>Todos los proyectos</h2>
+                    <p>Vista global de proyectos guardados por todos los usuarios.</p>
+                </div>
+
+                <div class="bloque-meta">
+                    <span class="pill pill--soft">@TodosLosProyectosFiltrados.Count() resultado(s)</span>
+                </div>
+            </div>
+
+            <div class="search-toolbar">
+                <div class="search-box">
+                    <span class="search-box__icon">⌕</span>
+                    <input class="search-box__input"
+                           type="text"
+                           placeholder="Buscar proyecto, usuario, cliente, normativa o fabricante..."
+                           @bind="_busquedaTodosLosProyectos"
+                           @bind:event="oninput" />
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(_busquedaTodosLosProyectos))
+                {
+                    <button type="button" class="btn-inline btn-inline--neutral" @onclick="LimpiarBusquedaTodosLosProyectos">
+                        Limpiar
+                    </button>
+                }
+            </div>
+
+            @if (_todosLosProyectos.Count == 0)
+            {
+                <div class="empty-state empty-state--small">
+                    <h3>No hay proyectos guardados</h3>
+                    <p>Todavía no existen registros globales en la plataforma.</p>
+                </div>
+            }
+            else if (!TodosLosProyectosFiltrados.Any())
+            {
+                <div class="empty-state empty-state--small">
+                    <h3>No se han encontrado proyectos</h3>
+                    <p>No hay coincidencias con la búsqueda actual.</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-shell">
+                    <table class="pro-table">
+                        <thead>
+                            <tr>
+                                <th>Proyecto</th>
+                                <th>Usuario</th>
+                                <th>Cliente</th>
+                                <th>Normativa</th>
+                                <th>Fabricante</th>
+                                <th>Modificación</th>
+                                <th class="table-actions-col">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var proyecto in TodosLosProyectosFiltrados.OrderByDescending(p => p.FechaModificacion))
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="table-main">
+                                            <strong>@proyecto.Nombre</strong>
+                                        </div>
+                                    </td>
+                                    <td>@proyecto.EmailUsuario</td>
+                                    <td>@(string.IsNullOrWhiteSpace(proyecto.Cliente) ? "—" : proyecto.Cliente)</td>
+                                    <td>@(string.IsNullOrWhiteSpace(proyecto.Normativa) ? "—" : proyecto.Normativa)</td>
+                                    <td>@(string.IsNullOrWhiteSpace(proyecto.Fabricante) ? "—" : proyecto.Fabricante)</td>
+                                    <td>@proyecto.FechaModificacion.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td class="table-actions">
+                                        <button type="button" class="btn-inline btn-inline--danger" @onclick="() => ConfirmarEliminarProyectoGlobal(proyecto.Id)">
+                                            Eliminar
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+    }
+
+    @if (_modoActivo == "usuarios" && _esAdmin)
+    {
+        <section class="gestion-bloque">
+            <div class="bloque-header">
+                <div>
+                    <div class="gestion-kicker">Bloque 03</div>
+                    <h2>Usuarios</h2>
+                    <p>Gestión de permisos de administrador dentro de la plataforma.</p>
+                </div>
+
+                <div class="bloque-meta">
+                    <span class="pill pill--soft">@UsuariosFiltrados.Count() usuario(s)</span>
+                </div>
+            </div>
+
+            <div class="search-toolbar">
+                <div class="search-box">
+                    <span class="search-box__icon">⌕</span>
+                    <input class="search-box__input"
+                           type="text"
+                           placeholder="Buscar por correo, nombre o rol..."
+                           @bind="_busquedaUsuarios"
+                           @bind:event="oninput" />
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(_busquedaUsuarios))
+                {
+                    <button type="button" class="btn-inline btn-inline--neutral" @onclick="LimpiarBusquedaUsuarios">
+                        Limpiar
+                    </button>
+                }
+            </div>
+
+            @if (_usuarios.Count == 0)
+            {
+                <div class="empty-state empty-state--small">
+                    <h3>No hay usuarios registrados</h3>
+                    <p>No existen cuentas disponibles en la aplicación.</p>
+                </div>
+            }
+            else if (!UsuariosFiltrados.Any())
+            {
+                <div class="empty-state empty-state--small">
+                    <h3>No se han encontrado usuarios</h3>
+                    <p>No hay coincidencias con la búsqueda actual.</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-shell">
+                    <table class="pro-table">
+                        <thead>
+                            <tr>
+                                <th>Correo</th>
+                                <th>Nombre</th>
+                                <th>Rol actual</th>
+                                <th class="table-actions-col">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var usuario in UsuariosFiltrados.OrderBy(u => u.Email))
+                            {
+                                <tr>
+                                    <td>@usuario.Email</td>
+                                    <td>@(string.IsNullOrWhiteSpace(usuario.NombreCompleto) ? "—" : usuario.NombreCompleto)</td>
+                                    <td>
+                                        <span class="pill @(usuario.EsAdmin ? "pill--admin" : "pill--user")">
+                                            @(usuario.EsAdmin ? "Admin" : "Usuario")
+                                        </span>
+                                    </td>
+                                    <td class="table-actions">
+                                        @if (!usuario.EsAdmin)
+                                        {
+                                            <button type="button" class="btn-inline btn-inline--primary" @onclick="() => HacerAdmin(usuario.Id)">
+                                                Hacer admin
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="btn-inline btn-inline--neutral" @onclick="() => QuitarAdmin(usuario.Id)">
+                                                Quitar admin
+                                            </button>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+    }
+</div>
+
+<style>
+    .project-card--score {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .project-score {
+        margin-top: 4px;
+        padding: 16px;
+        border-radius: 18px;
+        background:
+            linear-gradient(180deg, rgba(255,255,255,0.86), rgba(248,250,252,0.98));
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        box-shadow:
+            0 8px 24px rgba(15, 23, 42, 0.06),
+            inset 0 1px 0 rgba(255,255,255,0.7);
+    }
+
+    .project-score__head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .project-score__eyebrow {
+        display: block;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        color: #64748b;
+        margin-bottom: 4px;
+    }
+
+    .project-score__value {
+        font-size: 28px;
+        font-weight: 800;
+        line-height: 1;
+        color: #0f172a;
+    }
+
+    .score-status {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+        border: 1px solid transparent;
+    }
+
+    .score-status.score--incompleto {
+        background: rgba(239, 68, 68, 0.10);
+        color: #b91c1c;
+        border-color: rgba(239, 68, 68, 0.18);
+    }
+
+    .score-status.score--revisar {
+        background: rgba(245, 158, 11, 0.12);
+        color: #b45309;
+        border-color: rgba(245, 158, 11, 0.22);
+    }
+
+    .score-status.score--listo {
+        background: rgba(16, 185, 129, 0.12);
+        color: #047857;
+        border-color: rgba(16, 185, 129, 0.22);
+    }
+
+    .project-score__bar {
+        width: 100%;
+        height: 12px;
+        border-radius: 999px;
+        overflow: hidden;
+        background: rgba(226, 232, 240, 0.9);
+        box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08);
+    }
+
+    .project-score__bar-fill {
+        height: 100%;
+        border-radius: 999px;
+        transition: width .35s ease;
+    }
+
+    .project-score__bar-fill.score--incompleto {
+        background: linear-gradient(90deg, #f87171, #ef4444);
+    }
+
+    .project-score__bar-fill.score--revisar {
+        background: linear-gradient(90deg, #fbbf24, #f59e0b);
+    }
+
+    .project-score__bar-fill.score--listo {
+        background: linear-gradient(90deg, #34d399, #10b981);
+    }
+
+    .project-score__meta {
+        margin-top: 10px;
+        font-size: 13px;
+        color: #475569;
+    }
+
+    .project-score__tips {
+        margin-top: 12px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .project-score__tip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 10px;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.045);
+        color: #334155;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1.2;
+    }
+
+    .project-score__tip::before {
+        content: "•";
+        color: #6366f1;
+        font-size: 14px;
+        line-height: 1;
+    }
+
+    @@media (max-width: 768px) {
+        .project-score__head {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .project-score__value {
+            font-size: 24px;
+        }
+    }
+</style>
+
+@code {
+    private List<ProyectoEntidad> _misProyectos = new();
+    private List<ProyectoAdminDto> _todosLosProyectos = new();
+    private List<UsuarioAdminDto> _usuarios = new();
+
+    private string _mensaje = "";
+    private string _modoActivo = "mis";
+    private bool _esAdmin;
+    private ApplicationUser? _usuarioActual;
+
+    private string _busquedaMisProyectos = "";
+    private string _busquedaTodosLosProyectos = "";
+    private string _busquedaUsuarios = "";
+
+    private async Task DuplicarMiProyecto(int id)
+    {
+        if (_usuarioActual == null)
+            return;
+
+        var nuevoId = await ProyectoPersistenciaService.DuplicarAsync(_usuarioActual.Id, id);
+
+        if (nuevoId == null)
+        {
+            _mensaje = "No se pudo duplicar el proyecto.";
+            return;
+        }
+
+        _mensaje = "Proyecto duplicado correctamente.";
+        await CargarTodoAsync();
+        _modoActivo = "mis";
+    }
+
+    private EstadoProyectoViewModel ObtenerEstadoProyecto(ScoreTecnicoViewModel score)
+    {
+        if (score.Porcentaje >= 100)
+        {
+            return new EstadoProyectoViewModel
+            {
+                Texto = "Listo para informe",
+                ClaseCss = "project-status--ok"
+            };
+        }
+
+        if (score.Porcentaje >= 40)
+        {
+            return new EstadoProyectoViewModel
+            {
+                Texto = "En progreso",
+                ClaseCss = "project-status--progress"
+            };
+        }
+
+        return new EstadoProyectoViewModel
+        {
+            Texto = "Borrador",
+            ClaseCss = "project-status--draft"
+        };
+    }
+
+    private class EstadoProyectoViewModel
+    {
+        public string Texto { get; set; } = "";
+        public string ClaseCss { get; set; } = "";
+    }
+    private async Task ConfirmarEliminarMiProyecto(int id)
+    {
+        var confirmar = await JS.InvokeAsync<bool>("confirm", "¿Seguro que quieres borrar este proyecto?");
+
+        if (!confirmar)
+            return;
+
+        await EliminarMiProyecto(id);
+    }
+
+    private async Task ConfirmarEliminarProyectoGlobal(int id)
+    {
+        var confirmar = await JS.InvokeAsync<bool>("confirm", "¿Seguro que quieres borrar este proyecto?");
+
+        if (!confirmar)
+            return;
+
+        await EliminarProyectoGlobal(id);
+    }
+    private IEnumerable<ProyectoEntidad> MisProyectosFiltrados =>
+        _misProyectos.Where(p =>
+            CoincideBusqueda(_busquedaMisProyectos, p.Nombre, p.Cliente, p.Normativa, p.Fabricante));
+
+    private IEnumerable<ProyectoAdminDto> TodosLosProyectosFiltrados =>
+        _todosLosProyectos.Where(p =>
+            CoincideBusqueda(_busquedaTodosLosProyectos, p.Nombre, p.Cliente, p.Normativa, p.Fabricante, p.EmailUsuario));
+
+    private IEnumerable<UsuarioAdminDto> UsuariosFiltrados =>
+        _usuarios.Where(u =>
+            CoincideBusqueda(_busquedaUsuarios, u.Email, u.NombreCompleto, u.EsAdmin ? "Admin" : "Usuario"));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarTodoAsync();
+    }
+
+    private async Task CargarTodoAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        _usuarioActual = await UserManager.GetUserAsync(authState.User);
+
+        if (_usuarioActual == null)
+        {
+            NavigationManager.NavigateTo("/login?returnUrl=%2Fmis-proyectos", forceLoad: true);
+            return;
+        }
+
+        _esAdmin = await UserManager.IsInRoleAsync(_usuarioActual, RolesAplicacion.Admin);
+
+        _misProyectos = await ProyectoPersistenciaService.ObtenerListaAsync(_usuarioActual.Id);
+
+        if (_esAdmin)
+        {
+            _todosLosProyectos = await AdminService.ObtenerTodosLosProyectosAsync();
+            _usuarios = await AdminService.ObtenerUsuariosAsync();
+        }
+    }
+
+    private static bool CoincideBusqueda(string textoBusqueda, params string?[] valores)
+    {
+        if (string.IsNullOrWhiteSpace(textoBusqueda))
+            return true;
+
+        var busqueda = textoBusqueda.Trim();
+
+        return valores.Any(v =>
+            !string.IsNullOrWhiteSpace(v) &&
+            v.Contains(busqueda, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void CambiarModo(string modo)
+    {
+        if (!_esAdmin && modo != "mis")
+            return;
+
+        _modoActivo = modo;
+        _mensaje = "";
+    }
+
+    private string ClaseModo(string modo)
+    {
+        return _modoActivo == modo
+            ? "tab-btn tab-btn--active"
+            : "tab-btn";
+    }
+
+    private void LimpiarBusquedaMisProyectos() => _busquedaMisProyectos = "";
+    private void LimpiarBusquedaTodosLosProyectos() => _busquedaTodosLosProyectos = "";
+    private void LimpiarBusquedaUsuarios() => _busquedaUsuarios = "";
+
+    private void NuevoProyecto()
+    {
+        EstadoProyecto.LimpiarTodo();
+        NavigationManager.NavigateTo("/proyecto");
+    }
+
+    private async Task AbrirProyectoReciente()
+    {
+        if (_usuarioActual == null || !_misProyectos.Any())
+            return;
+
+        var proyectoMasReciente = _misProyectos
+            .OrderByDescending(p => p.FechaModificacion)
+            .First();
+
+        await AbrirMiProyecto(proyectoMasReciente.Id);
+    }
+
+    private async Task AbrirMiProyecto(int id)
+    {
+        if (_usuarioActual == null)
+            return;
+
+        var ok = await ProyectoPersistenciaService.CargarAsync(_usuarioActual.Id, id, EstadoProyecto);
+
+        if (!ok)
+        {
+            _mensaje = "No se pudo abrir el proyecto.";
+            return;
+        }
+
+        NavigationManager.NavigateTo("/proyecto");
+    }
+
+    private async Task EliminarMiProyecto(int id)
+    {
+        if (_usuarioActual == null)
+            return;
+
+        var ok = await ProyectoPersistenciaService.EliminarAsync(_usuarioActual.Id, id);
+
+        if (!ok)
+        {
+            _mensaje = "No se pudo eliminar el proyecto.";
+            return;
+        }
+
+        _mensaje = "Proyecto eliminado correctamente.";
+        await CargarTodoAsync();
+        _modoActivo = "mis";
+    }
+
+    private async Task EliminarProyectoGlobal(int id)
+    {
+        if (!_esAdmin)
+            return;
+
+        var ok = await AdminService.EliminarProyectoAsync(id);
+
+        if (!ok)
+        {
+            _mensaje = "No se pudo eliminar el proyecto.";
+            return;
+        }
+
+        _mensaje = "Proyecto eliminado correctamente.";
+        await CargarTodoAsync();
+        _modoActivo = "todos";
+    }
+
+    private async Task HacerAdmin(string userId)
+    {
+        if (!_esAdmin)
+            return;
+
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var ok = await AdminService.HacerAdminAsync(userId, authState.User);
+
+        _mensaje = ok ? "Usuario actualizado a administrador." : "No se pudo actualizar el usuario.";
+        await CargarTodoAsync();
+        _modoActivo = "usuarios";
+    }
+
+    private async Task QuitarAdmin(string userId)
+    {
+        if (!_esAdmin)
+            return;
+
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var ok = await AdminService.QuitarAdminAsync(userId, authState.User);
+
+        _mensaje = ok ? "Rol de administrador eliminado correctamente." : "No se pudo actualizar el usuario.";
+        await CargarTodoAsync();
+        _modoActivo = "usuarios";
+    }
+
+    private ScoreTecnicoViewModel CalcularScoreTecnico(ProyectoEntidad entidad)
+    {
+        var proyecto = DeserializarSeguro<ProyectoGeneralModel>(entidad.ProyectoJson);
+        var tanque = DeserializarSeguro<TankModel>(entidad.TanqueJson);
+        var cargas = DeserializarSeguro<CargasModel>(entidad.CargasJson);
+        var instalacion = DeserializarSeguro<InstalacionModel>(entidad.InstalacionJson);
+        var resultado = DeserializarSeguro<ResultadoCalculoModel>(entidad.ResultadoJson);
+
+        var bloquesCompletos = 0;
+        var recomendaciones = new List<string>();
+
+        if (TieneProyectoCompleto(proyecto))
+        {
+            bloquesCompletos++;
+        }
+        else
+        {
+            recomendaciones.Add("Falta completar la configuración general del proyecto.");
+        }
+
+        if (TieneGeometriaCompleta(tanque))
+        {
+            bloquesCompletos++;
+        }
+        else
+        {
+            recomendaciones.Add("Faltan datos de geometría del tanque.");
+        }
+
+        if (TieneCargasCompletas(cargas))
+        {
+            bloquesCompletos++;
+        }
+        else
+        {
+            recomendaciones.Add("Faltan cargas o condiciones de diseño.");
+        }
+
+        if (TieneInstalacionCompleta(instalacion))
+        {
+            bloquesCompletos++;
+        }
+        else
+        {
+            recomendaciones.Add("Faltan datos de instalación y montaje.");
+        }
+
+        if (TieneResultadoCalculado(resultado))
+        {
+            bloquesCompletos++;
+        }
+        else
+        {
+            recomendaciones.Add("No hay resultado calculado todavía.");
+        }
+
+        var porcentaje = bloquesCompletos * 20;
+
+        var estadoTexto = "Incompleto";
+        var claseEstado = "score--incompleto";
+
+        if (porcentaje >= 80)
+        {
+            estadoTexto = "Listo";
+            claseEstado = "score--listo";
+        }
+        else if (porcentaje >= 40)
+        {
+            estadoTexto = "Revisar";
+            claseEstado = "score--revisar";
+        }
+
+        var resumen = $"{bloquesCompletos}/5 bloques técnicos completados";
+
+        if (porcentaje == 100)
+        {
+            resumen = "Proyecto listo para continuar con revisión e informe.";
+        }
+
+        return new ScoreTecnicoViewModel
+        {
+            Porcentaje = porcentaje,
+            EstadoTexto = estadoTexto,
+            ClaseEstado = claseEstado,
+            Resumen = resumen,
+            Recomendaciones = recomendaciones
+        };
+    }
+
+    private static T DeserializarSeguro<T>(string? json) where T : new()
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return new T();
+
+        try
+        {
+            return JsonConvert.DeserializeObject<T>(json) ?? new T();
+        }
+        catch
+        {
+            return new T();
+        }
+    }
+
+    private static bool TieneProyectoCompleto(ProyectoGeneralModel? proyecto)
+    {
+        if (proyecto == null)
+            return false;
+
+        return !string.IsNullOrWhiteSpace(proyecto.NombreProyecto)
+               && !string.IsNullOrWhiteSpace(proyecto.Normativa)
+               && !string.IsNullOrWhiteSpace(proyecto.Fabricante)
+               && !string.IsNullOrWhiteSpace(proyecto.MaterialPrincipal)
+               && !string.IsNullOrWhiteSpace(proyecto.ModeloCalculo);
+    }
+
+    private static bool TieneGeometriaCompleta(TankModel? tanque)
+    {
+        if (tanque == null)
+            return false;
+
+        return tanque.ChapasPorAnillo > 0
+               && tanque.NumeroAnillos > 0
+               && tanque.AnilloArranque > 0
+               && tanque.DensidadLiquido > 0
+               && !string.IsNullOrWhiteSpace(tanque.Modelo)
+               && tanque.Diametro > 0
+               && tanque.AlturaTotal > 0
+               && tanque.AlturaPanelBase > 0;
+    }
+
+    private static bool TieneCargasCompletas(CargasModel? cargas)
+    {
+        if (cargas == null)
+            return false;
+
+        if (string.IsNullOrWhiteSpace(cargas.NormativaAplicada))
+            return false;
+
+        var tieneDatosBase =
+            cargas.DensidadLiquido > 0 ||
+            cargas.VelocidadViento > 0 ||
+            cargas.SnowLoad > 0;
+
+        var tieneDatosAwwaTecho =
+            !string.IsNullOrWhiteSpace(cargas.RoofType) ||
+            cargas.RoofDeadLoad > 0 ||
+            cargas.RoofSnowLoad > 0 ||
+            cargas.RoofLiveLoad > 0 ||
+            cargas.RoofCentroid > 0 ||
+            cargas.RoofProjectedArea > 0 ||
+            !string.IsNullOrWhiteSpace(cargas.RoofAngle);
+
+        var tieneDatosViento =
+            !string.IsNullOrWhiteSpace(cargas.ClaseExposicion) ||
+            cargas.VelocidadViento > 0;
+
+        var tieneDatosSismo =
+            cargas.Ss > 0 ||
+            cargas.S1 > 0 ||
+            cargas.TL > 0 ||
+            !string.IsNullOrWhiteSpace(cargas.SiteClass) ||
+            !string.IsNullOrWhiteSpace(cargas.SeismicUseGroup);
+
+        return tieneDatosBase || tieneDatosAwwaTecho || tieneDatosViento || tieneDatosSismo;
+    }
+
+    private static bool TieneInstalacionCompleta(InstalacionModel? instalacion)
+    {
+        if (instalacion == null)
+            return false;
+
+        return !string.IsNullOrWhiteSpace(instalacion.TipoTecho)
+               && !string.IsNullOrWhiteSpace(instalacion.TipoEscalera)
+               && !string.IsNullOrWhiteSpace(instalacion.LugarObra)
+               && instalacion.TamanoCuadrilla > 0
+               && instalacion.HorasTrabajoDia > 0;
+    }
+
+    private static bool TieneResultadoCalculado(ResultadoCalculoModel? resultado)
+    {
+        if (resultado == null)
+            return false;
+
+        return resultado.Anillos.Any()
+               || resultado.EsValido
+               || resultado.NumeroAnillos > 0
+               || resultado.Diametro > 0
+               || resultado.AlturaTotal > 0
+               || resultado.TieneConfiguracion
+               || resultado.TieneTornilloBase
+               || resultado.TieneSeleccionRealCalculada;
+    }
+
+    private class ScoreTecnicoViewModel
+    {
+        public int Porcentaje { get; set; }
+        public string EstadoTexto { get; set; } = "";
+        public string ClaseEstado { get; set; } = "";
+        public string Resumen { get; set; } = "";
+        public List<string> Recomendaciones { get; set; } = new();
+    }
+}

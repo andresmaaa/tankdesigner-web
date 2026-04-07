@@ -1,0 +1,225 @@
+﻿@page "/cuenta"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using TankDesigner.Web.Data
+
+@attribute [Authorize]
+
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Mi cuenta</PageTitle>
+
+<div class="cuenta-page">
+    @if (usuario != null)
+    {
+        <section class="cuenta-hero">
+            <div class="cuenta-hero__identity">
+                <div class="cuenta-avatar">
+                    @InicialesUsuario()
+                </div>
+
+                <div>
+                    <div class="cuenta-kicker">Perfil profesional</div>
+                    <h1>@(string.IsNullOrWhiteSpace(usuario.NombreCompleto) ? "Mi cuenta" : usuario.NombreCompleto)</h1>
+                    <p>@usuario.Email</p>
+                </div>
+            </div>
+
+            <div class="cuenta-hero__status">
+                <span class="cuenta-status-dot"></span>
+                Cuenta activa
+            </div>
+        </section>
+
+        <section class="cuenta-grid">
+            <article class="cuenta-card">
+                <div class="cuenta-card__header">
+                    <div>
+                        <div class="cuenta-kicker">Bloque 01</div>
+                        <h2>Datos personales</h2>
+                        <p>Información principal del usuario dentro de la plataforma.</p>
+                    </div>
+                </div>
+
+                <div class="cuenta-form-grid">
+                    <div class="field">
+                        <label>Nombre completo</label>
+                        <input @bind="usuario.NombreCompleto" placeholder="Nombre completo" />
+                    </div>
+
+                    <div class="field">
+                        <label>Correo electrónico</label>
+                        <input @bind="usuario.Email" placeholder="Email" disabled />
+                    </div>
+
+                    <div class="field">
+                        <label>Teléfono</label>
+                        <input @bind="usuario.TelefonoContacto" placeholder="Teléfono de contacto" />
+                    </div>
+
+                    <div class="field">
+                        <label>Cargo / puesto</label>
+                        <input @bind="usuario.Cargo" placeholder="Cargo / puesto" />
+                    </div>
+                </div>
+            </article>
+
+            <article class="cuenta-card cuenta-card--mini">
+                <div class="cuenta-card__header">
+                    <div>
+                        <div class="cuenta-kicker">Bloque 03</div>
+                        <h2>Resumen de cuenta</h2>
+                        <p>Estado y datos rápidos del usuario dentro de la plataforma.</p>
+                    </div>
+                </div>
+
+                <div class="cuenta-resumen">
+                    <div class="resumen-item">
+                        <span class="resumen-label">Rol</span>
+                        <span class="resumen-value">Usuario</span>
+                    </div>
+
+                    <div class="resumen-item">
+                        <span class="resumen-label">Cuenta</span>
+                        <span class="resumen-value ok">Activa</span>
+                    </div>
+
+                    <div class="resumen-item">
+                        <span class="resumen-label">Empresa</span>
+                        <span class="resumen-value">
+                            @(string.IsNullOrWhiteSpace(usuario.EmpresaNombre) ? "No definida" : usuario.EmpresaNombre)
+                        </span>
+                    </div>
+
+                    <div class="resumen-item">
+                        <span class="resumen-label">Perfil completo</span>
+                        <span class="resumen-value">
+                            @(CalcularPerfilCompleto() + "%")
+                        </span>
+                    </div>
+                </div>
+            </article>
+            <article class="cuenta-card">
+                <div class="cuenta-card__header">
+                    <div>
+                        <div class="cuenta-kicker">Bloque 02</div>
+                        <h2>Empresa</h2>
+                        <p>Datos corporativos para presupuestos, informes y documentación técnica.</p>
+                    </div>
+                </div>
+    
+                <div class="cuenta-form-grid">
+                    <div class="field">
+                        <label>Nombre de empresa</label>
+                        <input @bind="usuario.EmpresaNombre" placeholder="Nombre empresa" />
+                    </div>
+
+                    <div class="field">
+                        <label>Sitio web</label>
+                        <input @bind="usuario.EmpresaWeb" placeholder="https://..." />
+                    </div>
+
+                    <div class="field field--full">
+                        <label>Dirección</label>
+                        <input @bind="usuario.EmpresaDireccion" placeholder="Dirección" />
+                    </div>
+
+                    <div class="field">
+                        <label>Ciudad</label>
+                        <input @bind="usuario.EmpresaCiudad" placeholder="Ciudad" />
+                    </div>
+
+                    <div class="field">
+                        <label>Provincia</label>
+                        <input @bind="usuario.EmpresaProvincia" placeholder="Provincia" />
+                    </div>
+
+                    <div class="field">
+                        <label>Código postal</label>
+                        <input @bind="usuario.EmpresaCodigoPostal" placeholder="Código postal" />
+                    </div>
+
+                    <div class="field">
+                        <label>País</label>
+                        <input @bind="usuario.EmpresaPais" placeholder="País" />
+                    </div>
+
+                    <div class="field">
+                        <label>CIF / NIF</label>
+                        <input @bind="usuario.EmpresaIdentificacionFiscal" placeholder="CIF / NIF" />
+                    </div>
+                </div>
+            </article>
+        </section>
+
+        <section class="cuenta-actions">
+            <button class="btn-save" @onclick="Guardar">Guardar cambios</button>
+
+            @if (!string.IsNullOrWhiteSpace(mensaje))
+            {
+                <div class="cuenta-message">@mensaje</div>
+            }
+        </section>
+    }
+</div>
+
+@code {
+    private ApplicationUser? usuario;
+    private string mensaje = "";
+
+    private int CalcularPerfilCompleto()
+    {
+        if (usuario == null)
+            return 0;
+
+        int total = 6;
+        int completos = 0;
+
+        if (!string.IsNullOrWhiteSpace(usuario.NombreCompleto)) completos++;
+        if (!string.IsNullOrWhiteSpace(usuario.TelefonoContacto)) completos++;
+        if (!string.IsNullOrWhiteSpace(usuario.Cargo)) completos++;
+        if (!string.IsNullOrWhiteSpace(usuario.EmpresaNombre)) completos++;
+        if (!string.IsNullOrWhiteSpace(usuario.EmpresaCiudad)) completos++;
+        if (!string.IsNullOrWhiteSpace(usuario.EmpresaPais)) completos++;
+
+        return (int)((double)completos / total * 100);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            usuario = await UserManager.GetUserAsync(user);
+        }
+    }
+
+    private async Task Guardar()
+    {
+        if (usuario == null)
+            return;
+
+        var result = await UserManager.UpdateAsync(usuario);
+
+        mensaje = result.Succeeded
+            ? "Cambios guardados correctamente."
+            : "Error al guardar los datos.";
+    }
+
+    private string InicialesUsuario()
+    {
+        if (usuario == null || string.IsNullOrWhiteSpace(usuario.NombreCompleto))
+            return "U";
+
+        var partes = usuario.NombreCompleto
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Take(2)
+            .Select(p => char.ToUpperInvariant(p[0]));
+
+        return string.Concat(partes);
+    }
+}

@@ -1,0 +1,18 @@
+﻿@page "/logout"
+
+<PageTitle>Cerrar sesión</PageTitle>
+
+<div class="auth-page">
+    <div class="auth-card">
+        <div class="auth-card__header">
+            <h1>Cerrar sesión</h1>
+            <p>Confirma la salida de la aplicación.</p>
+        </div>
+
+        <form method="post" action="/auth/logout">
+            <button type="submit" class="auth-btn">
+                Cerrar sesión
+            </button>
+        </form>
+    </div>
+</div>

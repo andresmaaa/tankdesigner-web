@@ -1,0 +1,150 @@
+{
+  "productividad": {
+    "horasPorPlacaPersona": 0.5,
+    "horasPor100kgPlacaSinGrua": 1,
+    "horasPor100kgPlacaConGrua": 0.2,
+    "panelesPorDiaCamionGrua": 40,
+    "umbralPesoPanelGrua": 150,
+    "horasPorRigidizador": 0.4,
+    "horasSelladoMetro": 0.06,
+    "horasEscaleraVerticalMetro": 0.5,
+    "horasEscaleraHelicoidalMetro": 1.5,
+    "horasConexion": {
+      "DN25_DN150": 0.5,
+      "DN150_DN300": 0.7,
+      "DN300_DN500": 1,
+      "DN500": 1.2
+    },
+    "horasStarterRing": 1.3,
+    "horasAnclajeMetro": 2,
+    "horasBocaHombre": 4.5,
+    "horasCambioGato": 1
+  },
+
+  "costesManoObra": {
+    "operarioNacional": 32,
+    "ingenieroNacional": 40,
+    "tecnicoSeguridadNacional": 45,
+    "trabajadorInternacional": 45,
+    "ingenieroInternacional": 50,
+    "tecnicoSeguridadInternacional": 55
+  },
+
+  "mediosAuxiliares": {
+    "camionGruaDia": 650,
+    "alquilerGatosDia": 50,
+    "vehiculoAlquilerDia": 100,
+    "consumiblesPanel": 2.5,
+    "consumiblesTechoMetro": 3,
+    "tripodesPorMetro": 0.35,
+    "consumiblesTechoM2": 3
+  },
+
+  "panelesFabricante": [
+    {
+      "fabricante": "Balmoral",
+      "altoPanel": 1.2,
+      "largoPanel": 2.45,
+      "pesoKgM2": 40
+    },
+    {
+      "fabricante": "DL2",
+      "altoPanel": 1.4,
+      "largoPanel": 2.68,
+      "pesoKgM2": 40
+    },
+    {
+      "fabricante": "Permastore",
+      "altoPanel": 1.4,
+      "largoPanel": 2.68,
+      "pesoKgM2": 40
+    }
+  ],
+
+  "densidadAcero": 7850,
+
+  "techo": [
+    {
+      "tipo": "Sin techo",
+      "horasEstructuraM2": 0,
+      "horasPanelM2": 0,
+      "factorIzados": 0
+    },
+    {
+      "tipo": "Conico",
+      "horasEstructuraM2": 0.4,
+      "horasPanelM2": 0.8,
+      "factorIzados": 0.5
+    },
+    {
+      "tipo": "Plano",
+      "horasEstructuraM2": 0.2,
+      "horasPanelM2": 0.7,
+      "factorIzados": 0.3
+    },
+    {
+      "tipo": "Domo geodesico",
+      "horasEstructuraM2": 1,
+      "horasPanelM2": 0.8,
+      "factorIzados": 1
+    }
+  ],
+
+  "escaleras": [
+    {
+      "tipo": "Sin escalera",
+      "precioMetro": 0
+    },
+    {
+      "tipo": "Vertical",
+      "precioMetro": 250
+    },
+    {
+      "tipo": "Helicoidal",
+      "precioMetro": 980
+    }
+  ],
+
+  "conexiones": [
+    {
+      "rango": "DN25-DN150",
+      "horas": 2
+    },
+    {
+      "rango": "DN150-DN300",
+      "horas": 3.5
+    },
+    {
+      "rango": "DN300-DN500",
+      "horas": 6
+    },
+    {
+      "rango": ">DN500",
+      "horas": 10
+    }
+  ],
+
+  "calculoEstructural": {
+    "densidadContenido": 1020,
+    "gravedad": 9.81,
+    "sobrepresion": 0
+  },
+
+  "transporte": {
+    "nacional": 3600,
+    "europa": 4500,
+    "internacional": 6000,
+    "pesoMaximoContenedor": 20000
+  },
+
+  "vuelos": {
+    "nacional": 0,
+    "europa": 500,
+    "internacional": 1000
+  },
+
+  "pesos": {
+    "escaleraVerticalKgMetro": 60,
+    "escaleraHelicoidalKgMetro": 160
+  }
+}

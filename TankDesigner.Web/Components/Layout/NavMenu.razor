@@ -1,0 +1,93 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Nav
+
+<div class="nav-shell">
+    <div class="brand-block" @onclick="IrAMisProyectos" title="Ir a mis proyectos" style="cursor:pointer;">
+        <img src="assets/images/logo.png" alt="Tank Structural Designer" class="brand-logo" />
+
+        <div class="brand-copy">
+            <h2>Tank Structural Designer</h2>
+            <p>@SubtituloSeccionActual()</p>
+        </div>
+    </div>
+
+    <div class="nav-caption">Flujo de trabajo</div>
+
+    <label for="nav-toggle" class="nav-toggle-label" title="Abrir o cerrar navegación">
+        ☰
+    </label>
+
+    <input id="nav-toggle" type="checkbox" class="nav-toggle" />
+
+    <nav class="nav-menu">
+        <AuthorizeView>
+            <Authorized>
+                <NavLink class="nav-entry" href="mis-proyectos">
+                    <span class="nav-copy">Mis proyectos</span>
+                </NavLink>
+            </Authorized>
+        </AuthorizeView>
+
+        <NavLink class="nav-entry" href="proyecto">
+            <span class="nav-copy">Proyecto</span>
+        </NavLink>
+
+        <NavLink class="nav-entry" href="geometria">
+            <span class="nav-copy">Geometría</span>
+        </NavLink>
+
+        <NavLink class="nav-entry" href="cargas">
+            <span class="nav-copy">Cargas y condiciones</span>
+        </NavLink>
+
+        <NavLink class="nav-entry" href="instalacion">
+            <span class="nav-copy">Instalación</span>
+        </NavLink>
+
+        <NavLink class="nav-entry" href="informe">
+            <span class="nav-copy">Informe</span>
+        </NavLink>
+    </nav>
+
+    <div class="nav-status">
+        <span class="nav-status__label">Estado del diseño</span>
+        <strong>Sección activa: @TituloSeccionActual()</strong>
+        <span class="nav-status__text">Navegación principal del flujo de trabajo técnico.</span>
+    </div>
+</div>
+
+@code {
+    private void IrAMisProyectos()
+    {
+        Nav.NavigateTo("/mis-proyectos");
+    }
+
+    private string RutaActual()
+        => Nav.ToBaseRelativePath(Nav.Uri).Trim('/').ToLowerInvariant();
+
+    private string TituloSeccionActual()
+        => RutaActual() switch
+        {
+            "" => "Acceso",
+            "proyecto" => "Proyecto",
+            "geometria" => "Geometría",
+            "cargas" => "Cargas",
+            "instalacion" => "Instalación",
+            "informe" => "Informe",
+            "mis-proyectos" => "Mis proyectos",
+            _ => "Tank Designer"
+        };
+
+    private string SubtituloSeccionActual()
+        => RutaActual() switch
+        {
+            "" => "Plataforma técnica de ingeniería",
+            "proyecto" => "Datos generales y configuración base",
+            "geometria" => "Parámetros geométricos del tanque",
+            "cargas" => "Acciones y condiciones de diseño",
+            "instalacion" => "Configuración constructiva",
+            "informe" => "Vista previa y exportación técnica",
+            "mis-proyectos" => "Gestión de proyectos y administración",
+            _ => "Engineering web platform"
+        };
+}

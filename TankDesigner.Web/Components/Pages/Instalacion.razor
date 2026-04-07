@@ -1,0 +1,216 @@
+﻿@page "/instalacion"
+@using TankDesigner.Web.Services
+@inject ProyectoState EstadoProyecto
+@inject OpcionesFormularioService Opciones
+
+<PageTitle>Instalación</PageTitle>
+
+<div class="instalacion-page">
+    <div class="page-header">
+        <h1>Instalación</h1>
+        <p>Configuración de montaje, accesos, conexiones y condiciones generales de obra.</p>
+    </div>
+
+    <EditForm Model="EstadoProyecto.Instalacion">
+        <div class="page-layout">
+            <section class="main-column">
+                <article class="td-panel">
+                    <div class="td-panel__header">
+                        <div class="section-kicker">Bloque 01</div>
+                        <h2>Elementos auxiliares</h2>
+                        <p>Configuración de acceso y elementos principales de montaje.</p>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="field">
+                            <label>Tipo escalera</label>
+                            <InputSelect class="td-input td-select" @bind-Value="EstadoProyecto.Instalacion.TipoEscalera">
+                                @foreach (var item in _tiposEscalera)
+                                {
+                                    <option value="@item">@item</option>
+                                }
+                            </InputSelect>
+                            <small>Solución de acceso prevista para el depósito.</small>
+                        </div>
+
+                        <div class="field">
+                            <label>Número escaleras</label>
+                            <InputNumber class="td-input" @bind-Value="EstadoProyecto.Instalacion.NumeroEscaleras" />
+                            <small>Cantidad total de escaleras necesarias en la instalación.</small>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="td-panel">
+                    <div class="td-panel__header">
+                        <div class="section-kicker">Bloque 02</div>
+                        <h2>Conexiones</h2>
+                        <p>Distribución de conexiones por rangos de diámetro nominal.</p>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="field">
+                            <label>DN25 - DN150</label>
+                            <InputNumber class="td-input" @bind-Value="EstadoProyecto.Instalacion.ConexionesDN25_DN150" />
+                            <small>Conexiones pequeñas y medias.</small>
+                        </div>
+
+                        <div class="field">
+                            <label>DN150 - DN300</label>
+                            <InputNumber class="td-input" @bind-Value="EstadoProyecto.Instalacion.ConexionesDN150_DN300" />
+                            <small>Conexiones de rango intermedio.</small>
+                        </div>
+
+                        <div class="field">
+                            <label>DN300 - DN500</label>
+                            <InputNumber class="td-input" @bind-Value="EstadoProyecto.Instalacion.ConexionesDN300_DN500" />
+                            <small>Conexiones de diámetro elevado.</small>
+                        </div>
+
+                        <div class="field">
+                            <label>&gt; DN500</label>
+                            <InputNumber class="td-input" @bind-Value="EstadoProyecto.Instalacion.ConexionesMayorDN500" />
+                            <small>Conexiones especiales o de gran diámetro.</small>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="td-panel">
+                    <div class="td-panel__header">
+                        <div class="section-kicker">Bloque 03</div>
+                        <h2>Condiciones de obra</h2>
+                        <p>Parámetros de ejecución, equipo humano y características del emplazamiento.</p>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="field">
+                            <label>Tamaño cuadrilla</label>
+                            <InputNumber class="td-input" @bind-Value="EstadoProyecto.Instalacion.TamanoCuadrilla" />
+                            <small>Número de operarios principales de montaje.</small>
+                        </div>
+
+                        <div class="field">
+                            <label>Horas trabajo día</label>
+                            <InputNumber class="td-input" @bind-Value="EstadoProyecto.Instalacion.HorasTrabajoDia" />
+                            <small>Jornada prevista de trabajo diario.</small>
+                        </div>
+
+                        <div class="field">
+                            <label>Días lluvia (%)</label>
+                            <InputNumber class="td-input" @bind-Value="EstadoProyecto.Instalacion.DiasLluviaPorcentaje" />
+                            <small>Porcentaje estimado de afección meteorológica.</small>
+                        </div>
+
+                        <div class="field">
+                            <label>Site manager</label>
+                            <InputNumber class="td-input" @bind-Value="EstadoProyecto.Instalacion.SiteManager" />
+                            <small>Responsables de supervisión en obra.</small>
+                        </div>
+
+                        <div class="field">
+                            <label>Técnico seguridad</label>
+                            <InputNumber class="td-input" @bind-Value="EstadoProyecto.Instalacion.TecnicoSeguridad" />
+                            <small>Recursos de seguridad y prevención.</small>
+                        </div>
+
+                        <div class="field">
+                            <label>Lugar obra</label>
+                            <InputSelect class="td-input td-select" @bind-Value="EstadoProyecto.Instalacion.LugarObra">
+                                @foreach (var item in _lugaresObra)
+                                {
+                                    <option value="@item">@item</option>
+                                }
+                            </InputSelect>
+                            <small>Clasificación general del emplazamiento de obra.</small>
+                        </div>
+
+                        <div class="field field--full">
+                            <label>Distancia alojamiento - obra</label>
+                            <InputNumber class="td-input" @bind-Value="EstadoProyecto.Instalacion.DistanciaAlojamientoObra" />
+                            <small>Distancia logística estimada entre alojamiento y obra.</small>
+                        </div>
+                    </div>
+                </article>
+            </section>
+
+            <aside class="side-column">
+                <article class="td-panel td-panel--compact td-panel--sticky">
+                    <div class="td-panel__header">
+                        <div class="section-kicker">Resumen vivo</div>
+                        <h2>Resumen de instalación</h2>
+                        <p>Vista rápida de la configuración activa de montaje y obra.</p>
+                    </div>
+
+                    <div class="summary-list">
+                        <div class="summary-row">
+                            <span class="summary-row__label">Tipo escalera</span>
+                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Instalacion.TipoEscalera)</span>
+                        </div>
+
+                        <div class="summary-row">
+                            <span class="summary-row__label">Número escaleras</span>
+                            <span class="summary-row__value">@EstadoProyecto.Instalacion.NumeroEscaleras</span>
+                        </div>
+
+                        <div class="summary-row">
+                            <span class="summary-row__label">Lugar obra</span>
+                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Instalacion.LugarObra)</span>
+                        </div>
+
+                        <div class="summary-row">
+                            <span class="summary-row__label">Cuadrilla</span>
+                            <span class="summary-row__value">@EstadoProyecto.Instalacion.TamanoCuadrilla</span>
+                        </div>
+
+                        <div class="summary-row">
+                            <span class="summary-row__label">Horas día</span>
+                            <span class="summary-row__value">@EstadoProyecto.Instalacion.HorasTrabajoDia</span>
+                        </div>
+
+                        <div class="summary-row">
+                            <span class="summary-row__label">Días lluvia (%)</span>
+                            <span class="summary-row__value">@EstadoProyecto.Instalacion.DiasLluviaPorcentaje</span>
+                        </div>
+                    </div>
+                </article>
+            </aside>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    private List<string> _tiposEscalera = new();
+    private List<string> _lugaresObra = new();
+
+    protected override void OnInitialized()
+    {
+        _tiposEscalera = Opciones.ObtenerTiposEscalera();
+        _lugaresObra = Opciones.ObtenerLugaresObra();
+
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Instalacion.TipoEscalera))
+            EstadoProyecto.Instalacion.TipoEscalera = "Sin escalera";
+
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Instalacion.LugarObra))
+            EstadoProyecto.Instalacion.LugarObra = "Nacional";
+
+        if (EstadoProyecto.Instalacion.TamanoCuadrilla <= 0)
+            EstadoProyecto.Instalacion.TamanoCuadrilla = 4;
+
+        if (EstadoProyecto.Instalacion.HorasTrabajoDia <= 0)
+            EstadoProyecto.Instalacion.HorasTrabajoDia = 8;
+
+        if (EstadoProyecto.Instalacion.DiasLluviaPorcentaje <= 0)
+            EstadoProyecto.Instalacion.DiasLluviaPorcentaje = 10;
+
+        if (EstadoProyecto.Instalacion.SiteManager <= 0)
+            EstadoProyecto.Instalacion.SiteManager = 1;
+
+        if (EstadoProyecto.Instalacion.TecnicoSeguridad <= 0)
+            EstadoProyecto.Instalacion.TecnicoSeguridad = 1;
+    }
+
+    private string TextoSeguro(string? texto)
+    {
+        return string.IsNullOrWhiteSpace(texto) ? "—" : texto.Trim();
+    }
+}

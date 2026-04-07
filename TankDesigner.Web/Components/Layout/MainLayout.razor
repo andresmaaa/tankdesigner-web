@@ -1,0 +1,175 @@
+﻿@inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<div class="app-shell">
+    <aside class="app-sidebar">
+        <NavMenu />
+    </aside>
+
+    <div class="app-main">
+        <header class="app-header">
+            <div class="header-left" @onclick="IrAMisProyectos" style="cursor:pointer;" title="Ir a mis proyectos">
+                <img src="assets/images/logo.png" alt="Tank Structural Designer" class="header-logo" />
+
+                <div class="header-texts">
+                    <h1>@TituloPagina()</h1>
+                    <p>@SubtituloPagina()</p>
+                </div>
+            </div>
+
+            <div class="header-right">
+                <AuthorizeView>
+                    <Authorized>
+                        <div class="user-box">
+                            <div class="header-status">
+                                <span class="status-dot"></span>
+                                <span>Sesión iniciada</span>
+                            </div>
+
+                            <div class="user-identity">
+                                <strong>@NombreVisible()</strong>
+                                <span>@CorreoVisible()</span>
+                            </div>
+
+                            <div class="account-menu">
+                                <button type="button"
+                                        class="account-menu__trigger"
+                                        title="Opciones de cuenta"
+                                        @onclick="ToggleAccountMenu">
+                                    ⚙
+                                </button>
+
+                                @if (_mostrarMenuCuenta)
+                                {
+                                    <div class="account-menu__dropdown">
+                                        <a class="account-menu__item" href="/cuenta">Mi cuenta</a>
+                                        <a class="account-menu__item account-menu__item--danger" href="/logout">Cerrar sesión</a>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </Authorized>
+
+                    <NotAuthorized>
+                        <div class="user-box">
+                            <div class="header-status">
+                                <span class="status-dot"></span>
+                                <span>Plataforma técnica</span>
+                            </div>
+
+                            <a class="auth-link-btn auth-link-btn--ghost" href="/login">Iniciar sesión</a>
+                            <a class="auth-link-btn" href="/register">Registrarse</a>
+                        </div>
+                    </NotAuthorized>
+                </AuthorizeView>
+            </div>
+        </header>
+
+        <main class="app-content" @onclick="CerrarMenuCuenta">
+            @Body
+        </main>
+    </div>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    <span>Se ha producido un error no controlado en la aplicación.</span>
+    <a href="." class="reload">Recargar</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+@code {
+    private ClaimsPrincipal? _usuario;
+    private bool _mostrarMenuCuenta;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        _usuario = authState.User;
+    }
+
+    private void IrAMisProyectos()
+    {
+        Nav.NavigateTo("/mis-proyectos");
+    }
+
+    private void ToggleAccountMenu()
+    {
+        _mostrarMenuCuenta = !_mostrarMenuCuenta;
+    }
+
+    private void CerrarMenuCuenta()
+    {
+        _mostrarMenuCuenta = false;
+    }
+
+    private string NombreVisible()
+    {
+        if (_usuario is null)
+            return "Usuario";
+
+        var nombre =
+            _usuario.FindFirst("name")?.Value ??
+            _usuario.FindFirst(ClaimTypes.Name)?.Value ??
+            _usuario.Identity?.Name;
+
+        if (!string.IsNullOrWhiteSpace(nombre))
+            return nombre.Trim();
+
+        var email = _usuario.FindFirst(ClaimTypes.Email)?.Value;
+        if (!string.IsNullOrWhiteSpace(email))
+            return email.Trim();
+
+        return "Usuario";
+    }
+
+    private string CorreoVisible()
+    {
+        if (_usuario is null)
+            return "";
+
+        var email = _usuario.FindFirst(ClaimTypes.Email)?.Value;
+
+        if (!string.IsNullOrWhiteSpace(email))
+            return email.Trim();
+
+        return "";
+    }
+
+    private string RutaActual()
+        => Nav.ToBaseRelativePath(Nav.Uri).Trim('/').ToLowerInvariant();
+
+    private string TituloPagina()
+        => RutaActual() switch
+        {
+            "" => "Tank Structural Designer",
+            "proyecto" => "Proyecto",
+            "geometria" => "Geometría",
+            "cargas" => "Cargas",
+            "instalacion" => "Instalación",
+            "informe" => "Informe",
+            "mis-proyectos" => "Mis proyectos",
+            "cuenta" => "Mi cuenta",
+            "login" => "Iniciar sesión",
+            "register" => "Crear cuenta",
+            _ => "Tank Structural Designer"
+        };
+
+    private string SubtituloPagina()
+        => RutaActual() switch
+        {
+            "" => "Plataforma profesional de cálculo, gestión e informes técnicos",
+            "proyecto" => "Datos generales, normativa, fabricante y configuración base",
+            "geometria" => "Dimensiones, parámetros geométricos y configuración del tanque",
+            "cargas" => "Viento, sismo, sobrecargas y acciones aplicadas",
+            "instalacion" => "Configuración constructiva, uniones y elementos auxiliares",
+            "informe" => "Vista previa, exportación PDF y documentación técnica",
+            "mis-proyectos" => "Centro principal de gestión de proyectos",
+            "cuenta" => "Datos personales, correo y ajustes de acceso",
+            "login" => "Acceso al área protegida de la plataforma",
+            "register" => "Alta de usuario para acceso al sistema",
+            _ => "Plataforma profesional de ingeniería"
+        };
+}

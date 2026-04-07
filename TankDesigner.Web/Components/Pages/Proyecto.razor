@@ -1,0 +1,241 @@
+﻿@page "/proyecto"
+@using TankDesigner.Web.Services
+@inject ProyectoState EstadoProyecto
+@inject OpcionesFormularioService Opciones
+@inject FormularioValidacionService ValidacionService
+
+<PageTitle>Proyecto</PageTitle>
+
+<div class="project-page">
+    <div class="page-header">
+        <h1>Proyecto</h1>
+        <p>Define la configuración inicial del proyecto y los datos base antes de pasar a geometría, cargas y condiciones.</p>
+    </div>
+
+    @if (_errores.Count > 0)
+    {
+        <div class="alert-box">
+            <div class="alert-box__title">Revisa estos datos antes de continuar</div>
+            <ul>
+                @foreach (var error in _errores)
+                {
+                    <li>@error</li>
+                }
+            </ul>
+        </div>
+    }
+
+    <EditForm Model="EstadoProyecto.Proyecto">
+        <div class="project-layout">
+            <section class="main-column">
+                <article class="td-panel">
+                    <div class="td-panel__header">
+                        <div>
+                            <div class="section-kicker">Bloque 01</div>
+                            <h2>Información general</h2>
+                            <p>Datos principales del encargo y contexto general del diseño.</p>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="field">
+                            <label>Nombre del proyecto</label>
+                            <input class="td-input"
+                                   value="@EstadoProyecto.Proyecto.NombreProyecto"
+                                   @oninput="OnNombreProyectoInput" />
+                            <small>Identificación principal del trabajo técnico.</small>
+                        </div>
+
+                        <div class="field">
+                            <label>Cliente / referencia</label>
+                            <input class="td-input"
+                                   value="@EstadoProyecto.Proyecto.ClienteReferencia"
+                                   @oninput="OnClienteReferenciaInput" />
+                            <small>Cliente, referencia interna o denominación del encargo.</small>
+                        </div>
+
+                        <div class="field field--full">
+                            <label>Modelo de cálculo</label>
+                            <select class="td-input td-select" value="@EstadoProyecto.Proyecto.ModeloCalculo" @onchange="OnModeloCalculoChange">
+                                @foreach (var item in _modelosCalculo)
+                                {
+                                    <option value="@item">@item</option>
+                                }
+                            </select>
+                            <small>Modelo general con el que se preparará el cálculo.</small>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="td-panel">
+                    <div class="td-panel__header">
+                        <div>
+                            <div class="section-kicker">Bloque 02</div>
+                            <h2>Normativa y fabricación</h2>
+                            <p>Selección del marco técnico base para el resto del proyecto.</p>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="field">
+                            <label>Normativa</label>
+                            <select class="td-input td-select" value="@EstadoProyecto.Proyecto.Normativa" @onchange="OnNormativaChange">
+                                @foreach (var item in _normativas)
+                                {
+                                    <option value="@item">@item</option>
+                                }
+                            </select>
+                            <small>Código o normativa de referencia del diseño.</small>
+                        </div>
+
+                        <div class="field">
+                            <label>Fabricante</label>
+                            <select class="td-input td-select" value="@EstadoProyecto.Proyecto.Fabricante" @onchange="OnFabricanteChange">
+                                @foreach (var item in _fabricantes)
+                                {
+                                    <option value="@item">@item</option>
+                                }
+                            </select>
+                            <small>Fabricante filtrado contra los catálogos disponibles.</small>
+                        </div>
+
+                        <div class="field field--full">
+                            <label>Material principal</label>
+                            <select class="td-input td-select" value="@EstadoProyecto.Proyecto.MaterialPrincipal" @onchange="OnMaterialChange">
+                                @foreach (var item in _materiales)
+                                {
+                                    <option value="@item">@item</option>
+                                }
+                            </select>
+                            <small>Material base del tanque para cálculo e informe.</small>
+                        </div>
+                    </div>
+                </article>
+            </section>
+
+            <aside class="side-column">
+                <article class="td-panel td-panel--compact td-panel--sticky">
+                    <div class="td-panel__header">
+                        <div>
+                            <div class="section-kicker">Resumen vivo</div>
+                            <h2>Vista rápida</h2>
+                            <p>Estado actual del proyecto mientras editas los datos.</p>
+                        </div>
+                    </div>
+
+                    <div class="summary-list">
+                        <div class="summary-row">
+                            <span class="summary-row__label">Proyecto</span>
+                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Proyecto.NombreProyecto)</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-row__label">Cliente</span>
+                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Proyecto.ClienteReferencia)</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-row__label">Modelo</span>
+                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Proyecto.ModeloCalculo)</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-row__label">Normativa</span>
+                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Proyecto.Normativa)</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-row__label">Fabricante</span>
+                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Proyecto.Fabricante)</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-row__label">Material</span>
+                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Proyecto.MaterialPrincipal)</span>
+                        </div>
+                    </div>
+                </article>
+            </aside>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    private List<string> _modelosCalculo = new();
+    private List<string> _normativas = new();
+    private List<string> _fabricantes = new();
+    private List<string> _materiales = new();
+    private List<string> _errores = new();
+
+    protected override void OnInitialized()
+    {
+        _modelosCalculo = Opciones.ObtenerModelosCalculo();
+        _normativas = Opciones.ObtenerNormativas();
+        _fabricantes = Opciones.ObtenerFabricantes();
+        _materiales = Opciones.ObtenerMateriales();
+
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.NombreProyecto))
+            EstadoProyecto.Proyecto.NombreProyecto = "Depósito vertical 01";
+
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.ClienteReferencia))
+            EstadoProyecto.Proyecto.ClienteReferencia = "Proyecto interno";
+
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.ModeloCalculo))
+            EstadoProyecto.Proyecto.ModeloCalculo = _modelosCalculo.FirstOrDefault() ?? "Simple";
+
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.Normativa))
+            EstadoProyecto.Proyecto.Normativa = _normativas.FirstOrDefault() ?? "AWWA";
+
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.Fabricante))
+            EstadoProyecto.Proyecto.Fabricante = _fabricantes.FirstOrDefault() ?? "DL2";
+
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.MaterialPrincipal))
+            EstadoProyecto.Proyecto.MaterialPrincipal = _materiales.FirstOrDefault() ?? "AISI 316";
+
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.IdiomaInforme))
+            EstadoProyecto.Proyecto.IdiomaInforme = "ES";
+
+        ValidarProyecto();
+    }
+
+    private void OnNombreProyectoInput(ChangeEventArgs e)
+    {
+        EstadoProyecto.Proyecto.NombreProyecto = e.Value?.ToString() ?? string.Empty;
+        ValidarProyecto();
+    }
+
+    private void OnClienteReferenciaInput(ChangeEventArgs e)
+    {
+        EstadoProyecto.Proyecto.ClienteReferencia = e.Value?.ToString() ?? string.Empty;
+        ValidarProyecto();
+    }
+
+    private void OnModeloCalculoChange(ChangeEventArgs e)
+    {
+        EstadoProyecto.Proyecto.ModeloCalculo = e.Value?.ToString() ?? string.Empty;
+        ValidarProyecto();
+    }
+
+    private void OnNormativaChange(ChangeEventArgs e)
+    {
+        EstadoProyecto.Proyecto.Normativa = e.Value?.ToString() ?? string.Empty;
+        ValidarProyecto();
+    }
+
+    private void OnFabricanteChange(ChangeEventArgs e)
+    {
+        EstadoProyecto.Proyecto.Fabricante = e.Value?.ToString() ?? string.Empty;
+        ValidarProyecto();
+    }
+
+    private void OnMaterialChange(ChangeEventArgs e)
+    {
+        EstadoProyecto.Proyecto.MaterialPrincipal = e.Value?.ToString() ?? string.Empty;
+        ValidarProyecto();
+    }
+
+    private void ValidarProyecto()
+    {
+        _errores = ValidacionService.ValidarProyecto(EstadoProyecto.Proyecto);
+    }
+
+    private string TextoSeguro(string? texto)
+    {
+        return string.IsNullOrWhiteSpace(texto) ? "—" : texto.Trim();
+    }
+}

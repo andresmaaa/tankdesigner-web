@@ -1,0 +1,161 @@
+﻿@page "/register"
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Identity
+@using TankDesigner.Web.Data
+
+@inject UserManager<ApplicationUser> UserManager
+@inject NavigationManager NavigationManager
+
+<PageTitle>Crear cuenta</PageTitle>
+
+<div class="auth-page">
+    <div class="auth-card">
+        <div class="auth-card__header">
+            <h1>Crear cuenta</h1>
+            <p>Registra un usuario para acceder a las funciones protegidas de la plataforma.</p>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(_mensajeError))
+        {
+            <div class="auth-alert auth-alert--error">@_mensajeError</div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(_mensajeExito))
+        {
+            <div class="auth-alert auth-alert--success">@_mensajeExito</div>
+        }
+
+        <EditForm Model="_modelo" OnValidSubmit="RegistrarUsuario">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="auth-form">
+                <div class="auth-field">
+                    <label for="nombreCompleto">Nombre completo</label>
+                    <InputText id="nombreCompleto" class="auth-input" @bind-Value="_modelo.NombreCompleto" />
+                </div>
+
+                <div class="auth-field">
+                    <label for="email">Correo electrónico</label>
+                    <InputText id="email" class="auth-input" @bind-Value="_modelo.Email" />
+                </div>
+
+                <div class="auth-field">
+                    <label for="password">Contraseña</label>
+                    <InputText id="password" type="password" class="auth-input" @bind-Value="_modelo.Password" />
+                </div>
+
+                <div class="auth-field">
+                    <label for="confirmPassword">Confirmar contraseña</label>
+                    <InputText id="confirmPassword" type="password" class="auth-input" @bind-Value="_modelo.ConfirmPassword" />
+                </div>
+
+                <button type="submit" class="auth-btn" disabled="@_procesando">
+                    @(_procesando ? "Creando cuenta..." : "Registrarse")
+                </button>
+            </div>
+        </EditForm>
+
+        <div class="auth-footer">
+            ¿Ya tienes cuenta?
+            <a href="/login">Iniciar sesión</a>
+        </div>
+    </div>
+</div>
+
+@code {
+    private RegisterModel _modelo = new();
+    private string _mensajeError = string.Empty;
+    private string _mensajeExito = string.Empty;
+    private bool _procesando;
+
+    private async Task RegistrarUsuario()
+    {
+        if (_procesando)
+            return;
+
+        _mensajeError = string.Empty;
+        _mensajeExito = string.Empty;
+        _procesando = true;
+
+        try
+        {
+            var email = _modelo.Email.Trim();
+            var nombreCompleto = _modelo.NombreCompleto.Trim();
+
+            var usuarioExistente = await UserManager.FindByEmailAsync(email);
+            if (usuarioExistente != null)
+            {
+                _mensajeError = "Ya existe una cuenta registrada con ese correo electrónico.";
+                return;
+            }
+
+            var usuario = new ApplicationUser
+            {
+                UserName = email,
+                Email = email,
+                EmailConfirmed = true,
+                NombreCompleto = nombreCompleto,
+                TelefonoContacto = string.Empty,
+                Cargo = string.Empty,
+                EmpresaNombre = string.Empty,
+                EmpresaDireccion = string.Empty,
+                EmpresaCiudad = string.Empty,
+                EmpresaProvincia = string.Empty,
+                EmpresaCodigoPostal = string.Empty,
+                EmpresaPais = string.Empty,
+                EmpresaWeb = string.Empty,
+                EmpresaIdentificacionFiscal = string.Empty
+            };
+
+            var resultado = await UserManager.CreateAsync(usuario, _modelo.Password);
+
+            if (!resultado.Succeeded)
+            {
+                _mensajeError = string.Join(" ", resultado.Errors.Select(e => e.Description));
+                return;
+            }
+
+            var resultadoRol = await UserManager.AddToRoleAsync(usuario, RolesAplicacion.Usuario);
+
+            if (!resultadoRol.Succeeded)
+            {
+                _mensajeError = "La cuenta se creó, pero no se pudo asignar el rol Usuario.";
+                return;
+            }
+
+            _mensajeExito = "Cuenta creada correctamente. Ahora puedes iniciar sesión.";
+
+            await Task.Delay(700);
+            NavigationManager.NavigateTo("/login", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            _mensajeError = $"No se pudo registrar el usuario: {ex.Message}";
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+
+    private sealed class RegisterModel
+    {
+        [Required(ErrorMessage = "El nombre completo es obligatorio.")]
+        [MinLength(3, ErrorMessage = "Introduce un nombre válido.")]
+        public string NombreCompleto { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "El correo es obligatorio.")]
+        [EmailAddress(ErrorMessage = "Introduce un correo válido.")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "La contraseña es obligatoria.")]
+        [MinLength(6, ErrorMessage = "La contraseña debe tener al menos 6 caracteres.")]
+        public string Password { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Debes confirmar la contraseña.")]
+        [Compare(nameof(Password), ErrorMessage = "Las contraseñas no coinciden.")]
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+}

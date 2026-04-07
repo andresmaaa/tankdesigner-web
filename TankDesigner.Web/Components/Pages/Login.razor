@@ -1,0 +1,70 @@
+﻿@page "/login"
+@inject NavigationManager NavigationManager
+
+<PageTitle>Iniciar sesión</PageTitle>
+
+<div class="auth-page">
+    <div class="auth-card">
+        <div class="auth-card__header">
+            <h1>Iniciar sesión</h1>
+            <p>Accede para descargar informes y trabajar con tus proyectos guardados.</p>
+        </div>
+
+        @if (MostrarError())
+        {
+            <div class="auth-alert auth-alert--error">
+                Correo o contraseña incorrectos.
+            </div>
+        }
+
+        <form method="post" action="/auth/login">
+            <div class="auth-form">
+                <input type="hidden" name="returnUrl" value="@ObtenerReturnUrl()" />
+
+                <div class="auth-field">
+                    <label for="email">Correo electrónico</label>
+                    <input id="email" name="email" class="auth-input" type="email" required />
+                </div>
+
+                <div class="auth-field">
+                    <label for="password">Contraseña</label>
+                    <input id="password" name="password" class="auth-input" type="password" required />
+                </div>
+
+                <div class="auth-check">
+                    <input id="rememberMe" name="rememberMe" type="checkbox" />
+                    <label for="rememberMe">Mantener sesión iniciada</label>
+                </div>
+
+                <button type="submit" class="auth-btn">
+                    Entrar
+                </button>
+            </div>
+        </form>
+
+        <div class="auth-footer">
+            ¿No tienes cuenta?
+            <a href="/register">Crear cuenta</a>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool MostrarError()
+    {
+        var uri = new Uri(NavigationManager.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        return query.ContainsKey("error");
+    }
+
+    private string ObtenerReturnUrl()
+    {
+        var uri = new Uri(NavigationManager.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+
+        if (query.TryGetValue("returnUrl", out var returnUrl) && !string.IsNullOrWhiteSpace(returnUrl))
+            return returnUrl.ToString();
+
+        return "/";
+    }
+}

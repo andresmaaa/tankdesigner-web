@@ -1,0 +1,271 @@
+﻿@page "/cargas"
+@using TankDesigner.Web.Services
+@using TankDesigner.Infrastructure.Services
+@inject ProyectoState EstadoProyecto
+@inject OpcionesFormularioService Opciones
+@inject NormativaCargasUiService NormativaUi
+
+<PageTitle>Cargas</PageTitle>
+
+<div class="cargas-page">
+    <div class="page-header">
+        <h1>Cargas</h1>
+        <p>Viento, sismo, sobrecargas y acciones aplicadas al proyecto.</p>
+    </div>
+
+    <EditForm Model="EstadoProyecto.Cargas">
+        <div class="page-layout">
+            <section class="main-column">
+                <article class="td-panel">
+                    <div class="td-panel__header">
+                        <div class="section-kicker">Bloque 01</div>
+                        <h2>Contexto normativo</h2>
+                        <p>Resumen de la normativa actualmente sincronizada con el proyecto.</p>
+                    </div>
+
+                    <div class="summary-list">
+                        <div class="summary-row">
+                            <span class="summary-row__label">Normativa activa</span>
+                            <span class="summary-row__value">@_normativaActiva</span>
+                        </div>
+
+                        <div class="summary-row">
+                            <span class="summary-row__label">Resumen</span>
+                            <span class="summary-row__value">@_resumenNormativa</span>
+                        </div>
+                    </div>
+                </article>
+
+                @if (_normativaActiva == "AWWA")
+                {
+                    <article class="td-panel">
+                        <div class="td-panel__header">
+                            <div class="section-kicker">Bloque 02</div>
+                            <h2>Cubierta</h2>
+                            <p>Definición de variables de cubierta y cargas asociadas para el cálculo estructural.</p>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="field">
+                                <label>Ángulo de techo</label>
+                                <InputSelect class="td-input td-select" @bind-Value="EstadoProyecto.Cargas.RoofAngle">
+                                    @foreach (var item in _roofAngles)
+                                    {
+                                        <option value="@item">@item</option>
+                                    }
+                                </InputSelect>
+                                <small>Ángulo asociado a la geometría superior del depósito.</small>
+                            </div>
+
+                            <div class="field">
+                                <label>Carga muerta de cubierta</label>
+                                <InputNumber class="td-input" @bind-Value="EstadoProyecto.Cargas.RoofDeadLoad" />
+                                <small>Carga permanente correspondiente al sistema de cubierta.</small>
+                            </div>
+
+                            <div class="field">
+                                <label>Carga de nieve</label>
+                                <InputNumber class="td-input" @bind-Value="EstadoProyecto.Cargas.RoofSnowLoad" />
+                                <small>Acción de nieve considerada sobre la cubierta.</small>
+                            </div>
+
+                            <div class="field">
+                                <label>Sobrecarga de uso</label>
+                                <InputNumber class="td-input" @bind-Value="EstadoProyecto.Cargas.RoofLiveLoad" />
+                                <small>Sobrecarga por mantenimiento, uso o acceso.</small>
+                            </div>
+
+                            <div class="field">
+                                <label>Centroide de cubierta</label>
+                                <InputNumber class="td-input" @bind-Value="EstadoProyecto.Cargas.RoofCentroid" />
+                                <small>Posición del centroide empleada en cálculos derivados.</small>
+                            </div>
+
+                            <div class="field field--full">
+                                <label>Área proyectada de cubierta</label>
+                                <InputNumber class="td-input" @bind-Value="EstadoProyecto.Cargas.RoofProjectedArea" />
+                                <small>Área proyectada utilizada en comprobaciones estructurales.</small>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="td-panel">
+                        <div class="td-panel__header">
+                            <div class="section-kicker">Bloque 03</div>
+                            <h2>Viento y sismo</h2>
+                            <p>Parámetros normativos para acciones horizontales y comprobaciones sísmicas.</p>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="field">
+                                <label>Velocidad del viento</label>
+                                <InputNumber class="td-input" @bind-Value="EstadoProyecto.Cargas.VelocidadViento" />
+                                <small>Velocidad básica de viento aplicada al modelo.</small>
+                            </div>
+
+                            <div class="field">
+                                <label>Clase de exposición</label>
+                                <InputSelect class="td-input td-select" @bind-Value="EstadoProyecto.Cargas.ClaseExposicion">
+                                    @foreach (var item in _clasesExposicion)
+                                    {
+                                        <option value="@item">@item</option>
+                                    }
+                                </InputSelect>
+                                <small>Clasificación de exposición frente a la acción del viento.</small>
+                            </div>
+
+                            <div class="field">
+                                <label>Ss</label>
+                                <InputNumber class="td-input" @bind-Value="EstadoProyecto.Cargas.Ss" />
+                                <small>Parámetro sísmico de corto periodo.</small>
+                            </div>
+
+                            <div class="field">
+                                <label>S1</label>
+                                <InputNumber class="td-input" @bind-Value="EstadoProyecto.Cargas.S1" />
+                                <small>Parámetro sísmico para periodo de 1 segundo.</small>
+                            </div>
+
+                            <div class="field">
+                                <label>TL</label>
+                                <InputNumber class="td-input" @bind-Value="EstadoProyecto.Cargas.TL" />
+                                <small>Periodo largo de transición.</small>
+                            </div>
+
+                            <div class="field">
+                                <label>Site Class</label>
+                                <InputSelect class="td-input td-select" @bind-Value="EstadoProyecto.Cargas.SiteClass">
+                                    @foreach (var item in _siteClasses)
+                                    {
+                                        <option value="@item">@item</option>
+                                    }
+                                </InputSelect>
+                                <small>Clasificación del terreno o emplazamiento.</small>
+                            </div>
+
+                            <div class="field field--full">
+                                <label>Seismic Use Group</label>
+                                <InputSelect class="td-input td-select" @bind-Value="EstadoProyecto.Cargas.SeismicUseGroup">
+                                    @foreach (var item in _seismicUseGroups)
+                                    {
+                                        <option value="@item">@item</option>
+                                    }
+                                </InputSelect>
+                                <small>Grupo de uso sísmico aplicado en la evaluación estructural.</small>
+                            </div>
+                        </div>
+                    </article>
+                }
+                else
+                {
+                    <article class="td-panel">
+                        <div class="td-panel__header">
+                            <div class="section-kicker">Bloque 02</div>
+                            <h2>Normativa provisional</h2>
+                            <p>Para ISO y EC se mantienen valores y observaciones provisionales alineados con la lógica existente.</p>
+                        </div>
+
+                        <div class="summary-list">
+                            <div class="summary-row">
+                                <span class="summary-row__label">Normativa</span>
+                                <span class="summary-row__value">@_normativaActiva</span>
+                            </div>
+                            <div class="summary-row">
+                                <span class="summary-row__label">Observaciones</span>
+                                <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Cargas.Observaciones)</span>
+                            </div>
+                        </div>
+                    </article>
+                }
+            </section>
+
+            <aside class="side-column">
+                <article class="td-panel td-panel--compact td-panel--sticky">
+                    <div class="td-panel__header">
+                        <div class="section-kicker">Resumen vivo</div>
+                        <h2>Resumen de cargas</h2>
+                        <p>Vista rápida de los parámetros principales actualmente definidos.</p>
+                    </div>
+
+                    <div class="summary-list">
+                        <div class="summary-row">
+                            <span class="summary-row__label">Normativa</span>
+                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Cargas.NormativaAplicada)</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-row__label">Velocidad viento</span>
+                            <span class="summary-row__value">@ValorNumero(EstadoProyecto.Cargas.VelocidadViento)</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-row__label">Carga de nieve</span>
+                            <span class="summary-row__value">@ValorNumero(EstadoProyecto.Cargas.SnowLoad)</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-row__label">Ángulo de techo</span>
+                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Cargas.RoofAngle)</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-row__label">Exposición</span>
+                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Cargas.ClaseExposicion)</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-row__label">Site Class</span>
+                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Cargas.SiteClass)</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-row__label">Seismic Use Group</span>
+                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Cargas.SeismicUseGroup)</span>
+                        </div>
+                    </div>
+                </article>
+            </aside>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    private string _normativaActiva = "AWWA";
+    private string _resumenNormativa = string.Empty;
+
+    private List<string> _roofAngles = new();
+    private List<string> _clasesExposicion = new();
+    private List<string> _siteClasses = new();
+    private List<string> _seismicUseGroups = new();
+
+    protected override void OnInitialized()
+    {
+        _roofAngles = Opciones.ObtenerRoofAngles();
+        _clasesExposicion = Opciones.ObtenerClasesExposicion();
+        _siteClasses = Opciones.ObtenerSiteClasses();
+        _seismicUseGroups = Opciones.ObtenerSeismicUseGroups();
+
+        SincronizarNormativa();
+    }
+
+    protected override void OnParametersSet()
+    {
+        SincronizarNormativa();
+    }
+
+    private void SincronizarNormativa()
+    {
+        _normativaActiva = NormativaUi.NormalizarNormativa(EstadoProyecto.Proyecto.Normativa);
+        EstadoProyecto.Cargas = NormativaUi.CrearCargasProvisionales(_normativaActiva, EstadoProyecto.Cargas);
+        EstadoProyecto.Cargas.NormativaAplicada = _normativaActiva;
+
+        if (EstadoProyecto.Tanque.DensidadLiquido > 0)
+            EstadoProyecto.Cargas.DensidadLiquido = EstadoProyecto.Tanque.DensidadLiquido;
+
+        _resumenNormativa = NormativaUi.ConstruirResumenVisual(_normativaActiva);
+    }
+
+    private string TextoSeguro(string? texto)
+    {
+        return string.IsNullOrWhiteSpace(texto) ? "—" : texto.Trim();
+    }
+
+    private string ValorNumero(double valor)
+    {
+        return valor > 0 ? valor.ToString("0.###") : "—";
+    }
+}

@@ -1,0 +1,373 @@
+﻿@page "/geometria"
+@using System.Globalization
+@using TankDesigner.Web.Services
+@using TankDesigner.Core.Services
+@inject ProyectoState EstadoProyecto
+@inject OpcionesFormularioService Opciones
+@inject CalculoGeometriaService CalculoGeometriaService
+@inject FormularioValidacionService ValidacionService
+
+<PageTitle>Geometría</PageTitle>
+
+<div class="geometria-page">
+    <div class="page-header">
+        <h1>Geometría</h1>
+        <p>Configuración geométrica base del depósito y parámetros constructivos principales.</p>
+    </div>
+
+    @if (_errores.Count > 0)
+    {
+        <div class="alert-box">
+            <div class="alert-box__title">Hay datos de geometría que conviene revisar</div>
+            <ul>
+                @foreach (var error in _errores)
+                {
+                    <li>@error</li>
+                }
+            </ul>
+        </div>
+    }
+
+    <EditForm Model="EstadoProyecto.Tanque">
+        <div class="page-layout">
+            <section class="main-column">
+                <article class="td-panel">
+                    <div class="td-panel__header">
+                        <div class="section-kicker">Bloque 01</div>
+                        <h2>Configuración constructiva</h2>
+                        <p>Parámetros principales necesarios para construir el modelo base del depósito.</p>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="field">
+                            <label>Número de chapas por anillo</label>
+                            <select class="td-input td-select" value="@EstadoProyecto.Tanque.ChapasPorAnillo" @onchange="OnChapasPorAnilloChange">
+                                @foreach (var item in _chapasPorAnillo)
+                                {
+                                    <option value="@item">@item</option>
+                                }
+                            </select>
+                            <small>Cantidad de planchas que forman cada anillo.</small>
+                        </div>
+
+                        <div class="field">
+                            <label>Número de anillos</label>
+                            <select class="td-input td-select" value="@EstadoProyecto.Tanque.NumeroAnillos" @onchange="OnNumeroAnillosChange">
+                                @foreach (var item in _numeroAnillos)
+                                {
+                                    <option value="@item">@item</option>
+                                }
+                            </select>
+                            <small>Número total de anillos del tanque.</small>
+                        </div>
+
+                        <div class="field">
+                            <label>Anillo de arranque F</label>
+                            <select class="td-input td-select" value="@EstadoProyecto.Tanque.AnilloArranque" @onchange="OnAnilloArranqueChange">
+                                @foreach (var item in _anillosArranque)
+                                {
+                                    <option value="@item">@item</option>
+                                }
+                            </select>
+                            <small>Posición seleccionada para el anillo de arranque.</small>
+                        </div>
+
+                        <div class="field">
+                            <label>Borde libre (mm)</label>
+                            <input class="td-input"
+                                   type="number"
+                                   min="0"
+                                   step="1"
+                                   value="@FormatearNumero(EstadoProyecto.Tanque.BordeLibre)"
+                                   @oninput="OnBordeLibreInput" />
+                            <small>Separación libre prevista en la parte superior.</small>
+                        </div>
+
+                        <div class="field">
+                            <label>Densidad del líquido</label>
+                            <input class="td-input"
+                                   type="number"
+                                   min="0"
+                                   step="0.1"
+                                   value="@FormatearNumero(EstadoProyecto.Tanque.DensidadLiquido)"
+                                   @oninput="OnDensidadLiquidoInput" />
+                            <small>Densidad relativa del fluido contenido.</small>
+                        </div>
+
+                        <div class="field">
+                            <label>Modelo</label>
+                            <select class="td-input td-select" value="@EstadoProyecto.Tanque.Modelo" @onchange="OnModeloChange">
+                                @if (_modelos.Count == 0)
+                                {
+                                    <option value="">Sin modelos disponibles</option>
+                                }
+                                else
+                                {
+                                    @foreach (var item in _modelos)
+                                    {
+                                        <option value="@item">@item</option>
+                                    }
+                                }
+                            </select>
+                            <small>Modelo disponible filtrado por fabricante en catálogo.</small>
+                        </div>
+
+                        <div class="field">
+                            <label>Tipo de techo</label>
+                            <select class="td-input td-select" value="@EstadoProyecto.Instalacion.TipoTecho" @onchange="OnTipoTechoChange">
+                                @foreach (var item in _tiposTecho)
+                                {
+                                    <option value="@item">@item</option>
+                                }
+                            </select>
+                            <small>Configuración general de cubierta vinculada al modelo geométrico.</small>
+                        </div>
+
+                        <div class="field">
+                            <label>Tipo medio anillo</label>
+                            <select class="td-input td-select" value="@EstadoProyecto.Instalacion.TipoMedioAnillo" @onchange="OnTipoMedioAnilloChange">
+                                @foreach (var item in _tiposMedioAnillo)
+                                {
+                                    <option value="@item">@item</option>
+                                }
+                            </select>
+                            <small>Configuración auxiliar de medio anillo asociada al tanque.</small>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="td-panel">
+                    <div class="td-panel__header">
+                        <div class="section-kicker">Bloque 02</div>
+                        <h2>Resultados geométricos</h2>
+                        <p>Magnitudes obtenidas automáticamente a partir de la configuración seleccionada.</p>
+                    </div>
+
+                    <div class="results-grid">
+                        <div class="result-card">
+                            <span class="result-card__label">Diámetro calculado</span>
+                            <strong class="result-card__value">@ValorSeguro(EstadoProyecto.Tanque.Diametro)</strong>
+                            <small>mm</small>
+                        </div>
+
+                        <div class="result-card">
+                            <span class="result-card__label">Altura total calculada</span>
+                            <strong class="result-card__value">@ValorSeguro(EstadoProyecto.Tanque.AlturaTotal)</strong>
+                            <small>mm</small>
+                        </div>
+
+                        <div class="result-card">
+                            <span class="result-card__label">Altura panel base</span>
+                            <strong class="result-card__value">@ValorSeguro(EstadoProyecto.Tanque.AlturaPanelBase)</strong>
+                            <small>mm</small>
+                        </div>
+
+                        <div class="result-card">
+                            <span class="result-card__label">Número total de chapas</span>
+                            <strong class="result-card__value">@EstadoProyecto.Tanque.NumeroTotalChapas</strong>
+                            <small>uds</small>
+                        </div>
+                    </div>
+                </article>
+            </section>
+
+            <aside class="side-column">
+                <article class="td-panel td-panel--compact td-panel--sticky">
+                    <div class="td-panel__header">
+                        <div class="section-kicker">Resumen vivo</div>
+                        <h2>Configuración base</h2>
+                        <p>Resumen inmediato del estado geométrico actual del tanque.</p>
+                    </div>
+
+                    <div class="summary-list">
+                        <div class="summary-row">
+                            <span class="summary-row__label">Modelo</span>
+                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Tanque.Modelo)</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-row__label">Tipo de techo</span>
+                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Instalacion.TipoTecho)</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-row__label">Medio anillo</span>
+                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Instalacion.TipoMedioAnillo)</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-row__label">Diámetro calculado</span>
+                            <span class="summary-row__value">@ValorSeguro(EstadoProyecto.Tanque.Diametro)</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-row__label">Altura total calculada</span>
+                            <span class="summary-row__value">@ValorSeguro(EstadoProyecto.Tanque.AlturaTotal)</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-row__label">Altura panel base</span>
+                            <span class="summary-row__value">@ValorSeguro(EstadoProyecto.Tanque.AlturaPanelBase)</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-row__label">Número total de chapas</span>
+                            <span class="summary-row__value">@EstadoProyecto.Tanque.NumeroTotalChapas</span>
+                        </div>
+                    </div>
+                </article>
+            </aside>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    private List<int> _chapasPorAnillo = new();
+    private List<int> _numeroAnillos = new();
+    private List<int> _anillosArranque = new();
+    private List<string> _modelos = new();
+    private List<string> _tiposMedioAnillo = new();
+    private List<string> _tiposTecho = new();
+    private List<string> _errores = new();
+
+    protected override void OnInitialized()
+    {
+        _chapasPorAnillo = Opciones.ObtenerChapasPorAnillo();
+        _numeroAnillos = Opciones.ObtenerNumeroAnillos();
+        _anillosArranque = Opciones.ObtenerAnillosArranque();
+        _tiposMedioAnillo = Opciones.ObtenerTiposMedioAnillo();
+        _tiposTecho = Opciones.ObtenerTiposTechoInstalacion();
+
+        if (EstadoProyecto.Tanque.ChapasPorAnillo <= 0)
+            EstadoProyecto.Tanque.ChapasPorAnillo = _chapasPorAnillo.FirstOrDefault();
+
+        if (EstadoProyecto.Tanque.NumeroAnillos <= 0)
+            EstadoProyecto.Tanque.NumeroAnillos = _numeroAnillos.FirstOrDefault();
+
+        if (EstadoProyecto.Tanque.AnilloArranque <= 0)
+            EstadoProyecto.Tanque.AnilloArranque = _anillosArranque.FirstOrDefault();
+
+        if (EstadoProyecto.Tanque.BordeLibre <= 0)
+            EstadoProyecto.Tanque.BordeLibre = 300;
+
+        if (EstadoProyecto.Tanque.DensidadLiquido <= 0)
+            EstadoProyecto.Tanque.DensidadLiquido = 1;
+
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Instalacion.TipoMedioAnillo))
+            EstadoProyecto.Instalacion.TipoMedioAnillo = "No";
+
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Instalacion.TipoTecho))
+            EstadoProyecto.Instalacion.TipoTecho = "Sin techo";
+
+        CargarModelos();
+        RecalcularYValidar();
+    }
+
+    protected override void OnParametersSet()
+    {
+        CargarModelos();
+        RecalcularYValidar();
+    }
+
+    private void CargarModelos()
+    {
+        _modelos = Opciones.ObtenerModelosPorFabricante(EstadoProyecto.Proyecto.Fabricante);
+
+        if (_modelos.Count == 0)
+        {
+            EstadoProyecto.Tanque.Modelo = string.Empty;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Tanque.Modelo) || !_modelos.Contains(EstadoProyecto.Tanque.Modelo))
+            EstadoProyecto.Tanque.Modelo = _modelos.First();
+    }
+
+    private void OnChapasPorAnilloChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int valor))
+            EstadoProyecto.Tanque.ChapasPorAnillo = valor;
+
+        RecalcularYValidar();
+    }
+
+    private void OnNumeroAnillosChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int valor))
+            EstadoProyecto.Tanque.NumeroAnillos = valor;
+
+        if (EstadoProyecto.Tanque.AnilloArranque > EstadoProyecto.Tanque.NumeroAnillos)
+            EstadoProyecto.Tanque.AnilloArranque = EstadoProyecto.Tanque.NumeroAnillos;
+
+        RecalcularYValidar();
+    }
+
+    private void OnAnilloArranqueChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int valor))
+            EstadoProyecto.Tanque.AnilloArranque = valor;
+
+        RecalcularYValidar();
+    }
+
+    private void OnBordeLibreInput(ChangeEventArgs e)
+    {
+        EstadoProyecto.Tanque.BordeLibre = ParseDoubleOrZero(e.Value?.ToString());
+        RecalcularYValidar();
+    }
+
+    private void OnDensidadLiquidoInput(ChangeEventArgs e)
+    {
+        EstadoProyecto.Tanque.DensidadLiquido = ParseDoubleOrZero(e.Value?.ToString());
+
+        if (EstadoProyecto.Tanque.DensidadLiquido > 0)
+            EstadoProyecto.Cargas.DensidadLiquido = EstadoProyecto.Tanque.DensidadLiquido;
+
+        RecalcularYValidar();
+    }
+
+    private void OnModeloChange(ChangeEventArgs e)
+    {
+        EstadoProyecto.Tanque.Modelo = e.Value?.ToString() ?? string.Empty;
+        RecalcularYValidar();
+    }
+
+    private void OnTipoTechoChange(ChangeEventArgs e)
+    {
+        EstadoProyecto.Instalacion.TipoTecho = e.Value?.ToString() ?? "Sin techo";
+        RecalcularYValidar();
+    }
+
+    private void OnTipoMedioAnilloChange(ChangeEventArgs e)
+    {
+        EstadoProyecto.Instalacion.TipoMedioAnillo = e.Value?.ToString() ?? "No";
+        RecalcularYValidar();
+    }
+
+    private void RecalcularYValidar()
+    {
+        EstadoProyecto.Tanque.AlturaPanelBase =
+            CalculoGeometriaService.ObtenerAlturaPanelBase(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);
+
+        EstadoProyecto.Tanque.AlturaTotal =
+            CalculoGeometriaService.ObtenerAlturaTotal(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);
+
+        EstadoProyecto.Tanque.Diametro =
+            CalculoGeometriaService.ObtenerDiametro(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);
+
+        _errores = ValidacionService.ValidarGeometria(EstadoProyecto.Tanque);
+        StateHasChanged();
+    }
+
+    private double ParseDoubleOrZero(string? texto)
+    {
+        if (string.IsNullOrWhiteSpace(texto))
+            return 0;
+
+        texto = texto.Replace(',', '.');
+        return double.TryParse(texto, NumberStyles.Any, CultureInfo.InvariantCulture, out double valor) ? valor : 0;
+    }
+
+    private string FormatearNumero(double valor)
+        => valor.ToString("0.##", CultureInfo.InvariantCulture);
+
+    private string ValorSeguro(double valor)
+        => valor > 0 ? valor.ToString("0.##", CultureInfo.InvariantCulture) : "—";
+
+    private string TextoSeguro(string? texto)
+        => string.IsNullOrWhiteSpace(texto) ? "—" : texto.Trim();
+}

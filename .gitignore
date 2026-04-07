@@ -1,0 +1,12 @@
+.vs/
+bin/
+obj/
+*.user
+*.suo
+*.cache
+TestResults/
+publish/
+artifacts/
+node_modules/
+Thumbs.db
+.DS_Store
