@@ -4,6 +4,7 @@ using QuestPDF.Infrastructure;
 using System.Net;
 using System.Reflection.Metadata;
 using System.Text.RegularExpressions;
+using Document = QuestPDF.Fluent.Document;
 
 namespace TankDesigner.Web.Services;
 
