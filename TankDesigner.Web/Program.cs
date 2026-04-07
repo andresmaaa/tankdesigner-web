@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using QuestPDF.Infrastructure;
 using TankDesigner.Core.Services;
 using TankDesigner.Infrastructure.Services;
 using TankDesigner.Web.Components;
 using TankDesigner.Web.Data;
 using TankDesigner.Web.Services;
 using TankDesigner.Web.Services.Ai;
-using QuestPDF.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,6 +38,18 @@ builder.Services
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.Cookie.Name = "TankDesigner.Auth";
+    options.LoginPath = "/login";
+    options.LogoutPath = "/login";
+    options.AccessDeniedPath = "/login";
+    options.ExpireTimeSpan = TimeSpan.FromDays(30);
+    options.SlidingExpiration = true;
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
+
 builder.Services.AddAuthorizationCore();
 builder.Services.AddAuthorization();
 
@@ -57,8 +69,9 @@ builder.Services.Configure<AiOptions>(builder.Configuration.GetSection("Gemini")
 builder.Services.AddHttpClient<AiEngineeringService>();
 
 QuestPDF.Settings.License = LicenseType.Community;
+
 var app = builder.Build();
-Environment.SetEnvironmentVariable("PLAYWRIGHT_BROWSERS_PATH", "/ms-playwright");
+
 var port = Environment.GetEnvironmentVariable("PORT");
 if (!string.IsNullOrWhiteSpace(port))
 {
@@ -82,18 +95,20 @@ app.MapPost("/auth/login", async (
 {
     var form = await httpContext.Request.ReadFormAsync();
 
-    var email = form["email"].ToString();
+    var email = form["email"].ToString().Trim();
     var password = form["password"].ToString();
-    var rememberMe = form["rememberMe"] == "on";
     var returnUrl = form["returnUrl"].ToString();
 
     if (string.IsNullOrWhiteSpace(returnUrl))
         returnUrl = "/mis-proyectos";
 
+    if (!Uri.IsWellFormedUriString(returnUrl, UriKind.Relative))
+        returnUrl = "/mis-proyectos";
+
     var result = await signInManager.PasswordSignInAsync(
         email,
         password,
-        rememberMe,
+        isPersistent: true,
         lockoutOnFailure: false);
 
     if (result.Succeeded)
