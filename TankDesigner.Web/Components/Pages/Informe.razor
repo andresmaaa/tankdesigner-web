@@ -697,19 +697,30 @@
                 _ => EstadoProyecto.Proyecto.IdiomaInforme == "EN" ? "structural-calculation.pdf" : "calculo-estructural.pdf"
             };
 
-            var ok = await JS.InvokeAsync<bool>(
-                "tankInformes.printHtmlAsPdf",
-                TituloActual(),
-                _htmlActual,
-                nombre);
+            var pdf = await PdfRenderService.GenerarPdfDesdeHtmlAsync(_htmlActual);
+            var base64 = Convert.ToBase64String(pdf);
 
-            if (!ok)
-                _mensaje = "No se pudo abrir la impresión del PDF. Revisa si el navegador ha bloqueado la ventana emergente.";
+            var resultado = await JS.InvokeAsync<ResultadoGuardadoJs>(
+                "tankInformes.saveFileFromBytes",
+                nombre,
+                "application/pdf",
+                base64);
+
+            if (!resultado.Ok && !resultado.Cancelled)
+                _mensaje = resultado.Message ?? "No se pudo guardar el PDF.";
         }
         catch (Exception ex)
         {
-            _mensaje = $"Error al preparar el PDF: {ex.Message}";
+            _mensaje = $"Error al descargar PDF: {ex.Message}";
         }
+    }
+
+    private class ResultadoGuardadoJs
+    {
+        public bool Ok { get; set; }
+        public bool Cancelled { get; set; }
+        public bool UsedPicker { get; set; }
+        public string? Message { get; set; }
     }
 
     private async Task DescargarTodosPdf()

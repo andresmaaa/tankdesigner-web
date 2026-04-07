@@ -34,43 +34,60 @@
         }
     },
 
-    printHtmlAsPdf: function (title, html, fileName) {
+    saveFileFromBytes: async function (fileName, contentType, base64Data) {
         try {
-            const win = window.open("", "_blank");
-            if (!win) return false;
+            const byteCharacters = atob(base64Data);
+            const byteNumbers = new Array(byteCharacters.length);
 
-            const safeTitle = title || "Informe";
-            const safeFileName = fileName || "informe";
-
-            win.document.open();
-            win.document.write(html);
-            win.document.close();
-
-            try {
-                win.document.title = safeFileName.replace(".pdf", "");
-            } catch { }
-
-            const launchPrint = () => {
-                setTimeout(() => {
-                    try {
-                        win.focus();
-                        win.print();
-                    } catch (e) {
-                        console.error("printHtmlAsPdf print error:", e);
-                    }
-                }, 700);
-            };
-
-            if (win.document.readyState === "complete") {
-                launchPrint();
-            } else {
-                win.onload = launchPrint;
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
             }
 
-            return true;
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: contentType });
+
+            if ('showSaveFilePicker' in window) {
+                const handle = await window.showSaveFilePicker({
+                    suggestedName: fileName,
+                    types: [
+                        {
+                            description: 'Documento PDF',
+                            accept: {
+                                'application/pdf': ['.pdf']
+                            }
+                        }
+                    ]
+                });
+
+                const writable = await handle.createWritable();
+                await writable.write(blob);
+                await writable.close();
+                return { ok: true, usedPicker: true };
+            }
+
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+            return { ok: true, usedPicker: false };
         } catch (e) {
-            console.error("printHtmlAsPdf error:", e);
-            return false;
+            console.error("saveFileFromBytes error:", e);
+
+            if (e && e.name === "AbortError") {
+                return { ok: false, cancelled: true, message: "Guardado cancelado por el usuario." };
+            }
+
+            return {
+                ok: false,
+                cancelled: false,
+                message: e?.message || "No se pudo guardar el archivo."
+            };
         }
     }
 };
