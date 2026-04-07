@@ -12,11 +12,16 @@ COPY . .
 
 RUN dotnet publish TankDesigner.Web/TankDesigner.Web.csproj -c Release -o /app/publish
 
+# Instalo Chromium y dependencias de Playwright
+RUN /app/publish/playwright.sh install --with-deps chromium
+
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 WORKDIR /app
 
 COPY --from=build /app/publish .
+COPY --from=build /root/.cache/ms-playwright /ms-playwright
 
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 ENV ASPNETCORE_URLS=http://0.0.0.0:8080
 EXPOSE 8080
 
