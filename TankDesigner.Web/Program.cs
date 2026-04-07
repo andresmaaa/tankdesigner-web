@@ -6,6 +6,7 @@ using TankDesigner.Web.Components;
 using TankDesigner.Web.Data;
 using TankDesigner.Web.Services;
 using TankDesigner.Web.Services.Ai;
+using QuestPDF.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -55,6 +56,7 @@ builder.Services.AddScoped<PdfRenderService>();
 builder.Services.Configure<AiOptions>(builder.Configuration.GetSection("Gemini"));
 builder.Services.AddHttpClient<AiEngineeringService>();
 
+QuestPDF.Settings.License = LicenseType.Community;
 var app = builder.Build();
 Environment.SetEnvironmentVariable("PLAYWRIGHT_BROWSERS_PATH", "/ms-playwright");
 var port = Environment.GetEnvironmentVariable("PORT");
