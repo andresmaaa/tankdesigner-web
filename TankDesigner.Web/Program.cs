@@ -56,7 +56,7 @@ builder.Services.Configure<AiOptions>(builder.Configuration.GetSection("Gemini")
 builder.Services.AddHttpClient<AiEngineeringService>();
 
 var app = builder.Build();
-
+Environment.SetEnvironmentVariable("PLAYWRIGHT_BROWSERS_PATH", "/ms-playwright");
 var port = Environment.GetEnvironmentVariable("PORT");
 if (!string.IsNullOrWhiteSpace(port))
 {

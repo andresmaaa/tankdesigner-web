@@ -12,7 +12,6 @@ COPY . .
 
 RUN dotnet publish TankDesigner.Web/TankDesigner.Web.csproj -c Release -o /app/publish
 
-# Instalo Playwright/Chromium en una ruta fija
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 RUN mkdir -p /ms-playwright
 RUN /app/publish/playwright.sh install --with-deps chromium
