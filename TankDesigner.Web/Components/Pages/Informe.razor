@@ -25,7 +25,7 @@
 
 <div class="informes-page">
     <div class="page-header">
-        <h1>Informe  123</h1>
+        <h1>Informe</h1>
         <p>Generación, vista previa y exportación de la documentación técnica del proyecto.</p>
     </div>
 
@@ -690,8 +690,6 @@
 
             GenerarHtmlActual();
 
-            var pdf = await PdfRenderService.GenerarPdfDesdeHtmlAsync(_htmlActual);
-
             var nombre = _informeSeleccionado switch
             {
                 "presupuesto" => EstadoProyecto.Proyecto.IdiomaInforme == "EN" ? "budget.pdf" : "presupuesto.pdf",
@@ -700,17 +698,17 @@
             };
 
             var ok = await JS.InvokeAsync<bool>(
-                "tankInformes.downloadFileFromBytes",
-                nombre,
-                "application/pdf",
-                Convert.ToBase64String(pdf));
+                "tankInformes.printHtmlAsPdf",
+                TituloActual(),
+                _htmlActual,
+                nombre);
 
             if (!ok)
-                _mensaje = "No se pudo descargar el PDF.";
+                _mensaje = "No se pudo abrir la impresión del PDF. Revisa si el navegador ha bloqueado la ventana emergente.";
         }
         catch (Exception ex)
         {
-            _mensaje = $"Error al descargar PDF: {ex.Message}";
+            _mensaje = $"Error al preparar el PDF: {ex.Message}";
         }
     }
 

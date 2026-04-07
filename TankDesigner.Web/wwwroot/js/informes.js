@@ -32,5 +32,45 @@
             console.error("downloadFileFromBytes error:", e);
             return false;
         }
+    },
+
+    printHtmlAsPdf: function (title, html, fileName) {
+        try {
+            const win = window.open("", "_blank");
+            if (!win) return false;
+
+            const safeTitle = title || "Informe";
+            const safeFileName = fileName || "informe";
+
+            win.document.open();
+            win.document.write(html);
+            win.document.close();
+
+            try {
+                win.document.title = safeFileName.replace(".pdf", "");
+            } catch { }
+
+            const launchPrint = () => {
+                setTimeout(() => {
+                    try {
+                        win.focus();
+                        win.print();
+                    } catch (e) {
+                        console.error("printHtmlAsPdf print error:", e);
+                    }
+                }, 700);
+            };
+
+            if (win.document.readyState === "complete") {
+                launchPrint();
+            } else {
+                win.onload = launchPrint;
+            }
+
+            return true;
+        } catch (e) {
+            console.error("printHtmlAsPdf error:", e);
+            return false;
+        }
     }
 };
