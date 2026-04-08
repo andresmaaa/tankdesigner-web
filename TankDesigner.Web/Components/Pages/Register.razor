@@ -2,11 +2,14 @@
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.WebUtilities
 @using TankDesigner.Web.Data
+@using TankDesigner.Web.Services
 
 @inject UserManager<ApplicationUser> UserManager
 @inject SignInManager<ApplicationUser> SignInManager
 @inject NavigationManager NavigationManager
+@inject InvitacionesService InvitacionesService
 
 <PageTitle>Crear cuenta</PageTitle>
 
@@ -16,6 +19,14 @@
             <h1>Crear cuenta</h1>
             <p>Registra un usuario para acceder a las funciones protegidas de la plataforma.</p>
         </div>
+
+        @if (_invitacionActiva is not null)
+        {
+            <div class="auth-alert auth-alert--success">
+                Este correo tiene una invitación pendiente con rol <strong>@_invitacionActiva.RolAsignado</strong>.
+                Al terminar el registro se activará automáticamente.
+            </div>
+        }
 
         @if (!string.IsNullOrWhiteSpace(_mensajeError))
         {
@@ -70,6 +81,19 @@
     private string _mensajeError = string.Empty;
     private string _mensajeExito = string.Empty;
     private bool _procesando;
+    private InvitacionUsuarioDto? _invitacionActiva;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var uri = new Uri(NavigationManager.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+
+        if (query.TryGetValue("email", out var email) && !string.IsNullOrWhiteSpace(email))
+        {
+            _modelo.Email = email.ToString();
+            _invitacionActiva = await InvitacionesService.ObtenerInvitacionPendientePorEmailAsync(_modelo.Email);
+        }
+    }
 
     private async Task RegistrarUsuario()
     {
@@ -118,19 +142,17 @@
                 return;
             }
 
-            var resultadoRol = await UserManager.AddToRoleAsync(usuario, RolesAplicacion.Usuario);
+            await UserManager.AddToRoleAsync(usuario, RolesAplicacion.Usuario);
 
-            if (!resultadoRol.Succeeded)
-            {
-                _mensajeError = "La cuenta se creó, pero no se pudo asignar el rol Usuario.";
-                return;
-            }
+            var invitacionAplicada = await InvitacionesService.AplicarInvitacionPendienteAsync(usuario);
 
             await SignInManager.SignInAsync(usuario, isPersistent: true);
 
-            _mensajeExito = "Cuenta creada correctamente. Sesión iniciada.";
+            _mensajeExito = invitacionAplicada.Aplicada
+                ? $"Cuenta creada correctamente. Se ha activado el rol {invitacionAplicada.RolAplicado}."
+                : "Cuenta creada correctamente. Sesión iniciada.";
 
-            await Task.Delay(500);
+            await Task.Delay(300);
             NavigationManager.NavigateTo("/mis-proyectos", forceLoad: true);
         }
         catch (Exception ex)

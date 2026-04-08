@@ -1,0 +1,50 @@
+﻿@page "/invitacion/{Token}"
+@using TankDesigner.Web.Services
+@inject InvitacionesService InvitacionesService
+
+<PageTitle>Invitación de acceso</PageTitle>
+
+<div class="auth-page">
+    <div class="auth-card">
+        <div class="auth-card__header">
+            <h1>Invitación de acceso</h1>
+            <p>Continúa con tu cuenta para activar el permiso asignado.</p>
+        </div>
+
+        @if (_cargando)
+        {
+            <div class="auth-alert">Comprobando invitación...</div>
+        }
+        else if (_invitacion is null)
+        {
+            <div class="auth-alert auth-alert--error">
+                Esta invitación no es válida o ya ha caducado.
+            </div>
+        }
+        else
+        {
+            <div class="auth-alert auth-alert--success">
+                Se ha preparado una invitación para <strong>@_invitacion.Email</strong> con rol <strong>@_invitacion.RolAsignado</strong>.
+            </div>
+
+            <div class="auth-form">
+                <a class="auth-btn" href="@($"/login?email={Uri.EscapeDataString(_invitacion.Email)}")">Ya tengo cuenta</a>
+                <a class="auth-btn auth-btn--secondary" href="@($"/register?email={Uri.EscapeDataString(_invitacion.Email)}")">Crear cuenta</a>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Token { get; set; } = string.Empty;
+
+    private InvitacionUsuarioDto? _invitacion;
+    private bool _cargando = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _cargando = true;
+        _invitacion = await InvitacionesService.ObtenerInvitacionValidaPorTokenAsync(Token);
+        _cargando = false;
+    }
+}
