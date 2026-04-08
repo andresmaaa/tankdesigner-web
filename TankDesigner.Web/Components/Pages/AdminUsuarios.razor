@@ -2,6 +2,7 @@
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.JSInterop
 @using TankDesigner.Web.Data
 @using TankDesigner.Web.Services
 @attribute [Authorize(Roles = RolesAplicacion.SuperAdmin)]
@@ -10,13 +11,14 @@
 @inject InvitacionesService InvitacionesService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JS
 
 <PageTitle>Administración - Usuarios</PageTitle>
 
 <div class="informes-page">
     <div class="page-header">
         <h1>Administración de usuarios</h1>
-        <p>Gestiona los permisos de acceso de la plataforma.</p>
+        <p>Gestiona permisos, invitaciones y accesos de la plataforma.</p>
     </div>
 
     @if (!string.IsNullOrWhiteSpace(_mensaje))
@@ -32,7 +34,10 @@
             <div>
                 <div class="section-kicker">Invitaciones</div>
                 <h2>Crear invitación</h2>
-                <p>Genera un enlace único para que un usuario obtenga el rol indicado al registrarse o iniciar sesión.</p>
+                <p>
+                    Genera un enlace único. Cuando el usuario acceda con ese enlace y
+                    se registre o inicie sesión con ese mismo correo, se le aplicará el rol indicado.
+                </p>
             </div>
         </div>
 
@@ -53,16 +58,27 @@
 
                 <div>
                     <button type="button" class="action-btn action-btn--primary" @onclick="CrearInvitacion">
-                        Generar invitación
+                        Generar enlace
                     </button>
                 </div>
             </div>
 
             @if (!string.IsNullOrWhiteSpace(_enlaceInvitacion))
             {
-                <div class="summary-row" style="margin-top:12px; flex-direction:column; align-items:flex-start;">
+                <div class="summary-row" style="margin-top:14px; flex-direction:column; align-items:flex-start; gap:10px;">
                     <div class="summary-row__label">Enlace generado</div>
-                    <div class="summary-row__value">@_enlaceInvitacion</div>
+
+                    <div style="display:flex; gap:10px; flex-wrap:wrap; width:100%;">
+                        <input class="td-input" style="min-width:420px; flex:1;" readonly value="@_enlaceInvitacion" />
+
+                        <button type="button" class="action-btn action-btn--gray" @onclick="CopiarEnlace">
+                            Copiar enlace
+                        </button>
+                    </div>
+
+                    <div class="summary-row__value">
+                        El usuario debe abrir este enlace y acceder con el correo invitado.
+                    </div>
                 </div>
             }
         </div>
@@ -102,18 +118,9 @@
                         <div style="min-width:180px;">
                             <div class="summary-row__label">Rol actual</div>
                             <div class="summary-row__value">
-                                @if (usuario.EsSuperAdmin)
-                                {
-                                    <span>SuperAdmin</span>
-                                }
-                                else if (usuario.EsAdmin)
-                                {
-                                    <span>Admin</span>
-                                }
-                                else
-                                {
-                                    <span>Usuario</span>
-                                }
+                                <span class="@ObtenerClaseRol(usuario)">
+                                    @ObtenerTextoRol(usuario)
+                                </span>
                             </div>
                         </div>
 
@@ -207,12 +214,49 @@
             return;
         }
 
-        var invitacion = await InvitacionesService.CrearInvitacionAsync(
+        var resultado = await InvitacionesService.CrearInvitacionAsync(
             _emailInvitacion,
             _rolInvitacion,
             userId);
 
-        _enlaceInvitacion = $"{NavigationManager.BaseUri}invitacion/{invitacion.Token}";
+        if (!resultado.Ok || string.IsNullOrWhiteSpace(resultado.Token))
+        {
+            _mensaje = resultado.Mensaje;
+            return;
+        }
+
+        _enlaceInvitacion = $"{NavigationManager.BaseUri}invitacion/{resultado.Token}";
         _mensaje = $"Invitación creada correctamente para {_emailInvitacion}.";
+    }
+
+    private async Task CopiarEnlace()
+    {
+        if (string.IsNullOrWhiteSpace(_enlaceInvitacion))
+            return;
+
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", _enlaceInvitacion);
+        _mensaje = "Enlace copiado al portapapeles.";
+    }
+
+    private static string ObtenerTextoRol(UsuarioAdminDto usuario)
+    {
+        if (usuario.EsSuperAdmin)
+            return "SuperAdmin";
+
+        if (usuario.EsAdmin)
+            return "Admin";
+
+        return "Usuario";
+    }
+
+    private static string ObtenerClaseRol(UsuarioAdminDto usuario)
+    {
+        if (usuario.EsSuperAdmin)
+            return "role-badge role-badge--superadmin";
+
+        if (usuario.EsAdmin)
+            return "role-badge role-badge--admin";
+
+        return "role-badge role-badge--usuario";
     }
 }

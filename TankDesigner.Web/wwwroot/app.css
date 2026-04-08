@@ -217,3 +217,33 @@ h1:focus {
         font-size: 0.82rem;
         color: #64748b;
     }
+.role-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 104px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    border: 1px solid transparent;
+}
+
+.role-badge--usuario {
+    background: #f3f4f6;
+    color: #4b5563;
+    border-color: #d1d5db;
+}
+
+.role-badge--admin {
+    background: #e8f7ee;
+    color: #1f7a45;
+    border-color: #b7e4c7;
+}
+
+.role-badge--superadmin {
+    background: #e8f0ff;
+    color: #1d4ed8;
+    border-color: #bfd3ff;
+}
