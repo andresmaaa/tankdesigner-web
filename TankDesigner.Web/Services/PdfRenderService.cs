@@ -1,383 +1,240 @@
-﻿using System.Net;
-using HtmlAgilityPack;
-using QuestPDF.Fluent;
-using QuestPDF.Helpers;
-using QuestPDF.Infrastructure;
+﻿using System.Diagnostics;
+using System.Runtime.InteropServices;
+using System.Text;
 
 namespace TankDesigner.Web.Services;
 
 public class PdfRenderService
 {
-    public Task<byte[]> GenerarPdfDesdeHtmlAsync(string html)
+    public async Task<byte[]> GenerarPdfDesdeHtmlAsync(string html)
     {
-        var modelo = ParsearHtml(html);
+        if (string.IsNullOrWhiteSpace(html))
+            throw new InvalidOperationException("No hay HTML para generar el PDF.");
 
-        var pdf = Document.Create(container =>
+        var navegador = ResolverRutaNavegador();
+        if (string.IsNullOrWhiteSpace(navegador))
+            throw new InvalidOperationException(
+                "No se ha encontrado Chromium/Chrome en el sistema. " +
+                "En Railway debe quedar instalado desde el Dockerfile.");
+
+        var tempRoot = Path.Combine(Path.GetTempPath(), "tankdesigner-pdf", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        var htmlPath = Path.Combine(tempRoot, "informe.html");
+        var pdfPath = Path.Combine(tempRoot, "informe.pdf");
+
+        try
         {
-            container.Page(page =>
+            var htmlFinal = PrepararHtmlParaPdf(html);
+            await File.WriteAllTextAsync(htmlPath, htmlFinal, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+
+            var argumentos = new[]
             {
-                page.Size(PageSizes.A4);
-                page.Margin(12, Unit.Millimetre);
-                page.PageColor(Colors.White);
+                "--headless=new",
+                "--disable-gpu",
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--allow-file-access-from-files",
+                "--enable-local-file-accesses",
+                "--no-first-run",
+                "--no-default-browser-check",
+                "--hide-scrollbars",
+                "--run-all-compositor-stages-before-draw",
+                "--virtual-time-budget=3000",
+                "--no-pdf-header-footer",
+                $"--print-to-pdf=\"{pdfPath}\"",
+                $"\"file://{htmlPath.Replace("\\", "/")}\""
+            };
 
-                page.DefaultTextStyle(x => x
-                    .FontSize(10)
-                    .FontColor(Colors.Grey.Darken4));
-
-                page.Header()
-                    .PaddingBottom(8)
-                    .Column(column =>
-                    {
-                        column.Item().Text(modelo.Titulo)
-                            .FontSize(18)
-                            .SemiBold()
-                            .FontColor(Colors.Blue.Darken2);
-
-                        column.Item().LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
-                    });
-
-                page.Content()
-                    .Column(column =>
-                    {
-                        foreach (var bloque in modelo.Bloques)
-                        {
-                            switch (bloque)
-                            {
-                                case PdfHeadingBlock heading:
-                                    RenderHeading(column, heading);
-                                    break;
-
-                                case PdfParagraphBlock paragraph:
-                                    RenderParagraph(column, paragraph);
-                                    break;
-
-                                case PdfTableBlock table:
-                                    RenderTable(column, table);
-                                    break;
-                            }
-                        }
-                    });
-
-                page.Footer()
-                    .PaddingTop(8)
-                    .AlignCenter()
-                    .Text(x =>
-                    {
-                        x.Span("Página ");
-                        x.CurrentPageNumber();
-                        x.Span(" / ");
-                        x.TotalPages();
-                    });
-            });
-        }).GeneratePdf();
-
-        return Task.FromResult(pdf);
-    }
-
-    private static void RenderHeading(ColumnDescriptor column, PdfHeadingBlock heading)
-    {
-        var size = heading.Level switch
-        {
-            1 => 18,
-            2 => 15,
-            3 => 13,
-            _ => 12
-        };
-
-        column.Item()
-            .PaddingTop(heading.Level == 1 ? 6 : 10)
-            .PaddingBottom(4)
-            .Text(heading.Text)
-            .FontSize(size)
-            .SemiBold()
-            .FontColor(Colors.Blue.Darken2);
-    }
-
-    private static void RenderParagraph(ColumnDescriptor column, PdfParagraphBlock paragraph)
-    {
-        if (string.IsNullOrWhiteSpace(paragraph.Text))
-            return;
-
-        column.Item()
-            .PaddingBottom(6)
-            .Text(paragraph.Text)
-            .LineHeight(1.3f);
-    }
-
-    private static void RenderTable(ColumnDescriptor column, PdfTableBlock table)
-    {
-        if (table.Headers.Count == 0 && table.Rows.Count == 0)
-            return;
-
-        column.Item()
-            .PaddingTop(6)
-            .PaddingBottom(10)
-            .Border(1)
-            .BorderColor(Colors.Grey.Lighten2)
-            .Padding(4)
-            .Table(t =>
+            var psi = new ProcessStartInfo
             {
-                var totalColumns = table.Headers.Count > 0
-                    ? table.Headers.Count
-                    : table.Rows.Max(r => r.Count);
+                FileName = navegador,
+                Arguments = string.Join(" ", argumentos),
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = tempRoot
+            };
 
-                t.ColumnsDefinition(cols =>
-                {
-                    for (int i = 0; i < totalColumns; i++)
-                        cols.RelativeColumn();
-                });
+            using var process = new Process { StartInfo = psi };
 
-                if (table.Headers.Count > 0)
-                {
-                    t.Header(header =>
-                    {
-                        foreach (var cell in table.Headers)
-                        {
-                            header.Cell()
-                                .Element(HeaderCellStyle)
-                                .Text(LimpiarTexto(cell))
-                                .SemiBold()
-                                .FontSize(9);
-                        }
-                    });
-                }
+            process.Start();
 
-                foreach (var row in table.Rows)
-                {
-                    for (int i = 0; i < totalColumns; i++)
-                    {
-                        var value = i < row.Count ? row[i] : string.Empty;
+            var stdOutTask = process.StandardOutput.ReadToEndAsync();
+            var stdErrTask = process.StandardError.ReadToEndAsync();
 
-                        t.Cell()
-                            .Element(BodyCellStyle)
-                            .Text(LimpiarTexto(value))
-                            .FontSize(8.5f);
-                    }
-                }
-            });
-    }
+            var exited = await Task.Run(() => process.WaitForExit(45000));
+            var stdOut = await stdOutTask;
+            var stdErr = await stdErrTask;
 
-    private static IContainer HeaderCellStyle(IContainer container)
-    {
-        return container
-            .Border(1)
-            .BorderColor(Colors.Grey.Lighten2)
-            .Background(Colors.Blue.Lighten5)
-            .PaddingVertical(4)
-            .PaddingHorizontal(5)
-            .AlignMiddle();
-    }
-
-    private static IContainer BodyCellStyle(IContainer container)
-    {
-        return container
-            .Border(1)
-            .BorderColor(Colors.Grey.Lighten3)
-            .PaddingVertical(4)
-            .PaddingHorizontal(5)
-            .AlignMiddle();
-    }
-
-    private static PdfDocumentModel ParsearHtml(string html)
-    {
-        var doc = new HtmlDocument();
-        doc.LoadHtml(string.IsNullOrWhiteSpace(html) ? "<html><body></body></html>" : html);
-
-        var title =
-            LimpiarTexto(doc.DocumentNode.SelectSingleNode("//title")?.InnerText) ??
-            LimpiarTexto(doc.DocumentNode.SelectSingleNode("//h1")?.InnerText) ??
-            "Informe";
-
-        var modelo = new PdfDocumentModel
-        {
-            Titulo = string.IsNullOrWhiteSpace(title) ? "Informe" : title
-        };
-
-        var body = doc.DocumentNode.SelectSingleNode("//body") ?? doc.DocumentNode;
-
-        RecorrerNodos(body, modelo.Bloques);
-
-        return modelo;
-    }
-
-    private static void RecorrerNodos(HtmlNode parent, List<PdfBlock> bloques)
-    {
-        foreach (var node in parent.ChildNodes)
-        {
-            if (node.NodeType == HtmlNodeType.Text)
-                continue;
-
-            var name = node.Name.ToLowerInvariant();
-
-            switch (name)
+            if (!exited)
             {
-                case "h1":
-                    AddHeading(node, bloques, 1);
-                    break;
+                try { process.Kill(entireProcessTree: true); } catch { }
+                throw new InvalidOperationException("Chromium tardó demasiado en generar el PDF.");
+            }
 
-                case "h2":
-                    AddHeading(node, bloques, 2);
-                    break;
+            if (process.ExitCode != 0)
+            {
+                throw new InvalidOperationException(
+                    "Chromium no pudo generar el PDF.\n" +
+                    $"ExitCode: {process.ExitCode}\n" +
+                    $"STDOUT: {stdOut}\n" +
+                    $"STDERR: {stdErr}");
+            }
 
-                case "h3":
-                    AddHeading(node, bloques, 3);
-                    break;
+            if (!File.Exists(pdfPath))
+            {
+                throw new InvalidOperationException(
+                    "Chromium terminó, pero no dejó el archivo PDF esperado.\n" +
+                    $"STDOUT: {stdOut}\nSTDERR: {stdErr}");
+            }
 
-                case "p":
-                case "div":
-                case "section":
-                case "article":
-                case "header":
-                case "footer":
-                    AddParagraphIfDirectText(node, bloques);
-                    RecorrerNodos(node, bloques);
-                    break;
-
-                case "ul":
-                case "ol":
-                    AddList(node, bloques);
-                    break;
-
-                case "table":
-                    AddTable(node, bloques);
-                    break;
-
-                case "br":
-                    break;
-
-                default:
-                    RecorrerNodos(node, bloques);
-                    break;
+            return await File.ReadAllBytesAsync(pdfPath);
+        }
+        finally
+        {
+            try
+            {
+                if (Directory.Exists(tempRoot))
+                    Directory.Delete(tempRoot, recursive: true);
+            }
+            catch
+            {
             }
         }
     }
 
-    private static void AddHeading(HtmlNode node, List<PdfBlock> bloques, int level)
+    private static string PrepararHtmlParaPdf(string html)
     {
-        var text = LimpiarTexto(node.InnerText);
-        if (!string.IsNullOrWhiteSpace(text))
-            bloques.Add(new PdfHeadingBlock { Level = level, Text = text });
+        var printCss = """
+<style>
+    @page {
+        size: A4;
+        margin: 12mm;
     }
 
-    private static void AddParagraphIfDirectText(HtmlNode node, List<PdfBlock> bloques)
-    {
-        var hasBlockChildren = node.ChildNodes.Any(x =>
-            x.Name.Equals("table", StringComparison.OrdinalIgnoreCase) ||
-            x.Name.Equals("div", StringComparison.OrdinalIgnoreCase) ||
-            x.Name.Equals("section", StringComparison.OrdinalIgnoreCase) ||
-            x.Name.Equals("article", StringComparison.OrdinalIgnoreCase) ||
-            x.Name.Equals("p", StringComparison.OrdinalIgnoreCase) ||
-            x.Name.Equals("ul", StringComparison.OrdinalIgnoreCase) ||
-            x.Name.Equals("ol", StringComparison.OrdinalIgnoreCase) ||
-            x.Name.Equals("h1", StringComparison.OrdinalIgnoreCase) ||
-            x.Name.Equals("h2", StringComparison.OrdinalIgnoreCase) ||
-            x.Name.Equals("h3", StringComparison.OrdinalIgnoreCase));
+    html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
 
-        if (!hasBlockChildren)
+    body {
+        overflow: visible !important;
+    }
+
+    .preview-shell,
+    .preview-frame,
+    .ia-fab,
+    .td-sidebar,
+    .topbar,
+    nav,
+    .no-print {
+        box-shadow: none !important;
+    }
+
+    table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+    }
+
+    thead {
+        display: table-header-group;
+    }
+
+    tr, td, th {
+        page-break-inside: avoid !important;
+    }
+
+    .page-break {
+        page-break-before: always !important;
+        break-before: page !important;
+    }
+</style>
+""";
+
+        if (html.Contains("</head>", StringComparison.OrdinalIgnoreCase))
         {
-            var text = LimpiarTexto(node.InnerText);
-            if (!string.IsNullOrWhiteSpace(text))
-                bloques.Add(new PdfParagraphBlock { Text = text });
+            return html.Replace("</head>", $"{printCss}</head>", StringComparison.OrdinalIgnoreCase);
         }
+
+        return $"""
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+{printCss}
+</head>
+<body>
+{html}
+</body>
+</html>
+""";
     }
 
-    private static void AddList(HtmlNode node, List<PdfBlock> bloques)
+    private static string ResolverRutaNavegador()
     {
-        var items = node.SelectNodes("./li");
-        if (items == null || items.Count == 0)
-            return;
+        var env = Environment.GetEnvironmentVariable("CHROME_BIN");
+        if (!string.IsNullOrWhiteSpace(env) && File.Exists(env))
+            return env;
 
-        foreach (var item in items)
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
         {
-            var text = LimpiarTexto(item.InnerText);
-            if (!string.IsNullOrWhiteSpace(text))
-                bloques.Add(new PdfParagraphBlock { Text = $"• {text}" });
-        }
-    }
-
-    private static void AddTable(HtmlNode tableNode, List<PdfBlock> bloques)
-    {
-        var table = new PdfTableBlock();
-
-        var headerRow =
-            tableNode.SelectSingleNode(".//thead/tr") ??
-            tableNode.SelectSingleNode(".//tr[th]");
-
-        if (headerRow != null)
-        {
-            var headers = headerRow.SelectNodes("./th|./td");
-            if (headers != null)
+            var linuxCandidates = new[]
             {
-                foreach (var cell in headers)
-                    table.Headers.Add(LimpiarTexto(cell.InnerText));
+                "/usr/bin/chromium",
+                "/usr/bin/chromium-browser",
+                "/usr/bin/google-chrome",
+                "/usr/bin/google-chrome-stable"
+            };
+
+            foreach (var path in linuxCandidates)
+            {
+                if (File.Exists(path))
+                    return path;
             }
         }
 
-        var rows = tableNode.SelectNodes(".//tr");
-        if (rows != null)
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            foreach (var row in rows)
+            var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+            var programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+
+            var windowsCandidates = new[]
             {
-                if (headerRow != null && row == headerRow)
-                    continue;
+                Path.Combine(programFiles, "Google", "Chrome", "Application", "chrome.exe"),
+                Path.Combine(programFilesX86, "Google", "Chrome", "Application", "chrome.exe"),
+                Path.Combine(localAppData, "Google", "Chrome", "Application", "chrome.exe"),
+                Path.Combine(programFiles, "Chromium", "Application", "chrome.exe"),
+                Path.Combine(programFilesX86, "Chromium", "Application", "chrome.exe")
+            };
 
-                var cells = row.SelectNodes("./td|./th");
-                if (cells == null || cells.Count == 0)
-                    continue;
-
-                var rowValues = cells
-                    .Select(c => LimpiarTexto(c.InnerText))
-                    .ToList();
-
-                if (rowValues.All(string.IsNullOrWhiteSpace))
-                    continue;
-
-                table.Rows.Add(rowValues);
+            foreach (var path in windowsCandidates)
+            {
+                if (File.Exists(path))
+                    return path;
             }
         }
 
-        if (table.Headers.Count > 0 || table.Rows.Count > 0)
-            bloques.Add(table);
-    }
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            var macCandidates = new[]
+            {
+                "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+                "/Applications/Chromium.app/Contents/MacOS/Chromium"
+            };
 
-    private static string LimpiarTexto(string? text)
-    {
-        if (string.IsNullOrWhiteSpace(text))
-            return string.Empty;
+            foreach (var path in macCandidates)
+            {
+                if (File.Exists(path))
+                    return path;
+            }
+        }
 
-        text = WebUtility.HtmlDecode(text);
-        text = text.Replace("\r", " ").Replace("\n", " ").Replace("\t", " ");
-
-        while (text.Contains("  "))
-            text = text.Replace("  ", " ");
-
-        return text.Trim();
-    }
-
-    private class PdfDocumentModel
-    {
-        public string Titulo { get; set; } = "Informe";
-        public List<PdfBlock> Bloques { get; set; } = new();
-    }
-
-    private abstract class PdfBlock
-    {
-    }
-
-    private class PdfHeadingBlock : PdfBlock
-    {
-        public int Level { get; set; }
-        public string Text { get; set; } = string.Empty;
-    }
-
-    private class PdfParagraphBlock : PdfBlock
-    {
-        public string Text { get; set; } = string.Empty;
-    }
-
-    private class PdfTableBlock : PdfBlock
-    {
-        public List<string> Headers { get; set; } = new();
-        public List<List<string>> Rows { get; set; } = new();
+        return string.Empty;
     }
 }

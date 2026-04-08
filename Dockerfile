@@ -15,7 +15,16 @@ RUN dotnet publish TankDesigner.Web/TankDesigner.Web.csproj -c Release -o /app/p
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 WORKDIR /app
 
+RUN apt-get update && apt-get install -y \
+    chromium \
+    fonts-dejavu-core \
+    fonts-liberation \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 ENV ASPNETCORE_URLS=http://0.0.0.0:8080
+ENV CHROME_BIN=/usr/bin/chromium
+
 EXPOSE 8080
 
 COPY --from=build /app/publish .

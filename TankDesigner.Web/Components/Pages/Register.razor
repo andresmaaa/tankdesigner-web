@@ -5,6 +5,7 @@
 @using TankDesigner.Web.Data
 
 @inject UserManager<ApplicationUser> UserManager
+@inject SignInManager<ApplicationUser> SignInManager
 @inject NavigationManager NavigationManager
 
 <PageTitle>Crear cuenta</PageTitle>
@@ -125,10 +126,12 @@
                 return;
             }
 
-            _mensajeExito = "Cuenta creada correctamente. Ahora puedes iniciar sesión.";
+            await SignInManager.SignInAsync(usuario, isPersistent: true);
 
-            await Task.Delay(700);
-            NavigationManager.NavigateTo("/login", forceLoad: true);
+            _mensajeExito = "Cuenta creada correctamente. Sesión iniciada.";
+
+            await Task.Delay(500);
+            NavigationManager.NavigateTo("/mis-proyectos", forceLoad: true);
         }
         catch (Exception ex)
         {
