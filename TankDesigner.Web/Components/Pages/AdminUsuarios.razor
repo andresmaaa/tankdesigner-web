@@ -2,7 +2,6 @@
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
-@using Microsoft.AspNetCore.Identity
 @using TankDesigner.Web.Data
 @using TankDesigner.Web.Services
 @attribute [Authorize(Roles = RolesAplicacion.SuperAdmin)]
@@ -11,7 +10,6 @@
 @inject InvitacionesService InvitacionesService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager NavigationManager
-@inject UserManager<ApplicationUser> UserManager
 
 <PageTitle>Administración - Usuarios</PageTitle>
 
@@ -29,82 +27,45 @@
         </div>
     }
 
-    <article class="td-panel" style="margin-bottom:24px;">
+    <article class="td-panel" style="margin-bottom:18px;">
         <div class="td-panel__header">
             <div>
                 <div class="section-kicker">Invitaciones</div>
-                <h2>Invitar a administrador o superadmin</h2>
-                <p>Genera un enlace profesional para que el usuario active su permiso al registrarse o iniciar sesión.</p>
+                <h2>Crear invitación</h2>
+                <p>Genera un enlace único para que un usuario obtenga el rol indicado al registrarse o iniciar sesión.</p>
             </div>
         </div>
 
-        <EditForm Model="_nuevaInvitacion" OnValidSubmit="CrearInvitacion">
-            <DataAnnotationsValidator />
-            <ValidationSummary />
+        <div class="summary-list">
+            <div class="summary-row" style="align-items:end; gap:16px; flex-wrap:wrap;">
+                <div style="min-width:280px;">
+                    <div class="summary-row__label">Correo electrónico</div>
+                    <input class="td-input" @bind="_emailInvitacion" />
+                </div>
 
-            <div class="summary-list">
-                <div class="summary-row" style="align-items:end; gap:18px; flex-wrap:wrap;">
-                    <div style="min-width:280px; flex:1;">
-                        <div class="summary-row__label">Correo electrónico</div>
-                        <InputText class="td-input" @bind-Value="_nuevaInvitacion.Email" />
-                    </div>
+                <div style="min-width:180px;">
+                    <div class="summary-row__label">Rol a asignar</div>
+                    <select class="td-input" @bind="_rolInvitacion">
+                        <option value="@RolesAplicacion.Admin">Admin</option>
+                        <option value="@RolesAplicacion.SuperAdmin">SuperAdmin</option>
+                    </select>
+                </div>
 
-                    <div style="min-width:220px;">
-                        <div class="summary-row__label">Rol a asignar</div>
-                        <InputSelect class="td-input" @bind-Value="_nuevaInvitacion.RolAsignado">
-                            <option value="Admin">Admin</option>
-                            <option value="SuperAdmin">SuperAdmin</option>
-                        </InputSelect>
-                    </div>
-
-                    <div>
-                        <button type="submit" class="action-btn action-btn--primary" disabled="@_procesandoInvitacion">
-                            @(_procesandoInvitacion ? "Generando..." : "Generar invitación")
-                        </button>
-                    </div>
+                <div>
+                    <button type="button" class="action-btn action-btn--primary" @onclick="CrearInvitacion">
+                        Generar invitación
+                    </button>
                 </div>
             </div>
-        </EditForm>
 
-        @if (!string.IsNullOrWhiteSpace(_ultimoEnlaceGenerado))
-        {
-            <div class="summary-list" style="margin-top:18px;">
-                <div class="summary-row" style="display:block;">
+            @if (!string.IsNullOrWhiteSpace(_enlaceInvitacion))
+            {
+                <div class="summary-row" style="margin-top:12px; flex-direction:column; align-items:flex-start;">
                     <div class="summary-row__label">Enlace generado</div>
-                    <div class="summary-row__value" style="word-break:break-all;">@_ultimoEnlaceGenerado</div>
+                    <div class="summary-row__value">@_enlaceInvitacion</div>
                 </div>
-            </div>
-        }
-
-        @if (_invitacionesPendientes.Count > 0)
-        {
-            <div class="summary-list" style="margin-top:18px;">
-                @foreach (var invitacion in _invitacionesPendientes)
-                {
-                    <div class="summary-row" style="align-items:center; gap:18px; flex-wrap:wrap;">
-                        <div style="min-width:240px;">
-                            <div class="summary-row__label">Correo</div>
-                            <div class="summary-row__value">@invitacion.Email</div>
-                        </div>
-
-                        <div style="min-width:140px;">
-                            <div class="summary-row__label">Rol</div>
-                            <div class="summary-row__value">@invitacion.RolAsignado</div>
-                        </div>
-
-                        <div style="min-width:180px;">
-                            <div class="summary-row__label">Expira</div>
-                            <div class="summary-row__value">@invitacion.FechaExpiracion.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
-                        </div>
-
-                        <div style="flex:1; min-width:260px;">
-                            <div class="summary-row__label">Enlace</div>
-                            <div class="summary-row__value" style="word-break:break-all;">@ConstruirEnlaceInvitacion(invitacion.Token)</div>
-                        </div>
-                    </div>
-                }
-            </div>
-        }
+            }
+        </div>
     </article>
 
     <article class="td-panel">
@@ -185,59 +146,24 @@
 
 @code {
     private List<UsuarioAdminDto> _usuarios = new();
-    private List<InvitacionUsuarioDto> _invitacionesPendientes = new();
     private string _mensaje = string.Empty;
-    private string _ultimoEnlaceGenerado = string.Empty;
     private ClaimsPrincipal? _usuarioActual;
-    private bool _procesandoInvitacion;
 
-    private CrearInvitacionModel _nuevaInvitacion = new();
+    private string _emailInvitacion = string.Empty;
+    private string _rolInvitacion = RolesAplicacion.Admin;
+    private string _enlaceInvitacion = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         _usuarioActual = authState.User;
 
-        await CargarDatos();
+        await CargarUsuarios();
     }
 
-    private async Task CargarDatos()
+    private async Task CargarUsuarios()
     {
         _usuarios = await AdminService.ObtenerUsuariosAsync();
-        _invitacionesPendientes = await InvitacionesService.ObtenerInvitacionesPendientesAsync();
-    }
-
-    private async Task CrearInvitacion()
-    {
-        if (_usuarioActual is null || _procesandoInvitacion)
-            return;
-
-        _procesandoInvitacion = true;
-        _mensaje = string.Empty;
-        _ultimoEnlaceGenerado = string.Empty;
-
-        try
-        {
-            var usuario = await UserManager.GetUserAsync(_usuarioActual);
-            var resultado = await InvitacionesService.CrearInvitacionAsync(
-                _nuevaInvitacion.Email,
-                _nuevaInvitacion.RolAsignado,
-                usuario?.Id);
-
-            _mensaje = resultado.Mensaje;
-
-            if (resultado.Ok && resultado.Invitacion is not null)
-            {
-                _ultimoEnlaceGenerado = ConstruirEnlaceInvitacion(resultado.Invitacion.Token);
-                _nuevaInvitacion = new CrearInvitacionModel();
-            }
-
-            await CargarDatos();
-        }
-        finally
-        {
-            _procesandoInvitacion = false;
-        }
     }
 
     private async Task HacerAdmin(string userId)
@@ -251,7 +177,7 @@
             ? "Usuario actualizado a administrador."
             : "No tienes permisos para realizar esta acción o el usuario está protegido.";
 
-        await CargarDatos();
+        await CargarUsuarios();
     }
 
     private async Task QuitarAdmin(string userId)
@@ -265,20 +191,28 @@
             ? "Rol de administrador eliminado correctamente."
             : "No tienes permisos para realizar esta acción o el usuario está protegido.";
 
-        await CargarDatos();
+        await CargarUsuarios();
     }
 
-    private string ConstruirEnlaceInvitacion(string token)
+    private async Task CrearInvitacion()
     {
-        return NavigationManager.ToAbsoluteUri($"/invitacion/{token}").ToString();
-    }
+        if (_usuarioActual is null)
+            return;
 
-    private sealed class CrearInvitacionModel
-    {
-        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "El correo es obligatorio.")]
-        [System.ComponentModel.DataAnnotations.EmailAddress(ErrorMessage = "Introduce un correo válido.")]
-        public string Email { get; set; } = string.Empty;
+        var userId = _usuarioActual.FindFirstValue(ClaimTypes.NameIdentifier);
 
-        public string RolAsignado { get; set; } = RolesAplicacion.SuperAdmin;
+        if (string.IsNullOrWhiteSpace(_emailInvitacion))
+        {
+            _mensaje = "Debes indicar un correo electrónico.";
+            return;
+        }
+
+        var invitacion = await InvitacionesService.CrearInvitacionAsync(
+            _emailInvitacion,
+            _rolInvitacion,
+            userId);
+
+        _enlaceInvitacion = $"{NavigationManager.BaseUri}invitacion/{invitacion.Token}";
+        _mensaje = $"Invitación creada correctamente para {_emailInvitacion}.";
     }
 }

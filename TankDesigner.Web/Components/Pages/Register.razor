@@ -2,7 +2,6 @@
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Identity
-@using Microsoft.AspNetCore.WebUtilities
 @using TankDesigner.Web.Data
 @using TankDesigner.Web.Services
 
@@ -19,14 +18,6 @@
             <h1>Crear cuenta</h1>
             <p>Registra un usuario para acceder a las funciones protegidas de la plataforma.</p>
         </div>
-
-        @if (_invitacionActiva is not null)
-        {
-            <div class="auth-alert auth-alert--success">
-                Este correo tiene una invitación pendiente con rol <strong>@_invitacionActiva.RolAsignado</strong>.
-                Al terminar el registro se activará automáticamente.
-            </div>
-        }
 
         @if (!string.IsNullOrWhiteSpace(_mensajeError))
         {
@@ -71,7 +62,7 @@
 
         <div class="auth-footer">
             ¿Ya tienes cuenta?
-            <a href="/login">Iniciar sesión</a>
+            <a href="@ObtenerRutaLogin()">Iniciar sesión</a>
         </div>
     </div>
 </div>
@@ -81,17 +72,13 @@
     private string _mensajeError = string.Empty;
     private string _mensajeExito = string.Empty;
     private bool _procesando;
-    private InvitacionUsuarioDto? _invitacionActiva;
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
-        var uri = new Uri(NavigationManager.Uri);
-        var query = QueryHelpers.ParseQuery(uri.Query);
-
-        if (query.TryGetValue("email", out var email) && !string.IsNullOrWhiteSpace(email))
+        var emailInvitado = ObtenerEmailInvitado();
+        if (!string.IsNullOrWhiteSpace(emailInvitado))
         {
-            _modelo.Email = email.ToString();
-            _invitacionActiva = await InvitacionesService.ObtenerInvitacionPendientePorEmailAsync(_modelo.Email);
+            _modelo.Email = emailInvitado;
         }
     }
 
@@ -142,15 +129,24 @@
                 return;
             }
 
-            await UserManager.AddToRoleAsync(usuario, RolesAplicacion.Usuario);
+            var resultadoRol = await UserManager.AddToRoleAsync(usuario, RolesAplicacion.Usuario);
 
-            var invitacionAplicada = await InvitacionesService.AplicarInvitacionPendienteAsync(usuario);
+            if (!resultadoRol.Succeeded)
+            {
+                _mensajeError = "La cuenta se creó, pero no se pudo asignar el rol Usuario.";
+                return;
+            }
+
+            var token = ObtenerTokenInvitacion();
+
+            if (!string.IsNullOrWhiteSpace(token))
+                await InvitacionesService.AplicarInvitacionPorTokenAsync(usuario, token);
+            else
+                await InvitacionesService.AplicarInvitacionPendienteAsync(usuario);
 
             await SignInManager.SignInAsync(usuario, isPersistent: true);
 
-            _mensajeExito = invitacionAplicada.Aplicada
-                ? $"Cuenta creada correctamente. Se ha activado el rol {invitacionAplicada.RolAplicado}."
-                : "Cuenta creada correctamente. Sesión iniciada.";
+            _mensajeExito = "Cuenta creada correctamente. Sesión iniciada.";
 
             await Task.Delay(300);
             NavigationManager.NavigateTo("/mis-proyectos", forceLoad: true);
@@ -163,6 +159,39 @@
         {
             _procesando = false;
         }
+    }
+
+    private string ObtenerTokenInvitacion()
+    {
+        var uri = new Uri(NavigationManager.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+
+        if (query.TryGetValue("token", out var token))
+            return token.ToString();
+
+        return string.Empty;
+    }
+
+    private string ObtenerEmailInvitado()
+    {
+        var uri = new Uri(NavigationManager.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+
+        if (query.TryGetValue("email", out var email))
+            return email.ToString();
+
+        return string.Empty;
+    }
+
+    private string ObtenerRutaLogin()
+    {
+        var token = ObtenerTokenInvitacion();
+        var email = ObtenerEmailInvitado();
+
+        if (!string.IsNullOrWhiteSpace(token))
+            return $"/login?token={Uri.EscapeDataString(token)}&email={Uri.EscapeDataString(email)}";
+
+        return "/login";
     }
 
     private sealed class RegisterModel

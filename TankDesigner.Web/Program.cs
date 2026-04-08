@@ -10,6 +10,7 @@ using TankDesigner.Web.Services.Ai;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddScoped<InvitacionesService>();
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
@@ -54,6 +55,7 @@ builder.Services.AddAuthorizationCore();
 builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<AdminService>();
+builder.Services.AddScoped<InvitacionesService>();
 builder.Services.AddScoped<ProyectoPersistenciaService>();
 builder.Services.AddScoped<ProyectoState>();
 builder.Services.AddScoped<CalculoWebService>();
@@ -91,7 +93,9 @@ app.UseAntiforgery();
 
 app.MapPost("/auth/login", async (
     HttpContext httpContext,
-    SignInManager<ApplicationUser> signInManager) =>
+    SignInManager<ApplicationUser> signInManager,
+    UserManager<ApplicationUser> userManager,
+    InvitacionesService invitacionesService) =>
 {
     var form = await httpContext.Request.ReadFormAsync();
 
@@ -112,7 +116,13 @@ app.MapPost("/auth/login", async (
         lockoutOnFailure: false);
 
     if (result.Succeeded)
+    {
+        var usuario = await userManager.FindByEmailAsync(email);
+        if (usuario is not null)
+            await invitacionesService.AplicarInvitacionPendienteAsync(usuario);
+
         return Results.Redirect(returnUrl);
+    }
 
     return Results.Redirect($"/login?error=1&returnUrl={Uri.EscapeDataString(returnUrl)}");
 });

@@ -1,50 +1,46 @@
 ﻿@page "/invitacion/{Token}"
 @using TankDesigner.Web.Services
 @inject InvitacionesService InvitacionesService
+@inject NavigationManager NavigationManager
 
-<PageTitle>Invitación de acceso</PageTitle>
+<PageTitle>Invitación</PageTitle>
 
 <div class="auth-page">
     <div class="auth-card">
         <div class="auth-card__header">
-            <h1>Invitación de acceso</h1>
-            <p>Continúa con tu cuenta para activar el permiso asignado.</p>
+            <h1>Procesando invitación</h1>
+            <p>Estamos validando tu acceso invitado.</p>
         </div>
 
-        @if (_cargando)
-        {
-            <div class="auth-alert">Comprobando invitación...</div>
-        }
-        else if (_invitacion is null)
-        {
-            <div class="auth-alert auth-alert--error">
-                Esta invitación no es válida o ya ha caducado.
-            </div>
-        }
-        else
-        {
-            <div class="auth-alert auth-alert--success">
-                Se ha preparado una invitación para <strong>@_invitacion.Email</strong> con rol <strong>@_invitacion.RolAsignado</strong>.
-            </div>
-
-            <div class="auth-form">
-                <a class="auth-btn" href="@($"/login?email={Uri.EscapeDataString(_invitacion.Email)}")">Ya tengo cuenta</a>
-                <a class="auth-btn auth-btn--secondary" href="@($"/register?email={Uri.EscapeDataString(_invitacion.Email)}")">Crear cuenta</a>
-            </div>
-        }
+        <div class="auth-form">
+            <p>@_mensaje</p>
+        </div>
     </div>
 </div>
 
 @code {
-    [Parameter] public string Token { get; set; } = string.Empty;
+    [Parameter]
+    public string Token { get; set; } = string.Empty;
 
-    private InvitacionUsuarioDto? _invitacion;
-    private bool _cargando = true;
+    private string _mensaje = "Validando invitación...";
 
-    protected override async Task OnParametersSetAsync()
+    protected override async Task OnInitializedAsync()
     {
-        _cargando = true;
-        _invitacion = await InvitacionesService.ObtenerInvitacionValidaPorTokenAsync(Token);
-        _cargando = false;
+        if (string.IsNullOrWhiteSpace(Token))
+        {
+            _mensaje = "La invitación no es válida.";
+            return;
+        }
+
+        var invitacion = await InvitacionesService.ObtenerInvitacionValidaPorTokenAsync(Token);
+
+        if (invitacion == null)
+        {
+            _mensaje = "La invitación ha caducado o ya ha sido utilizada.";
+            return;
+        }
+
+        var destino = $"/login?token={Uri.EscapeDataString(Token)}&email={Uri.EscapeDataString(invitacion.Email)}";
+        NavigationManager.NavigateTo(destino, forceLoad: true);
     }
 }

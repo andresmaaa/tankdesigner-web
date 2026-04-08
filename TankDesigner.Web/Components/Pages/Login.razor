@@ -1,5 +1,4 @@
 ﻿@page "/login"
-@using Microsoft.AspNetCore.WebUtilities
 @inject NavigationManager NavigationManager
 
 <PageTitle>Iniciar sesión</PageTitle>
@@ -18,20 +17,21 @@
             </div>
         }
 
-        @if (MostrarInvitacion())
+        @if (!string.IsNullOrWhiteSpace(ObtenerTokenInvitacion()))
         {
             <div class="auth-alert auth-alert--success">
-                Tienes una invitación pendiente. Al iniciar sesión se activará automáticamente.
+                Has accedido mediante una invitación. Inicia sesión con el correo invitado para aplicar el rol.
             </div>
         }
 
         <form method="post" action="/auth/login">
             <div class="auth-form">
                 <input type="hidden" name="returnUrl" value="@ObtenerReturnUrl()" />
+                <input type="hidden" name="token" value="@ObtenerTokenInvitacion()" />
 
                 <div class="auth-field">
                     <label for="email">Correo electrónico</label>
-                    <input id="email" name="email" class="auth-input" type="email" required value="@ObtenerEmail()" />
+                    <input id="email" name="email" class="auth-input" type="email" value="@ObtenerEmailInvitado()" required />
                 </div>
 
                 <div class="auth-field">
@@ -47,7 +47,7 @@
 
         <div class="auth-footer">
             ¿No tienes cuenta?
-            <a href="@ObtenerUrlRegistro()">Crear cuenta</a>
+            <a href="@ObtenerRutaRegistro()">Crear cuenta</a>
         </div>
     </div>
 </div>
@@ -55,19 +55,15 @@
 @code {
     private bool MostrarError()
     {
-        var query = ObtenerQuery();
+        var uri = new Uri(NavigationManager.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
         return query.ContainsKey("error");
-    }
-
-    private bool MostrarInvitacion()
-    {
-        var query = ObtenerQuery();
-        return query.ContainsKey("email");
     }
 
     private string ObtenerReturnUrl()
     {
-        var query = ObtenerQuery();
+        var uri = new Uri(NavigationManager.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
 
         if (query.TryGetValue("returnUrl", out var returnUrl) && !string.IsNullOrWhiteSpace(returnUrl))
             return returnUrl.ToString();
@@ -75,27 +71,36 @@
         return "/mis-proyectos";
     }
 
-    private string ObtenerEmail()
+    private string ObtenerTokenInvitacion()
     {
-        var query = ObtenerQuery();
+        var uri = new Uri(NavigationManager.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
 
-        if (query.TryGetValue("email", out var email) && !string.IsNullOrWhiteSpace(email))
+        if (query.TryGetValue("token", out var token))
+            return token.ToString();
+
+        return string.Empty;
+    }
+
+    private string ObtenerEmailInvitado()
+    {
+        var uri = new Uri(NavigationManager.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+
+        if (query.TryGetValue("email", out var email))
             return email.ToString();
 
         return string.Empty;
     }
 
-    private string ObtenerUrlRegistro()
+    private string ObtenerRutaRegistro()
     {
-        var email = ObtenerEmail();
-        return string.IsNullOrWhiteSpace(email)
-            ? "/register"
-            : $"/register?email={Uri.EscapeDataString(email)}";
-    }
+        var token = ObtenerTokenInvitacion();
+        var email = ObtenerEmailInvitado();
 
-    private Dictionary<string, Microsoft.Extensions.Primitives.StringValues> ObtenerQuery()
-    {
-        var uri = new Uri(NavigationManager.Uri);
-        return QueryHelpers.ParseQuery(uri.Query).ToDictionary(x => x.Key, x => x.Value);
+        if (!string.IsNullOrWhiteSpace(token))
+            return $"/register?token={Uri.EscapeDataString(token)}&email={Uri.EscapeDataString(email)}";
+
+        return "/register";
     }
 }

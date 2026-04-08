@@ -49,7 +49,10 @@ namespace TankDesigner.Web.Services
             _db.InvitacionesUsuario.Add(invitacion);
             await _db.SaveChangesAsync();
 
-            return new CrearInvitacionResultadoDto(true, "Invitación generada correctamente.", Mapear(invitacion));
+            return new CrearInvitacionResultadoDto(
+                true,
+                "Invitación generada correctamente.",
+                Mapear(invitacion));
         }
 
         public async Task<List<InvitacionUsuarioDto>> ObtenerInvitacionesPendientesAsync()
@@ -61,7 +64,6 @@ namespace TankDesigner.Web.Services
 
             return invitaciones.Select(Mapear).ToList();
         }
-
 
         public async Task<InvitacionUsuarioDto?> ObtenerInvitacionPendientePorEmailAsync(string? email)
         {
@@ -104,6 +106,44 @@ namespace TankDesigner.Web.Services
             if (invitacion is null)
                 return new AplicarInvitacionResultadoDto(false, false, null);
 
+            await AplicarRolSegunInvitacionAsync(usuario, invitacion);
+
+            invitacion.Usada = true;
+            await _db.SaveChangesAsync();
+
+            return new AplicarInvitacionResultadoDto(true, true, invitacion.RolAsignado);
+        }
+
+        public async Task<AplicarInvitacionResultadoDto> AplicarInvitacionPorTokenAsync(ApplicationUser usuario, string? token)
+        {
+            token = (token ?? string.Empty).Trim();
+
+            if (string.IsNullOrWhiteSpace(token))
+                return new AplicarInvitacionResultadoDto(false, false, null);
+
+            var emailUsuario = (usuario.Email ?? string.Empty).Trim().ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(emailUsuario))
+                return new AplicarInvitacionResultadoDto(false, false, null);
+
+            var invitacion = await _db.InvitacionesUsuario
+                .FirstOrDefaultAsync(i => i.Token == token && !i.Usada && i.FechaExpiracion > DateTime.UtcNow);
+
+            if (invitacion is null)
+                return new AplicarInvitacionResultadoDto(false, false, null);
+
+            if (!string.Equals(invitacion.Email, emailUsuario, StringComparison.OrdinalIgnoreCase))
+                return new AplicarInvitacionResultadoDto(true, false, null);
+
+            await AplicarRolSegunInvitacionAsync(usuario, invitacion);
+
+            invitacion.Usada = true;
+            await _db.SaveChangesAsync();
+
+            return new AplicarInvitacionResultadoDto(true, true, invitacion.RolAsignado);
+        }
+
+        private async Task AplicarRolSegunInvitacionAsync(ApplicationUser usuario, InvitacionUsuario invitacion)
+        {
             var rolesActuales = await _userManager.GetRolesAsync(usuario);
 
             if (!rolesActuales.Contains(invitacion.RolAsignado))
@@ -114,11 +154,6 @@ namespace TankDesigner.Web.Services
 
             if (await _userManager.IsInRoleAsync(usuario, RolesAplicacion.Usuario))
                 await _userManager.RemoveFromRoleAsync(usuario, RolesAplicacion.Usuario);
-
-            invitacion.Usada = true;
-            await _db.SaveChangesAsync();
-
-            return new AplicarInvitacionResultadoDto(true, true, invitacion.RolAsignado);
         }
 
         private static InvitacionUsuarioDto Mapear(InvitacionUsuario invitacion)
@@ -137,7 +172,14 @@ namespace TankDesigner.Web.Services
         }
     }
 
-    public record CrearInvitacionResultadoDto(bool Ok, string Mensaje, InvitacionUsuarioDto? Invitacion = null);
+    public record CrearInvitacionResultadoDto(bool Ok, string Mensaje, InvitacionUsuarioDto? Invitacion = null)
+    {
+        public string Token => Invitacion?.Token ?? string.Empty;
+        public string Email => Invitacion?.Email ?? string.Empty;
+        public string RolAsignado => Invitacion?.RolAsignado ?? string.Empty;
+        public DateTime? FechaExpiracion => Invitacion?.FechaExpiracion;
+    }
+
     public record AplicarInvitacionResultadoDto(bool Encontrada, bool Aplicada, string? RolAplicado);
 
     public class InvitacionUsuarioDto
