@@ -1030,7 +1030,7 @@
             }
 
             var token = invitacion.Token;
-            _enlaceInvitacionGenerado = $"{NavigationManager.BaseUri.TrimEnd('/')}/invitacion-acceso?token={Uri.EscapeDataString(token)}";
+            _enlaceInvitacionGenerado = $"{NavigationManager.BaseUri.TrimEnd('/')}/invitacion/{Uri.EscapeDataString(token)}";
             _mensaje = "Enlace de invitación generado correctamente.";
 
             _correoInvitacion = "";
