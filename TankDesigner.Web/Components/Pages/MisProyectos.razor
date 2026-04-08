@@ -1,10 +1,12 @@
 ﻿@page "/mis-proyectos"
+
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Identity
 @using Newtonsoft.Json
 @using TankDesigner.Core.Models
 @using TankDesigner.Web.Data
 @using TankDesigner.Web.Services
+
 @inject IJSRuntime JS
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject UserManager<ApplicationUser> UserManager
@@ -12,6 +14,7 @@
 @inject ProyectoState EstadoProyecto
 @inject NavigationManager NavigationManager
 @inject AdminService AdminService
+@inject InvitacionesService InvitacionesService
 
 <PageTitle>Mis proyectos</PageTitle>
 
@@ -185,9 +188,7 @@
                                 </div>
 
                                 <div class="project-score__bar">
-                                    <div class="project-score__bar-fill @score.ClaseEstado"
-                                         style="width:@($"{score.Porcentaje}%")">
-                                    </div>
+                                    <div class="project-score__bar-fill @score.ClaseEstado" style="width:@($"{score.Porcentaje}%")"></div>
                                 </div>
 
                                 <div class="project-score__meta">
@@ -330,6 +331,61 @@
                 </div>
             </div>
 
+            @if (_esSuperAdmin)
+            {
+                <div class="invite-panel">
+                    <div class="invite-panel__header">
+                        <div>
+                            <div class="gestion-kicker">Invitaciones</div>
+                            <h3>Crear enlace de invitación</h3>
+                            <p>
+                                Genera un enlace para enviarlo manualmente por WhatsApp o correo.
+                                Cuando el invitado entre con ese correo, se le aplicará el rol indicado.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="invite-grid">
+                        <div class="invite-field">
+                            <label for="correoInvitacion">Correo del invitado</label>
+                            <input id="correoInvitacion"
+                                   class="invite-input"
+                                   type="email"
+                                   placeholder="correo@empresa.com"
+                                   @bind="_correoInvitacion" />
+                        </div>
+
+                        <div class="invite-field">
+                            <label for="rolInvitacion">Rol invitado</label>
+                            <select id="rolInvitacion" class="invite-input" @bind="_rolInvitacion">
+                                <option value="Admin">Admin</option>
+                                <option value="SuperAdmin">SuperAdmin</option>
+                            </select>
+                        </div>
+
+                        <div class="invite-actions">
+                            <button type="button" class="btn-pro btn-pro--primary" @onclick="GenerarInvitacionAsync">
+                                Generar enlace
+                            </button>
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(_enlaceInvitacionGenerado))
+                    {
+                        <div class="invite-result">
+                            <div class="invite-result__label">Enlace generado</div>
+                            <div class="invite-result__box">@_enlaceInvitacionGenerado</div>
+
+                            <div class="invite-result__actions">
+                                <button type="button" class="btn-pro btn-pro--dark" @onclick="CopiarEnlaceInvitacionAsync">
+                                    Copiar enlace
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+
             <div class="search-toolbar">
                 <div class="search-box">
                     <span class="search-box__icon">⌕</span>
@@ -381,12 +437,18 @@
                                     <td>@usuario.Email</td>
                                     <td>@(string.IsNullOrWhiteSpace(usuario.NombreCompleto) ? "—" : usuario.NombreCompleto)</td>
                                     <td>
-                                        <span class="role-badge">
-                                            @(usuario.EsSuperAdmin ? "SuperAdmin" : usuario.EsAdmin ? "Admin" : "Usuario")
+                                        <span class="@ObtenerClaseRol(usuario)">
+                                            @ObtenerTextoRol(usuario)
                                         </span>
                                     </td>
                                     <td class="table-actions">
-                                        @if (!usuario.EsAdmin)
+                                        @if (usuario.EsSuperAdmin)
+                                        {
+                                            <button type="button" class="btn-inline btn-inline--disabled" disabled>
+                                                SuperAdmin protegido
+                                            </button>
+                                        }
+                                        else if (!usuario.EsAdmin)
                                         {
                                             <button type="button" class="btn-inline btn-inline--primary" @onclick="() => HacerAdmin(usuario.Id)">
                                                 Hacer admin
@@ -420,12 +482,9 @@
         margin-top: 4px;
         padding: 16px;
         border-radius: 18px;
-        background:
-            linear-gradient(180deg, rgba(255,255,255,0.86), rgba(248,250,252,0.98));
+        background: linear-gradient(180deg, rgba(255,255,255,0.86), rgba(248,250,252,0.98));
         border: 1px solid rgba(148, 163, 184, 0.18);
-        box-shadow:
-            0 8px 24px rgba(15, 23, 42, 0.06),
-            inset 0 1px 0 rgba(255,255,255,0.7);
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06), inset 0 1px 0 rgba(255,255,255,0.7);
     }
 
     .project-score__head {
@@ -465,23 +524,23 @@
         border: 1px solid transparent;
     }
 
-    .score-status.score--incompleto {
-        background: rgba(239, 68, 68, 0.10);
-        color: #b91c1c;
-        border-color: rgba(239, 68, 68, 0.18);
-    }
+        .score-status.score--incompleto {
+            background: rgba(239, 68, 68, 0.10);
+            color: #b91c1c;
+            border-color: rgba(239, 68, 68, 0.18);
+        }
 
-    .score-status.score--revisar {
-        background: rgba(245, 158, 11, 0.12);
-        color: #b45309;
-        border-color: rgba(245, 158, 11, 0.22);
-    }
+        .score-status.score--revisar {
+            background: rgba(245, 158, 11, 0.12);
+            color: #b45309;
+            border-color: rgba(245, 158, 11, 0.22);
+        }
 
-    .score-status.score--listo {
-        background: rgba(16, 185, 129, 0.12);
-        color: #047857;
-        border-color: rgba(16, 185, 129, 0.22);
-    }
+        .score-status.score--listo {
+            background: rgba(16, 185, 129, 0.12);
+            color: #047857;
+            border-color: rgba(16, 185, 129, 0.22);
+        }
 
     .project-score__bar {
         width: 100%;
@@ -498,17 +557,17 @@
         transition: width .35s ease;
     }
 
-    .project-score__bar-fill.score--incompleto {
-        background: linear-gradient(90deg, #f87171, #ef4444);
-    }
+        .project-score__bar-fill.score--incompleto {
+            background: linear-gradient(90deg, #f87171, #ef4444);
+        }
 
-    .project-score__bar-fill.score--revisar {
-        background: linear-gradient(90deg, #fbbf24, #f59e0b);
-    }
+        .project-score__bar-fill.score--revisar {
+            background: linear-gradient(90deg, #fbbf24, #f59e0b);
+        }
 
-    .project-score__bar-fill.score--listo {
-        background: linear-gradient(90deg, #34d399, #10b981);
-    }
+        .project-score__bar-fill.score--listo {
+            background: linear-gradient(90deg, #34d399, #10b981);
+        }
 
     .project-score__meta {
         margin-top: 10px;
@@ -536,11 +595,157 @@
         line-height: 1.2;
     }
 
-    .project-score__tip::before {
-        content: "•";
-        color: #6366f1;
+        .project-score__tip::before {
+            content: "•";
+            color: #6366f1;
+            font-size: 14px;
+            line-height: 1;
+        }
+
+    .invite-panel {
+        margin-bottom: 20px;
+        padding: 20px;
+        border-radius: 22px;
+        border: 1px solid rgba(148, 163, 184, 0.20);
+        background: linear-gradient(180deg, rgba(255,255,255,0.94), rgba(248,250,252,0.98));
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);
+    }
+
+    .invite-panel__header h3 {
+        margin: 4px 0 8px 0;
+        font-size: 22px;
+        font-weight: 800;
+        color: #0f172a;
+    }
+
+    .invite-panel__header p {
+        margin: 0;
+        color: #475569;
+        line-height: 1.55;
+    }
+
+    .invite-grid {
+        display: grid;
+        grid-template-columns: 1.4fr 0.8fr auto;
+        gap: 14px;
+        align-items: end;
+        margin-top: 18px;
+    }
+
+    .invite-field {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+        .invite-field label {
+            font-size: 13px;
+            font-weight: 700;
+            color: #334155;
+        }
+
+    .invite-input {
+        width: 100%;
+        min-height: 46px;
+        padding: 0 14px;
+        border-radius: 14px;
+        border: 1px solid #cbd5e1;
+        background: #fff;
         font-size: 14px;
-        line-height: 1;
+        color: #0f172a;
+        outline: none;
+        transition: border-color .2s ease, box-shadow .2s ease;
+    }
+
+        .invite-input:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.10);
+        }
+
+    .invite-actions {
+        display: flex;
+        align-items: end;
+    }
+
+    .invite-result {
+        margin-top: 18px;
+        padding: 16px;
+        border-radius: 18px;
+        background: rgba(15, 23, 42, 0.035);
+        border: 1px solid rgba(148, 163, 184, 0.18);
+    }
+
+    .invite-result__label {
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        color: #64748b;
+        margin-bottom: 10px;
+    }
+
+    .invite-result__box {
+        padding: 14px;
+        border-radius: 14px;
+        background: #ffffff;
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        color: #0f172a;
+        font-size: 13px;
+        line-height: 1.5;
+        word-break: break-all;
+    }
+
+    .invite-result__actions {
+        margin-top: 12px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .role-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 110px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 800;
+        border: 1px solid transparent;
+        white-space: nowrap;
+    }
+
+    .role-badge--usuario {
+        background: rgba(100, 116, 139, 0.12);
+        color: #475569;
+        border-color: rgba(100, 116, 139, 0.18);
+    }
+
+    .role-badge--admin {
+        background: rgba(16, 185, 129, 0.12);
+        color: #047857;
+        border-color: rgba(16, 185, 129, 0.20);
+    }
+
+    .role-badge--superadmin {
+        background: rgba(37, 99, 235, 0.12);
+        color: #1d4ed8;
+        border-color: rgba(37, 99, 235, 0.20);
+    }
+
+    .btn-inline--disabled {
+        opacity: .65;
+        cursor: not-allowed;
+    }
+
+    @@media (max-width: 992px) {
+        .invite-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .invite-actions {
+            align-items: stretch;
+        }
     }
 
     @@media (max-width: 768px) {
@@ -562,97 +767,18 @@
 
     private string _mensaje = "";
     private string _modoActivo = "mis";
+
     private bool _esAdmin;
+    private bool _esSuperAdmin;
     private ApplicationUser? _usuarioActual;
 
     private string _busquedaMisProyectos = "";
     private string _busquedaTodosLosProyectos = "";
     private string _busquedaUsuarios = "";
 
-    private async Task DuplicarMiProyecto(int id)
-    {
-        if (_usuarioActual == null)
-            return;
-
-        var nuevoId = await ProyectoPersistenciaService.DuplicarAsync(_usuarioActual.Id, id);
-
-        if (nuevoId == null)
-        {
-            _mensaje = "No se pudo duplicar el proyecto.";
-            return;
-        }
-
-        _mensaje = "Proyecto duplicado correctamente.";
-        await CargarTodoAsync();
-        _modoActivo = "mis";
-    }
-
-    private EstadoProyectoViewModel ObtenerEstadoProyecto(ScoreTecnicoViewModel score)
-    {
-        if (score.Porcentaje >= 100)
-        {
-            return new EstadoProyectoViewModel
-            {
-                Texto = "Listo para informe",
-                ClaseCss = "project-status--ok"
-            };
-        }
-
-        if (score.Porcentaje >= 40)
-        {
-            return new EstadoProyectoViewModel
-            {
-                Texto = "En progreso",
-                ClaseCss = "project-status--progress"
-            };
-        }
-
-        return new EstadoProyectoViewModel
-        {
-            Texto = "Borrador",
-            ClaseCss = "project-status--draft"
-        };
-    }
-
-    private class EstadoProyectoViewModel
-    {
-        public string Texto { get; set; } = "";
-        public string ClaseCss { get; set; } = "";
-    }
-    private async Task ConfirmarEliminarMiProyecto(int id)
-    {
-        var confirmar = await JS.InvokeAsync<bool>("confirm", "¿Seguro que quieres borrar este proyecto?");
-
-        if (!confirmar)
-            return;
-
-        await EliminarMiProyecto(id);
-    }
-
-    private async Task ConfirmarEliminarProyectoGlobal(int id)
-    {
-        var confirmar = await JS.InvokeAsync<bool>("confirm", "¿Seguro que quieres borrar este proyecto?");
-
-        if (!confirmar)
-            return;
-
-        await EliminarProyectoGlobal(id);
-    }
-    private IEnumerable<ProyectoEntidad> MisProyectosFiltrados =>
-        _misProyectos.Where(p =>
-            CoincideBusqueda(_busquedaMisProyectos, p.Nombre, p.Cliente, p.Normativa, p.Fabricante));
-
-    private IEnumerable<ProyectoAdminDto> TodosLosProyectosFiltrados =>
-        _todosLosProyectos.Where(p =>
-            CoincideBusqueda(_busquedaTodosLosProyectos, p.Nombre, p.Cliente, p.Normativa, p.Fabricante, p.EmailUsuario));
-
-    private IEnumerable<UsuarioAdminDto> UsuariosFiltrados =>
-        _usuarios.Where(u =>
-            CoincideBusqueda(
-                _busquedaUsuarios,
-                u.Email,
-                u.NombreCompleto,
-                u.EsSuperAdmin ? "SuperAdmin" : u.EsAdmin ? "Admin" : "Usuario"));
+    private string _correoInvitacion = "";
+    private string _rolInvitacion = "Admin";
+    private string _enlaceInvitacionGenerado = "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -671,6 +797,7 @@
         }
 
         _esAdmin = await UserManager.IsInRoleAsync(_usuarioActual, RolesAplicacion.Admin);
+        _esSuperAdmin = await UserManager.IsInRoleAsync(_usuarioActual, RolesAplicacion.SuperAdmin);
 
         _misProyectos = await ProyectoPersistenciaService.ObtenerListaAsync(_usuarioActual.Id);
 
@@ -679,7 +806,28 @@
             _todosLosProyectos = await AdminService.ObtenerTodosLosProyectosAsync();
             _usuarios = await AdminService.ObtenerUsuariosAsync();
         }
+        else
+        {
+            _todosLosProyectos = new();
+            _usuarios = new();
+        }
     }
+
+    private IEnumerable<ProyectoEntidad> MisProyectosFiltrados =>
+        _misProyectos.Where(p =>
+            CoincideBusqueda(_busquedaMisProyectos, p.Nombre, p.Cliente, p.Normativa, p.Fabricante));
+
+    private IEnumerable<ProyectoAdminDto> TodosLosProyectosFiltrados =>
+        _todosLosProyectos.Where(p =>
+            CoincideBusqueda(_busquedaTodosLosProyectos, p.Nombre, p.Cliente, p.Normativa, p.Fabricante, p.EmailUsuario));
+
+    private IEnumerable<UsuarioAdminDto> UsuariosFiltrados =>
+        _usuarios.Where(u =>
+            CoincideBusqueda(
+                _busquedaUsuarios,
+                u.Email,
+                u.NombreCompleto,
+                u.EsSuperAdmin ? "SuperAdmin" : u.EsAdmin ? "Admin" : "Usuario"));
 
     private static bool CoincideBusqueda(string textoBusqueda, params string?[] valores)
     {
@@ -704,9 +852,7 @@
 
     private string ClaseModo(string modo)
     {
-        return _modoActivo == modo
-            ? "tab-btn tab-btn--active"
-            : "tab-btn";
+        return _modoActivo == modo ? "tab-btn tab-btn--active" : "tab-btn";
     }
 
     private void LimpiarBusquedaMisProyectos() => _busquedaMisProyectos = "";
@@ -745,6 +891,42 @@
         }
 
         NavigationManager.NavigateTo("/proyecto");
+    }
+
+    private async Task DuplicarMiProyecto(int id)
+    {
+        if (_usuarioActual == null)
+            return;
+
+        var nuevoId = await ProyectoPersistenciaService.DuplicarAsync(_usuarioActual.Id, id);
+
+        if (nuevoId == null)
+        {
+            _mensaje = "No se pudo duplicar el proyecto.";
+            return;
+        }
+
+        _mensaje = "Proyecto duplicado correctamente.";
+        await CargarTodoAsync();
+        _modoActivo = "mis";
+    }
+
+    private async Task ConfirmarEliminarMiProyecto(int id)
+    {
+        var confirmar = await JS.InvokeAsync<bool>("confirm", "¿Seguro que quieres borrar este proyecto?");
+        if (!confirmar)
+            return;
+
+        await EliminarMiProyecto(id);
+    }
+
+    private async Task ConfirmarEliminarProyectoGlobal(int id)
+    {
+        var confirmar = await JS.InvokeAsync<bool>("confirm", "¿Seguro que quieres borrar este proyecto?");
+        if (!confirmar)
+            return;
+
+        await EliminarProyectoGlobal(id);
     }
 
     private async Task EliminarMiProyecto(int id)
@@ -792,6 +974,7 @@
         var ok = await AdminService.HacerAdminAsync(userId, authState.User);
 
         _mensaje = ok ? "Usuario actualizado a administrador." : "No se pudo actualizar el usuario.";
+
         await CargarTodoAsync();
         _modoActivo = "usuarios";
     }
@@ -805,8 +988,123 @@
         var ok = await AdminService.QuitarAdminAsync(userId, authState.User);
 
         _mensaje = ok ? "Rol de administrador eliminado correctamente." : "No se pudo actualizar el usuario.";
+
         await CargarTodoAsync();
         _modoActivo = "usuarios";
+    }
+
+    private async Task GenerarInvitacionAsync()
+    {
+        if (!_esSuperAdmin)
+            return;
+
+        _mensaje = "";
+        _enlaceInvitacionGenerado = "";
+
+        if (string.IsNullOrWhiteSpace(_correoInvitacion))
+        {
+            _mensaje = "Debes indicar un correo para la invitación.";
+            return;
+        }
+
+        if (_rolInvitacion != RolesAplicacion.Admin && _rolInvitacion != RolesAplicacion.SuperAdmin)
+        {
+            _mensaje = "El rol seleccionado no es válido.";
+            return;
+        }
+
+        try
+        {
+            var correoNormalizado = _correoInvitacion.Trim();
+
+            // Ajusta esta llamada solo si tu servicio tiene otro nombre o firma.
+            var invitacion = await InvitacionesService.CrearInvitacionAsync(
+                correoNormalizado,
+                _rolInvitacion,
+                _usuarioActual!.Id);
+
+            if (invitacion == null)
+            {
+                _mensaje = "No se pudo generar la invitación.";
+                return;
+            }
+
+            var token = invitacion.Token;
+            _enlaceInvitacionGenerado = $"{NavigationManager.BaseUri.TrimEnd('/')}/invitacion-acceso?token={Uri.EscapeDataString(token)}";
+            _mensaje = "Enlace de invitación generado correctamente.";
+
+            _correoInvitacion = "";
+            _rolInvitacion = RolesAplicacion.Admin;
+        }
+        catch
+        {
+            _mensaje = "Se produjo un error al generar la invitación.";
+        }
+    }
+
+    private async Task CopiarEnlaceInvitacionAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_enlaceInvitacionGenerado))
+            return;
+
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", _enlaceInvitacionGenerado);
+            _mensaje = "Enlace copiado al portapapeles.";
+        }
+        catch
+        {
+            _mensaje = "No se pudo copiar el enlace automáticamente.";
+        }
+    }
+
+    private string ObtenerTextoRol(UsuarioAdminDto usuario)
+    {
+        if (usuario.EsSuperAdmin)
+            return "SuperAdmin";
+
+        if (usuario.EsAdmin)
+            return "Admin";
+
+        return "Usuario";
+    }
+
+    private string ObtenerClaseRol(UsuarioAdminDto usuario)
+    {
+        if (usuario.EsSuperAdmin)
+            return "role-badge role-badge--superadmin";
+
+        if (usuario.EsAdmin)
+            return "role-badge role-badge--admin";
+
+        return "role-badge role-badge--usuario";
+    }
+
+    private EstadoProyectoViewModel ObtenerEstadoProyecto(ScoreTecnicoViewModel score)
+    {
+        if (score.Porcentaje >= 100)
+        {
+            return new EstadoProyectoViewModel
+            {
+                Texto = "Listo para informe",
+                ClaseCss = "project-status--ok"
+            };
+        }
+
+        if (score.Porcentaje >= 40)
+        {
+            return new EstadoProyectoViewModel
+            {
+                Texto = "En progreso",
+                ClaseCss = "project-status--progress"
+            };
+        }
+
+        return new EstadoProyectoViewModel
+        {
+            Texto = "Borrador",
+            ClaseCss = "project-status--draft"
+        };
     }
 
     private ScoreTecnicoViewModel CalcularScoreTecnico(ProyectoEntidad entidad)
@@ -866,7 +1164,6 @@
         }
 
         var porcentaje = bloquesCompletos * 20;
-
         var estadoTexto = "Incompleto";
         var claseEstado = "score--incompleto";
 
@@ -1001,6 +1298,12 @@
                || resultado.TieneConfiguracion
                || resultado.TieneTornilloBase
                || resultado.TieneSeleccionRealCalculada;
+    }
+
+    private class EstadoProyectoViewModel
+    {
+        public string Texto { get; set; } = "";
+        public string ClaseCss { get; set; } = "";
     }
 
     private class ScoreTecnicoViewModel
