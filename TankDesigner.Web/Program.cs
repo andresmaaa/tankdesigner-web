@@ -129,7 +129,6 @@ app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
-// Inicializo roles y convierto en SuperAdmin al usuario indicado en appsettings
 await IdentitySeedData.InicializarAsync(app.Services, app.Configuration);
 
 app.Run();
