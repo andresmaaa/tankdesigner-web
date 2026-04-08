@@ -1,7 +1,11 @@
 ﻿@page "/invitacion/{Token}"
+@using Microsoft.AspNetCore.Identity
+@using TankDesigner.Web.Data
 @using TankDesigner.Web.Services
+
 @inject InvitacionesService InvitacionesService
 @inject NavigationManager NavigationManager
+@inject UserManager<ApplicationUser> UserManager
 
 <PageTitle>Invitación</PageTitle>
 
@@ -40,7 +44,28 @@
             return;
         }
 
-        var destino = $"/login?token={Uri.EscapeDataString(Token)}&email={Uri.EscapeDataString(invitacion.Email)}";
-        NavigationManager.NavigateTo(destino, forceLoad: true);
+        var usuarioExistente = await UserManager.FindByEmailAsync(invitacion.Email);
+
+        var tokenEscapado = Uri.EscapeDataString(Token);
+        var emailEscapado = Uri.EscapeDataString(invitacion.Email);
+
+        if (usuarioExistente is not null)
+        {
+            var tienePassword = await UserManager.HasPasswordAsync(usuarioExistente);
+
+            if (tienePassword)
+            {
+                var destinoLogin = $"/login?token={tokenEscapado}&email={emailEscapado}";
+                NavigationManager.NavigateTo(destinoLogin, forceLoad: true);
+                return;
+            }
+
+            var destinoRegistroExistente = $"/register?token={tokenEscapado}&email={emailEscapado}";
+            NavigationManager.NavigateTo(destinoRegistroExistente, forceLoad: true);
+            return;
+        }
+
+        var destinoRegistro = $"/register?token={tokenEscapado}&email={emailEscapado}";
+        NavigationManager.NavigateTo(destinoRegistro, forceLoad: true);
     }
 }

@@ -41,7 +41,7 @@
 
                 <div class="auth-field">
                     <label for="email">Correo electrónico</label>
-                    <InputText id="email" class="auth-input" @bind-Value="_modelo.Email" />
+                    <InputText id="email" class="auth-input" @bind-Value="_modelo.Email" disabled="@TieneInvitacion()" />
                 </div>
 
                 <div class="auth-field">
@@ -93,13 +93,73 @@
 
         try
         {
-            var email = _modelo.Email.Trim();
-            var nombreCompleto = _modelo.NombreCompleto.Trim();
+            var email = (_modelo.Email ?? string.Empty).Trim();
+            var nombreCompleto = (_modelo.NombreCompleto ?? string.Empty).Trim();
+            var token = ObtenerTokenInvitacion();
 
             var usuarioExistente = await UserManager.FindByEmailAsync(email);
+
             if (usuarioExistente != null)
             {
-                _mensajeError = "Ya existe una cuenta registrada con ese correo electrónico.";
+                var tienePassword = await UserManager.HasPasswordAsync(usuarioExistente);
+
+                if (tienePassword)
+                {
+                    _mensajeError = "Ya existe una cuenta registrada con ese correo electrónico.";
+                    return;
+                }
+
+                usuarioExistente.UserName = email;
+                usuarioExistente.Email = email;
+                usuarioExistente.EmailConfirmed = true;
+                usuarioExistente.NombreCompleto = nombreCompleto;
+                usuarioExistente.TelefonoContacto ??= string.Empty;
+                usuarioExistente.Cargo ??= string.Empty;
+                usuarioExistente.EmpresaNombre ??= string.Empty;
+                usuarioExistente.EmpresaDireccion ??= string.Empty;
+                usuarioExistente.EmpresaCiudad ??= string.Empty;
+                usuarioExistente.EmpresaProvincia ??= string.Empty;
+                usuarioExistente.EmpresaCodigoPostal ??= string.Empty;
+                usuarioExistente.EmpresaPais ??= string.Empty;
+                usuarioExistente.EmpresaWeb ??= string.Empty;
+                usuarioExistente.EmpresaIdentificacionFiscal ??= string.Empty;
+
+                var resultadoUpdate = await UserManager.UpdateAsync(usuarioExistente);
+                if (!resultadoUpdate.Succeeded)
+                {
+                    _mensajeError = string.Join(" ", resultadoUpdate.Errors.Select(e => e.Description));
+                    return;
+                }
+
+                var resultadoPassword = await UserManager.AddPasswordAsync(usuarioExistente, _modelo.Password);
+                if (!resultadoPassword.Succeeded)
+                {
+                    _mensajeError = string.Join(" ", resultadoPassword.Errors.Select(e => e.Description));
+                    return;
+                }
+
+                var rolesActuales = await UserManager.GetRolesAsync(usuarioExistente);
+                if (!rolesActuales.Contains(RolesAplicacion.Usuario))
+                {
+                    var resultadoRolExistente = await UserManager.AddToRoleAsync(usuarioExistente, RolesAplicacion.Usuario);
+                    if (!resultadoRolExistente.Succeeded)
+                    {
+                        _mensajeError = "La cuenta existe, pero no se pudo asignar el rol Usuario.";
+                        return;
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(token))
+                    await InvitacionesService.AplicarInvitacionPorTokenAsync(usuarioExistente, token);
+                else
+                    await InvitacionesService.AplicarInvitacionPendienteAsync(usuarioExistente);
+
+                await SignInManager.SignInAsync(usuarioExistente, isPersistent: true);
+
+                _mensajeExito = "Cuenta activada correctamente. Sesión iniciada.";
+
+                await Task.Delay(300);
+                NavigationManager.NavigateTo("/mis-proyectos", forceLoad: true);
                 return;
             }
 
@@ -137,8 +197,6 @@
                 return;
             }
 
-            var token = ObtenerTokenInvitacion();
-
             if (!string.IsNullOrWhiteSpace(token))
                 await InvitacionesService.AplicarInvitacionPorTokenAsync(usuario, token);
             else
@@ -159,6 +217,11 @@
         {
             _procesando = false;
         }
+    }
+
+    private bool TieneInvitacion()
+    {
+        return !string.IsNullOrWhiteSpace(ObtenerTokenInvitacion());
     }
 
     private string ObtenerTokenInvitacion()
