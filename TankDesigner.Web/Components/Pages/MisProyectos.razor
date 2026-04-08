@@ -381,8 +381,8 @@
                                     <td>@usuario.Email</td>
                                     <td>@(string.IsNullOrWhiteSpace(usuario.NombreCompleto) ? "—" : usuario.NombreCompleto)</td>
                                     <td>
-                                        <span class="pill @(usuario.EsAdmin ? "pill--admin" : "pill--user")">
-                                            @(usuario.EsAdmin ? "Admin" : "Usuario")
+                                        <span class="role-badge">
+                                            @(usuario.EsSuperAdmin ? "SuperAdmin" : usuario.EsAdmin ? "Admin" : "Usuario")
                                         </span>
                                     </td>
                                     <td class="table-actions">
@@ -648,7 +648,11 @@
 
     private IEnumerable<UsuarioAdminDto> UsuariosFiltrados =>
         _usuarios.Where(u =>
-            CoincideBusqueda(_busquedaUsuarios, u.Email, u.NombreCompleto, u.EsAdmin ? "Admin" : "Usuario"));
+            CoincideBusqueda(
+                _busquedaUsuarios,
+                u.Email,
+                u.NombreCompleto,
+                u.EsSuperAdmin ? "SuperAdmin" : u.EsAdmin ? "Admin" : "Usuario"));
 
     protected override async Task OnInitializedAsync()
     {
