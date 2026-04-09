@@ -11,7 +11,7 @@ using TankDesigner.Web.Services;
 using TankDesigner.Web.Services.Ai;
 
 var builder = WebApplication.CreateBuilder(args);
-
+builder.Services.AddScoped<EmailService>();
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
