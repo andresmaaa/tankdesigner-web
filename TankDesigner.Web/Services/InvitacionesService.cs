@@ -56,26 +56,10 @@ namespace TankDesigner.Web.Services
             await _db.SaveChangesAsync();
 
             var dto = Mapear(invitacion);
-            var enlaceInvitacion = ConstruirEnlaceInvitacion(dto.Token, dto.Email);
-
-            try
-            {
-                await _emailService.EnviarEmailAsync(
-                    dto.Email,
-                    "Invitación a Tank Structural Designer",
-                    ConstruirHtmlInvitacion(dto.Email, dto.RolAsignado, enlaceInvitacion, dto.FechaExpiracion));
-            }
-            catch
-            {
-                return new CrearInvitacionResultadoDto(
-                    true,
-                    "Invitación generada correctamente, pero no se pudo enviar el email. Puedes copiar el enlace manualmente.",
-                    dto);
-            }
 
             return new CrearInvitacionResultadoDto(
                 true,
-                "Invitación generada y enviada correctamente por email.",
+                "Invitación generada correctamente.",
                 dto);
         }
 
