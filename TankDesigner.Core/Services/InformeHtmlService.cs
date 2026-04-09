@@ -484,7 +484,9 @@ namespace TankDesigner.Core.Services
             }
 
             double precioJuegoTornillo = ObtenerPrecioJuegoTornilloBaseReal();
-            if (_resultado != null && _resultado.TieneTornilloBase && !string.IsNullOrWhiteSpace(_resultado.NombreTornilloBase) && _resultado.DiametroTornilloBase > 0 && precioJuegoTornillo > 0)
+            if (_resultado != null
+                && (!string.IsNullOrWhiteSpace(_resultado.NombreTornilloBase) || _resultado.DiametroTornilloBase > 0)
+                && precioJuegoTornillo > 0)
             {
                 int totalTornillos = 0;
                 if (_resultado.Anillos != null && _resultado.Anillos.Count > 0)

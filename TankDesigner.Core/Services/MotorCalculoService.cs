@@ -230,7 +230,7 @@ namespace TankDesigner.Core.Services
             if (resultado == null)
                 return;
 
-            if (resultado.TieneSeleccionRealCalculada)
+            if (resultado.TieneTornilloBase && !string.IsNullOrWhiteSpace(resultado.NombreTornilloBase) && resultado.DiametroTornilloBase > 0)
                 return;
 
             var calculoTornilleriaService = new CalculoTornilleriaService();

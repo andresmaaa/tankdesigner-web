@@ -1,6 +1,8 @@
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Infrastructure;
+using System.IO;
 using TankDesigner.Core.Services;
 using TankDesigner.Infrastructure.Services;
 using TankDesigner.Web.Components;
@@ -10,7 +12,6 @@ using TankDesigner.Web.Services.Ai;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddScoped<InvitacionesService>();
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
@@ -39,6 +40,13 @@ builder.Services
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
+var keysPath = Path.Combine(builder.Environment.ContentRootPath, "App_Data", "DataProtectionKeys");
+Directory.CreateDirectory(keysPath);
+
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(keysPath))
+    .SetApplicationName("TankDesigner");
+
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.Cookie.Name = "TankDesigner.Auth";
@@ -49,6 +57,8 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.SlidingExpiration = true;
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
 });
 
 builder.Services.AddAuthorizationCore();
@@ -103,6 +113,14 @@ app.MapPost("/auth/login", async (
     var password = form["password"].ToString();
     var returnUrl = form["returnUrl"].ToString();
 
+    bool rememberMe = false;
+    var rememberRaw = form["rememberMe"].ToString();
+    if (!string.IsNullOrWhiteSpace(rememberRaw))
+    {
+        rememberMe = rememberRaw.Equals("true", StringComparison.OrdinalIgnoreCase)
+                     || rememberRaw.Equals("on", StringComparison.OrdinalIgnoreCase);
+    }
+
     if (string.IsNullOrWhiteSpace(returnUrl))
         returnUrl = "/mis-proyectos";
 
@@ -112,7 +130,7 @@ app.MapPost("/auth/login", async (
     var result = await signInManager.PasswordSignInAsync(
         email,
         password,
-        isPersistent: true,
+        isPersistent: rememberMe,
         lockoutOnFailure: false);
 
     if (result.Succeeded)
