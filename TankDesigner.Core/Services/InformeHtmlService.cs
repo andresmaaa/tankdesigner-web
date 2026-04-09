@@ -572,8 +572,7 @@ namespace TankDesigner.Core.Services
                             NumeroAnillo = anillo.NumeroAnillo,
                             Espesor = espesor,
                             Altura = altura,
-                            Configuracion = TextoSeguroSinInventar(anillo.ConfiguracionAplicada),
-                            Tornillo = TextoSeguroSinInventar(anillo.TornilloAplicado)
+                            Configuracion = TextoSeguroSinInventar(anillo.ConfiguracionAplicada)
                         };
                     })
                     .Where(x => x.Espesor > 0)
@@ -581,8 +580,7 @@ namespace TankDesigner.Core.Services
                     {
                         Espesor = Math.Round(x.Espesor, 3),
                         Altura = Math.Round(x.Altura, 3),
-                        Configuracion = x.Configuracion,
-                        Tornillo = x.Tornillo
+                        Configuracion = x.Configuracion
                     })
                     .OrderBy(g => g.Min(x => x.NumeroAnillo))
                     .ToList();
@@ -593,7 +591,7 @@ namespace TankDesigner.Core.Services
                     if (precioUnitario <= 0)
                         continue;
 
-                    int cantidadTotal = grupo.Count() * Math.Max(1, chapasPorAnillo);
+                    double cantidadTotal = grupo.Count() * Math.Max(1, chapasPorAnillo);
 
                     string anillosTexto = string.Join(", ", grupo
                         .Select(x => x.NumeroAnillo)
@@ -606,13 +604,7 @@ namespace TankDesigner.Core.Services
                         $" - Espesor {Formato(grupo.Key.Espesor, "0.###")} mm" +
                         $" - Config. {(string.IsNullOrWhiteSpace(grupo.Key.Configuracion) ? "—" : grupo.Key.Configuracion)}";
 
-                    lineas.Add(new LineaPresupuestoRow
-                    {
-                        Cantidad = cantidadTotal,
-                        Descripcion = descripcion,
-                        PrecioUnitario = precioUnitario,
-                        Precio = cantidadTotal * precioUnitario
-                    });
+                    AgregarLineaSiValida(lineas, cantidadTotal, descripcion, precioUnitario);
                 }
             }
 
@@ -647,14 +639,11 @@ namespace TankDesigner.Core.Services
 
                 if (totalTornillos > 0)
                 {
-                    lineas.Add(new LineaPresupuestoRow
-                    {
-                        Cantidad = totalTornillos,
-                        Descripcion =
-                            $"Juego tornillo-tuerca-arandela - {TextoSeguroSinInventar(_resultado.NombreTornilloBase)} - Ø {Formato(_resultado.DiametroTornilloBase, "0.###")} mm",
-                        PrecioUnitario = precioJuegoTornillo,
-                        Precio = totalTornillos * precioJuegoTornillo
-                    });
+                    AgregarLineaSiValida(
+                        lineas,
+                        totalTornillos,
+                        $"Juego tornillo-tuerca-arandela - {TextoSeguroSinInventar(_resultado.NombreTornilloBase)} - Ø {Formato(_resultado.DiametroTornilloBase, "0.###")} mm",
+                        precioJuegoTornillo);
                 }
             }
 
@@ -663,17 +652,14 @@ namespace TankDesigner.Core.Services
                 && !string.IsNullOrWhiteSpace(_resultado.NombreRigidizadorBase)
                 && _resultado.PrecioRigidizadorBase > 0)
             {
-                lineas.Add(new LineaPresupuestoRow
-                {
-                    Cantidad = 1,
-                    Descripcion =
-                        $"Rigidizador base - {_resultado.NombreRigidizadorBase} - h {Formato(_resultado.AlturaRigidizadorBase, "0.###")} mm - e {Formato(_resultado.EspesorRigidizadorBase, "0.###")} mm",
-                    PrecioUnitario = _resultado.PrecioRigidizadorBase,
-                    Precio = _resultado.PrecioRigidizadorBase
-                });
+                AgregarLineaSiValida(
+                    lineas,
+                    1,
+                    $"Rigidizador base - {_resultado.NombreRigidizadorBase} - h {Formato(_resultado.AlturaRigidizadorBase, "0.###")} mm - e {Formato(_resultado.EspesorRigidizadorBase, "0.###")} mm",
+                    _resultado.PrecioRigidizadorBase);
             }
 
-            // 4) STARTER RING
+            // 4) STARTER RING + SHEAR KEYS
             if (_resultado.TieneStarterRing && _resultado.AlturaStarterRing > 0)
             {
                 int cantidadStarterRing = Math.Max(1, chapasPorAnillo);
@@ -681,14 +667,11 @@ namespace TankDesigner.Core.Services
 
                 if (precioStarterRing > 0)
                 {
-                    lineas.Add(new LineaPresupuestoRow
-                    {
-                        Cantidad = cantidadStarterRing,
-                        Descripcion =
-                            $"Starter Ring - h {Formato(_resultado.AlturaStarterRing, "0.###")} mm - F {Formato(_resultado.DistanciaFStarterRing, "0.###")} mm",
-                        PrecioUnitario = precioStarterRing,
-                        Precio = cantidadStarterRing * precioStarterRing
-                    });
+                    AgregarLineaSiValida(
+                        lineas,
+                        cantidadStarterRing,
+                        $"Starter Ring - h {Formato(_resultado.AlturaStarterRing, "0.###")} mm - F {Formato(_resultado.DistanciaFStarterRing, "0.###")} mm",
+                        precioStarterRing);
                 }
 
                 int totalShearKeys = Math.Max(1, _resultado.ShearKeysPorLineaStarterRing * Math.Max(1, chapasPorAnillo));
@@ -696,20 +679,262 @@ namespace TankDesigner.Core.Services
 
                 if (precioShearKey > 0)
                 {
-                    lineas.Add(new LineaPresupuestoRow
-                    {
-                        Cantidad = totalShearKeys,
-                        Descripcion = $"Shear Keys - {Lang("según cálculo real", "according to real calculation")}",
-                        PrecioUnitario = precioShearKey,
-                        Precio = totalShearKeys * precioShearKey
-                    });
+                    AgregarLineaSiValida(
+                        lineas,
+                        totalShearKeys,
+                        $"Shear Keys - {Lang("según cálculo real", "according to real calculation")}",
+                        precioShearKey);
                 }
+            }
+
+            // 5) CONSUMIBLES POR PANEL
+            double precioConsumiblesPanel = ObtenerPrecioConsumiblesPanel();
+            int totalPaneles = Math.Max(0, numeroAnillos) * Math.Max(0, chapasPorAnillo);
+
+            if (precioConsumiblesPanel > 0 && totalPaneles > 0)
+            {
+                AgregarLineaSiValida(
+                    lineas,
+                    totalPaneles,
+                    Lang("Consumibles de virola (sellante, pequeños auxiliares)", "Shell consumables (sealant, minor auxiliaries)"),
+                    precioConsumiblesPanel);
+            }
+
+            // 6) SUMINISTRO DE TECHO
+            string tipoTecho = ObtenerTipoTechoPresupuesto();
+            bool tieneTecho = !tipoTecho.Equals("sin techo", StringComparison.OrdinalIgnoreCase);
+            double areaTechoM2 = ObtenerAreaTechoM2Presupuesto();
+
+            if (tieneTecho)
+            {
+                double precioTecho = ObtenerPrecioSuministroTecho();
+                if (precioTecho > 0)
+                {
+                    AgregarLineaSiValida(
+                        lineas,
+                        1,
+                        $"{Lang("Suministro de techo", "Roof supply")} - {TextoSeguroSinInventar(_instalacion?.TipoTecho)}",
+                        precioTecho);
+                }
+
+                double precioConsumiblesTecho = ObtenerPrecioConsumiblesTechoM2();
+                if (precioConsumiblesTecho > 0 && areaTechoM2 > 0)
+                {
+                    AgregarLineaSiValida(
+                        lineas,
+                        areaTechoM2,
+                        $"{Lang("Consumibles de techo", "Roof consumables")} - {TextoSeguroSinInventar(_instalacion?.TipoTecho)}",
+                        precioConsumiblesTecho);
+                }
+            }
+
+            // 7) TRANSPORTE POR PESO ESTIMADO
+            double pesoTotalKg = ObtenerPesoEstimadoTransporteKg(chapasPorAnillo);
+            double pesoMaximoContenedorKg = ObtenerPesoMaximoContenedorKg();
+            double precioContenedor = ObtenerPrecioTransportePorUbicacion();
+
+            if (pesoTotalKg > 0 && pesoMaximoContenedorKg > 0 && precioContenedor > 0)
+            {
+                double numeroContenedores = Math.Ceiling(pesoTotalKg / pesoMaximoContenedorKg);
+
+                AgregarLineaSiValida(
+                    lineas,
+                    numeroContenedores,
+                    $"{Lang("Transporte de suministro", "Supply transport")} - {TextoSeguroSinInventar(_instalacion?.LugarObra)} - {Formato(pesoTotalKg, "0.##")} kg estimados",
+                    precioContenedor);
             }
 
             return lineas
                 .Where(x => x.Cantidad > 0 && x.PrecioUnitario > 0 && x.Precio > 0)
                 .OrderBy(x => x.Descripcion)
                 .ToList();
+        }
+
+        private void AgregarLineaSiValida(List<LineaPresupuestoRow> lineas, double cantidad, string descripcion, double precioUnitario)
+        {
+            if (cantidad <= 0 || precioUnitario <= 0)
+                return;
+
+            lineas.Add(new LineaPresupuestoRow
+            {
+                Cantidad = cantidad,
+                Descripcion = descripcion,
+                PrecioUnitario = precioUnitario,
+                Precio = cantidad * precioUnitario
+            });
+        }
+
+        private string ObtenerTipoTechoPresupuesto()
+        {
+            return NormalizarClave(_instalacion?.TipoTecho);
+        }
+
+        private string ObtenerUbicacionObraPresupuesto()
+        {
+            return NormalizarClave(_instalacion?.LugarObra);
+        }
+
+        private double ObtenerDiametroMetrosPresupuesto()
+        {
+            double diametroMm = DiametroMm();
+            if (diametroMm > 0)
+                return diametroMm / 1000.0;
+
+            return _tanque?.Diametro > 0 ? _tanque.Diametro / 1000.0 : 0;
+        }
+
+        private double ObtenerAlturaTanqueMetrosPresupuesto()
+        {
+            double alturaMm = AlturaTotalMm();
+            if (alturaMm > 0)
+                return alturaMm / 1000.0;
+
+            return _tanque?.AlturaTotal > 0 ? _tanque.AlturaTotal / 1000.0 : 0;
+        }
+
+        private double ObtenerAlturaPanelMetrosPresupuesto()
+        {
+            double alturaPanelMm = AlturaPanelBaseMm();
+            if (alturaPanelMm > 0)
+                return alturaPanelMm / 1000.0;
+
+            return _tanque?.AlturaPanelBase > 0 ? _tanque.AlturaPanelBase / 1000.0 : 0;
+        }
+
+        private double ObtenerLongitudPanelMetrosPresupuesto()
+        {
+            string fabricante = NormalizarClave(_proyecto?.Fabricante);
+
+            if (fabricante.Contains("balmoral"))
+                return 2.45;
+
+            if (fabricante.Contains("permastore"))
+                return 2.68;
+
+            return 2.68;
+        }
+
+        private double ObtenerAreaTechoM2Presupuesto()
+        {
+            if (_cargas?.RoofProjectedArea > 0)
+                return _cargas.RoofProjectedArea;
+
+            double diametroM = ObtenerDiametroMetrosPresupuesto();
+            if (diametroM <= 0)
+                return 0;
+
+            return Math.PI * Math.Pow(diametroM / 2.0, 2);
+        }
+
+        private double ObtenerPrecioConsumiblesPanel()
+        {
+            return 2.5; // Excel/Data
+        }
+
+        private double ObtenerPrecioConsumiblesTechoM2()
+        {
+            return 3.0; // Excel/Data
+        }
+
+        private double ObtenerPrecioSuministroTecho()
+        {
+            return 6000.0; // Excel Tank1!C42
+        }
+
+        private double ObtenerPrecioTransportePorUbicacion()
+        {
+            string ubicacion = ObtenerUbicacionObraPresupuesto();
+
+            if (ubicacion.Contains("internacional"))
+                return 6000.0;
+
+            if (ubicacion.Contains("europa"))
+                return 4500.0;
+
+            return 3600.0;
+        }
+
+        private double ObtenerPesoMaximoContenedorKg()
+        {
+            return 20000.0; // Excel/Data
+        }
+
+        private double ObtenerPesoEscaleraKgMetro()
+        {
+            string tipoEscalera = NormalizarClave(_instalacion?.TipoEscalera);
+
+            if (tipoEscalera.Contains("helicoidal"))
+                return 160.0;
+
+            if (tipoEscalera.Contains("vertical"))
+                return 60.0;
+
+            return 0.0;
+        }
+
+        private double ObtenerPesoEstimadoTransporteKg(int chapasPorAnillo)
+        {
+            double densidadAcero = 7850.0;
+            double alturaPanelM = ObtenerAlturaPanelMetrosPresupuesto();
+            double longitudPanelM = ObtenerLongitudPanelMetrosPresupuesto();
+
+            double pesoVirolaKg = 0.0;
+
+            if (_resultado?.Anillos != null && _resultado.Anillos.Count > 0)
+            {
+                foreach (var anillo in _resultado.Anillos)
+                {
+                    double espesorMm = anillo.EspesorSeleccionado > 0
+                        ? anillo.EspesorSeleccionado
+                        : anillo.EspesorRequerido;
+
+                    if (espesorMm <= 0)
+                        continue;
+
+                    double alturaAnilloM = anillo.AlturaSuperior > anillo.AlturaInferior
+                        ? (anillo.AlturaSuperior - anillo.AlturaInferior) / 1000.0
+                        : alturaPanelM;
+
+                    if (alturaAnilloM <= 0)
+                        alturaAnilloM = alturaPanelM;
+
+                    double pesoPanelKg = alturaAnilloM * longitudPanelM * (espesorMm / 1000.0) * densidadAcero;
+                    pesoVirolaKg += pesoPanelKg * Math.Max(1, chapasPorAnillo);
+                }
+            }
+
+            double pesoTechoKg = 0.0;
+            if (!ObtenerTipoTechoPresupuesto().Contains("sin techo"))
+            {
+                double areaTechoM2 = ObtenerAreaTechoM2Presupuesto();
+                if (areaTechoM2 > 0)
+                    pesoTechoKg = areaTechoM2 * 40.0; // dato de panel fabricante / Excel
+            }
+
+            double pesoEscaleraKg = 0.0;
+            if (_instalacion != null && _instalacion.NumeroEscaleras > 0)
+            {
+                double alturaTanqueM = ObtenerAlturaTanqueMetrosPresupuesto();
+                double pesoMetro = ObtenerPesoEscaleraKgMetro();
+                pesoEscaleraKg = _instalacion.NumeroEscaleras * alturaTanqueM * pesoMetro;
+            }
+
+            double pesoRigidizadorKg = _resultado?.PesoRigidizadorBase ?? 0.0;
+
+            return Math.Max(0, pesoVirolaKg + pesoTechoKg + pesoEscaleraKg + pesoRigidizadorKg);
+        }
+
+        private static string NormalizarClave(string? valor)
+        {
+            return (valor ?? string.Empty)
+                .Trim()
+                .ToLowerInvariant()
+                .Replace("á", "a")
+                .Replace("é", "e")
+                .Replace("í", "i")
+                .Replace("ó", "o")
+                .Replace("ú", "u")
+                .Replace("ü", "u");
         }
 
         private double ObtenerPrecioUnitarioPorEspesorReal(double espesor)
@@ -1280,7 +1505,7 @@ td{{padding:9px;border:1px solid #EAF0F4;}}
 
         private class LineaPresupuestoRow
         {
-            public int Cantidad { get; set; }
+            public double Cantidad { get; set; }
             public string Descripcion { get; set; } = string.Empty;
             public double PrecioUnitario { get; set; }
             public double Precio { get; set; }
