@@ -544,44 +544,105 @@ namespace TankDesigner.Core.Services
         private List<LineaPresupuestoRow> GenerarLineasPresupuesto(int numeroAnillos, int chapasPorAnillo, int anilloArranque)
         {
             var lineas = new List<LineaPresupuestoRow>();
-            var resumen = GenerarResumenTanque(numeroAnillos, chapasPorAnillo);
 
-            foreach (var ring in resumen)
+            if (_resultado == null)
+                return lineas;
+
+            string materialReal = !string.IsNullOrWhiteSpace(_resultado.MaterialPrincipal)
+                ? _resultado.MaterialPrincipal.Trim()
+                : TextoSeguroSinInventar(_proyecto?.MaterialPrincipal);
+
+            // 1) CHAPAS AGRUPADAS POR ESPESOR REAL + CONFIGURACIÓN
+            if (_resultado.Anillos != null && _resultado.Anillos.Count > 0)
             {
-                if (!double.TryParse((ring.Espesor ?? "0").Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out double espesor))
-                    espesor = 0;
+                var gruposChapas = _resultado.Anillos
+                    .OrderBy(x => x.NumeroAnillo)
+                    .Select(anillo =>
+                    {
+                        double espesor = anillo.EspesorSeleccionado > 0
+                            ? anillo.EspesorSeleccionado
+                            : anillo.EspesorRequerido;
 
-                double precioUnitario = ObtenerPrecioUnitarioPorEspesorReal(espesor);
-                if (precioUnitario <= 0) continue;
+                        double altura = anillo.AlturaSuperior > anillo.AlturaInferior
+                            ? anillo.AlturaSuperior - anillo.AlturaInferior
+                            : AlturaPanelBaseMm();
 
-                string descripcion = $"{(string.IsNullOrWhiteSpace(ring.TipoAcero) ? "—" : ring.TipoAcero)} - {ring.Altura} mm - Config. {(string.IsNullOrWhiteSpace(ring.Configuracion) ? "—" : ring.Configuracion)} - Espesor {(string.IsNullOrWhiteSpace(ring.Espesor) ? "—" : ring.Espesor)} mm";
-                lineas.Add(new LineaPresupuestoRow
+                        return new
+                        {
+                            NumeroAnillo = anillo.NumeroAnillo,
+                            Espesor = espesor,
+                            Altura = altura,
+                            Configuracion = TextoSeguroSinInventar(anillo.ConfiguracionAplicada),
+                            Tornillo = TextoSeguroSinInventar(anillo.TornilloAplicado)
+                        };
+                    })
+                    .Where(x => x.Espesor > 0)
+                    .GroupBy(x => new
+                    {
+                        Espesor = Math.Round(x.Espesor, 3),
+                        Altura = Math.Round(x.Altura, 3),
+                        Configuracion = x.Configuracion,
+                        Tornillo = x.Tornillo
+                    })
+                    .OrderBy(g => g.Min(x => x.NumeroAnillo))
+                    .ToList();
+
+                foreach (var grupo in gruposChapas)
                 {
-                    Cantidad = chapasPorAnillo,
-                    Descripcion = descripcion,
-                    PrecioUnitario = precioUnitario,
-                    Precio = chapasPorAnillo * precioUnitario
-                });
+                    double precioUnitario = ObtenerPrecioUnitarioPorEspesorReal(grupo.Key.Espesor);
+                    if (precioUnitario <= 0)
+                        continue;
+
+                    int cantidadTotal = grupo.Count() * Math.Max(1, chapasPorAnillo);
+
+                    string anillosTexto = string.Join(", ", grupo
+                        .Select(x => x.NumeroAnillo)
+                        .OrderBy(x => x));
+
+                    string descripcion =
+                        $"{(string.IsNullOrWhiteSpace(materialReal) ? "—" : materialReal)}" +
+                        $" - Anillos {anillosTexto}" +
+                        $" - Altura {Formato(grupo.Key.Altura, "0.###")} mm" +
+                        $" - Espesor {Formato(grupo.Key.Espesor, "0.###")} mm" +
+                        $" - Config. {(string.IsNullOrWhiteSpace(grupo.Key.Configuracion) ? "—" : grupo.Key.Configuracion)}";
+
+                    lineas.Add(new LineaPresupuestoRow
+                    {
+                        Cantidad = cantidadTotal,
+                        Descripcion = descripcion,
+                        PrecioUnitario = precioUnitario,
+                        Precio = cantidadTotal * precioUnitario
+                    });
+                }
             }
 
+            // 2) TORNILLERÍA
             double precioJuegoTornillo = ObtenerPrecioJuegoTornilloBaseReal();
-            if (_resultado != null
-                && (!string.IsNullOrWhiteSpace(_resultado.NombreTornilloBase) || _resultado.DiametroTornilloBase > 0)
+
+            if ((!string.IsNullOrWhiteSpace(_resultado.NombreTornilloBase) || _resultado.DiametroTornilloBase > 0)
                 && precioJuegoTornillo > 0)
             {
                 int totalTornillos = 0;
+
                 if (_resultado.Anillos != null && _resultado.Anillos.Count > 0)
                 {
                     foreach (var anillo in _resultado.Anillos)
                     {
                         int verticales = Math.Max(0, anillo.NumeroTornillosVerticales);
-                        int horizontales = Math.Max(0, anillo.NumeroTornillosHorizontalesCalculo > 0 ? anillo.NumeroTornillosHorizontalesCalculo : anillo.NumeroTornillosHorizontales);
+                        int horizontales = Math.Max(0,
+                            anillo.NumeroTornillosHorizontalesCalculo > 0
+                                ? anillo.NumeroTornillosHorizontalesCalculo
+                                : anillo.NumeroTornillosHorizontales);
+
                         totalTornillos += (verticales + horizontales) * Math.Max(1, chapasPorAnillo);
                     }
                 }
                 else
                 {
-                    totalTornillos = (_resultado.NumeroTornillosVerticales + _resultado.NumeroTornillosHorizontales) * Math.Max(1, numeroAnillos) * Math.Max(1, chapasPorAnillo);
+                    totalTornillos =
+                        (_resultado.NumeroTornillosVerticales + _resultado.NumeroTornillosHorizontales)
+                        * Math.Max(1, numeroAnillos)
+                        * Math.Max(1, chapasPorAnillo);
                 }
 
                 if (totalTornillos > 0)
@@ -589,25 +650,31 @@ namespace TankDesigner.Core.Services
                     lineas.Add(new LineaPresupuestoRow
                     {
                         Cantidad = totalTornillos,
-                        Descripcion = $"Juego tornillo-tuerca-arandela - {_resultado.NombreTornilloBase} - Ø {Formato(_resultado.DiametroTornilloBase, "0.###")} mm",
+                        Descripcion =
+                            $"Juego tornillo-tuerca-arandela - {TextoSeguroSinInventar(_resultado.NombreTornilloBase)} - Ø {Formato(_resultado.DiametroTornilloBase, "0.###")} mm",
                         PrecioUnitario = precioJuegoTornillo,
                         Precio = totalTornillos * precioJuegoTornillo
                     });
                 }
             }
 
-            if (_resultado != null && _resultado.TieneRigidizadorBase && !string.IsNullOrWhiteSpace(_resultado.NombreRigidizadorBase) && _resultado.PrecioRigidizadorBase > 0)
+            // 3) RIGIDIZADOR BASE
+            if (_resultado.TieneRigidizadorBase
+                && !string.IsNullOrWhiteSpace(_resultado.NombreRigidizadorBase)
+                && _resultado.PrecioRigidizadorBase > 0)
             {
                 lineas.Add(new LineaPresupuestoRow
                 {
                     Cantidad = 1,
-                    Descripcion = $"Rigidizador base - {_resultado.NombreRigidizadorBase} - h {Formato(_resultado.AlturaRigidizadorBase, "0.###")} mm - e {Formato(_resultado.EspesorRigidizadorBase, "0.###")} mm",
+                    Descripcion =
+                        $"Rigidizador base - {_resultado.NombreRigidizadorBase} - h {Formato(_resultado.AlturaRigidizadorBase, "0.###")} mm - e {Formato(_resultado.EspesorRigidizadorBase, "0.###")} mm",
                     PrecioUnitario = _resultado.PrecioRigidizadorBase,
                     Precio = _resultado.PrecioRigidizadorBase
                 });
             }
 
-            if (_resultado != null && _resultado.TieneStarterRing && _resultado.AlturaStarterRing > 0)
+            // 4) STARTER RING
+            if (_resultado.TieneStarterRing && _resultado.AlturaStarterRing > 0)
             {
                 int cantidadStarterRing = Math.Max(1, chapasPorAnillo);
                 double precioStarterRing = Math.Max(0, _resultado.PrecioStarterRing);
@@ -617,7 +684,8 @@ namespace TankDesigner.Core.Services
                     lineas.Add(new LineaPresupuestoRow
                     {
                         Cantidad = cantidadStarterRing,
-                        Descripcion = $"Starter Ring - h {Formato(_resultado.AlturaStarterRing, "0.###")} mm - F {Formato(_resultado.DistanciaFStarterRing, "0.###")} mm",
+                        Descripcion =
+                            $"Starter Ring - h {Formato(_resultado.AlturaStarterRing, "0.###")} mm - F {Formato(_resultado.DistanciaFStarterRing, "0.###")} mm",
                         PrecioUnitario = precioStarterRing,
                         Precio = cantidadStarterRing * precioStarterRing
                     });
@@ -637,8 +705,11 @@ namespace TankDesigner.Core.Services
                     });
                 }
             }
-            return lineas;
 
+            return lineas
+                .Where(x => x.Cantidad > 0 && x.PrecioUnitario > 0 && x.Precio > 0)
+                .OrderBy(x => x.Descripcion)
+                .ToList();
         }
 
         private double ObtenerPrecioUnitarioPorEspesorReal(double espesor)
