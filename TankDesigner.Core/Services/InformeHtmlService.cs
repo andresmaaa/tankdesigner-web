@@ -3,7 +3,7 @@ using System.Net;
 using System.Text;
 using TankDesigner.Core.Models;
 using TankDesigner.Core.Models.Catalogos;
-
+using TankDesigner.Core.Models.Presupuestos;
 namespace TankDesigner.Core.Services
 {
     public class InformeHtmlService
@@ -275,8 +275,12 @@ namespace TankDesigner.Core.Services
             double alturaRealM = AlturaTotalMm() > 0 ? AlturaTotalMm() / 1000.0 : 0;
             double volumenRealM3 = diametroRealM > 0 && alturaRealM > 0 ? Math.PI * Math.Pow(diametroRealM / 2.0, 2) * alturaRealM : 0;
 
-            List<LineaPresupuestoRow> lineas = GenerarLineasPresupuesto(numeroAnillos, chapasPorAnillo, anilloArranque);
-            double total = lineas.Sum(x => x.Precio);
+            List<LineaPresupuestoRow> lineasMaterial = GenerarLineasPresupuesto(numeroAnillos, chapasPorAnillo, anilloArranque);
+            double totalMaterial = lineasMaterial.Sum(x => x.Precio);
+
+            PresupuestoInstalacionResultadoModel? presupuestoInstalacion = _resultado?.PresupuestoInstalacion;
+            decimal totalInstalacion = presupuestoInstalacion?.TotalInstalacion ?? 0m;
+            decimal totalGeneral = (decimal)totalMaterial + totalInstalacion;
 
             var html = new StringBuilder();
             html.Append(DocumentoInicio(Lang("Presupuesto", "Budget"), modeloTanque));
@@ -296,6 +300,7 @@ namespace TankDesigner.Core.Services
             html.Append($"<p><strong>{Html(Lang("Número de anillos", "Number of rings"))}:</strong> {ValorEntero(numeroAnillos)}</p>");
             html.Append($"<p><strong>{Html(Lang("Chapas por anillo", "Sheets per ring"))}:</strong> {ValorEntero(chapasPorAnillo)}</p>");
             html.Append($"<p><strong>{Html(Lang("Anillo de arranque", "Starter ring"))}:</strong> {ValorEntero(anilloArranque)}</p></div>");
+
             html.Append($"<div class='block'><div class='table-title'>{Html(Lang("Datos geométricos", "Geometric data"))}</div>");
             html.Append($"<p><strong>{Html(Lang("Diámetro", "Diameter"))}:</strong> {(diametroRealM > 0 ? Formato(diametroRealM, "0.###") + " m" : "—")}</p>");
             html.Append($"<p><strong>{Html(Lang("Altura total", "Total height"))}:</strong> {(alturaRealM > 0 ? Formato(alturaRealM, "0.###") + " m" : "—")}</p>");
@@ -303,26 +308,102 @@ namespace TankDesigner.Core.Services
             html.Append($"<p><strong>{Html(Lang("Borde libre", "Freeboard"))}:</strong> {(bordeLibre > 0 ? Formato(bordeLibre, "0.###") + " mm" : "—")}</p>");
             html.Append($"<p><strong>{Html(Lang("Densidad del líquido", "Liquid density"))}:</strong> {(densidad > 0 ? Formato(densidad, "0.###") : "—")}</p></div></div>");
 
-            html.Append($"<div class='section-title'>{Html(Lang("Líneas de presupuesto", "Budget lines"))}</div>");
+            html.Append($"<div class='section-title'>{Html(Lang("Presupuesto de materiales", "Materials budget"))}</div>");
             html.Append("<table><thead><tr>");
-            html.Append($"<th>{Html(Lang("Cantidad", "Quantity"))}</th><th>{Html(Lang("Descripción", "Description"))}</th><th class='num'>{Html(Lang("Precio unitario", "Unit price"))}</th><th class='num'>{Html(Lang("Precio", "Price"))}</th>");
+            html.Append($"<th>{Html(Lang("Cantidad", "Quantity"))}</th>");
+            html.Append($"<th>{Html(Lang("Descripción", "Description"))}</th>");
+            html.Append($"<th class='num'>{Html(Lang("Precio unitario", "Unit price"))}</th>");
+            html.Append($"<th class='num'>{Html(Lang("Precio", "Price"))}</th>");
             html.Append("</tr></thead><tbody>");
-            if (lineas.Count > 0)
+
+            if (lineasMaterial.Count > 0)
             {
-                foreach (var item in lineas)
+                foreach (var item in lineasMaterial)
                 {
                     html.Append("<tr>");
-                    html.Append($"<td>{item.Cantidad}</td><td>{Html(item.Descripcion)}</td><td class='num'>{Formato(item.PrecioUnitario, "0.00")} €</td><td class='num'>{Formato(item.Precio, "0.00")} €</td>");
+                    html.Append($"<td>{item.Cantidad}</td>");
+                    html.Append($"<td>{Html(item.Descripcion)}</td>");
+                    html.Append($"<td class='num'>{Formato(item.PrecioUnitario, "0.00")} €</td>");
+                    html.Append($"<td class='num'>{Formato(item.Precio, "0.00")} €</td>");
                     html.Append("</tr>");
                 }
-                html.Append($"<tr><td colspan='3' class='num'><strong>{Html(Lang("Total", "Total"))}</strong></td><td class='num'><strong>{Formato(total, "0.00")} €</strong></td></tr>");
+
+                html.Append($"<tr><td colspan='3' class='num'><strong>{Html(Lang("Total materiales", "Materials total"))}</strong></td><td class='num'><strong>{Formato(totalMaterial, "0.00")} €</strong></td></tr>");
             }
             else
             {
                 html.Append($"<tr><td colspan='4'>{Html(Lang("No hay líneas de presupuesto reales disponibles para los datos actuales.", "There are no real budget lines available for the current data."))}</td></tr>");
             }
+
             html.Append("</tbody></table>");
-            html.Append($"<div class='footer-note'><h3>{Html(Lang("Nota", "Note"))}</h3><div class='multiline'>{Html(Lang("Este presupuesto se genera únicamente con cantidades del cálculo actual y precios reales encontrados en los catálogos cargados. Si no existe precio real en catálogo, la línea no se incluye.", "This budget is generated only with quantities from the current calculation and real prices found in the loaded catalogs. If a real catalog price does not exist, the line is not included."))}</div></div>");
+
+            if (presupuestoInstalacion != null && presupuestoInstalacion.Partidas != null && presupuestoInstalacion.Partidas.Count > 0)
+            {
+                html.Append($"<div class='section-title'>{Html(Lang("Presupuesto de instalación", "Installation budget"))}</div>");
+
+                html.Append("<div class='grid3'>");
+                html.Append($"<div class='block'><h3>{Html(Lang("Resumen de instalación", "Installation summary"))}</h3>");
+                html.Append($"<p><strong>{Html(Lang("Altura del tanque", "Tank height"))}:</strong> {Formato((double)presupuestoInstalacion.AlturaTanqueMetros, "0.00")} m</p>");
+                html.Append($"<p><strong>{Html(Lang("Área de techo", "Roof area"))}:</strong> {Formato((double)presupuestoInstalacion.AreaTechoM2, "0.00")} m²</p>");
+                html.Append($"<p><strong>{Html(Lang("Perímetro", "Perimeter"))}:</strong> {Formato((double)presupuestoInstalacion.PerimetroTanqueMetros, "0.00")} m</p>");
+                html.Append($"<p><strong>{Html(Lang("Horas totales", "Total hours"))}:</strong> {Formato((double)presupuestoInstalacion.Horas.HorasTotalesGenerales, "0.00")} h</p>");
+                html.Append($"<p><strong>{Html(Lang("Días totales", "Total days"))}:</strong> {Formato((double)presupuestoInstalacion.Calendario.DiasTotalesReales, "0.00")}</p>");
+                html.Append("</div>");
+
+                html.Append($"<div class='block'><h3>{Html(Lang("Horas de montaje", "Assembly hours"))}</h3>");
+                html.Append($"<p><strong>{Html(Lang("Montaje placas", "Panel assembly"))}:</strong> {Formato((double)presupuestoInstalacion.Horas.HorasMontajePlacas, "0.00")} h</p>");
+                html.Append($"<p><strong>{Html(Lang("Cambios de gato", "Jack changes"))}:</strong> {Formato((double)presupuestoInstalacion.Horas.HorasCambiosGato, "0.00")} h</p>");
+                html.Append($"<p><strong>{Html(Lang("Escaleras", "Ladders"))}:</strong> {Formato((double)presupuestoInstalacion.Horas.HorasEscaleras, "0.00")} h</p>");
+                html.Append($"<p><strong>{Html(Lang("Conexiones", "Connections"))}:</strong> {Formato((double)presupuestoInstalacion.Horas.HorasConexionesYBocaHombre, "0.00")} h</p>");
+                html.Append($"<p><strong>{Html(Lang("Rigidizadores", "Stiffeners"))}:</strong> {Formato((double)presupuestoInstalacion.Horas.HorasRigidizadores, "0.00")} h</p>");
+                html.Append($"<p><strong>{Html(Lang("Anclaje", "Anchorage"))}:</strong> {Formato((double)presupuestoInstalacion.Horas.HorasAnclaje, "0.00")} h</p>");
+                html.Append($"<p><strong>{Html(Lang("Sellado", "Sealing"))}:</strong> {Formato((double)presupuestoInstalacion.Horas.HorasSelladoCimentacionPared, "0.00")} h</p>");
+                html.Append("</div>");
+
+                html.Append($"<div class='block'><h3>{Html(Lang("Techo y calendario", "Roof and schedule"))}</h3>");
+                html.Append($"<p><strong>{Html(Lang("Techo estructura", "Roof structure"))}:</strong> {Formato((double)presupuestoInstalacion.Horas.HorasTechoEstructura, "0.00")} h</p>");
+                html.Append($"<p><strong>{Html(Lang("Techo paneles", "Roof panels"))}:</strong> {Formato((double)presupuestoInstalacion.Horas.HorasTechoPaneles, "0.00")} h</p>");
+                html.Append($"<p><strong>{Html(Lang("Descanso", "Rest"))}:</strong> {Formato((double)presupuestoInstalacion.Horas.HorasDescanso, "0.00")} h</p>");
+                html.Append($"<p><strong>{Html(Lang("Desplazamiento", "Travel"))}:</strong> {Formato((double)presupuestoInstalacion.Horas.HorasDesplazamiento, "0.00")} h</p>");
+                html.Append($"<p><strong>{Html(Lang("Días techo", "Roof days"))}:</strong> {Formato((double)presupuestoInstalacion.Calendario.DiasTecho, "0.00")}</p>");
+                html.Append($"<p><strong>{Html(Lang("Días depósito", "Tank days"))}:</strong> {Formato((double)presupuestoInstalacion.Calendario.DiasDeposito, "0.00")}</p>");
+                html.Append($"<p><strong>{Html(Lang("Días Excel", "Excel days"))}:</strong> {Formato((double)presupuestoInstalacion.Calendario.DiasTotalesExcel, "0.00")}</p>");
+                html.Append("</div>");
+                html.Append("</div>");
+
+                html.Append("<table><thead><tr>");
+                html.Append($"<th>{Html(Lang("Código", "Code"))}</th>");
+                html.Append($"<th>{Html(Lang("Concepto", "Item"))}</th>");
+                html.Append($"<th>{Html(Lang("Cantidad", "Quantity"))}</th>");
+                html.Append($"<th>{Html(Lang("Unidad", "Unit"))}</th>");
+                html.Append($"<th class='num'>{Html(Lang("Precio unitario", "Unit price"))}</th>");
+                html.Append($"<th class='num'>{Html(Lang("Total", "Total"))}</th>");
+                html.Append("</tr></thead><tbody>");
+
+                foreach (var partida in presupuestoInstalacion.Partidas)
+                {
+                    html.Append("<tr>");
+                    html.Append($"<td>{Html(partida.Codigo)}</td>");
+                    html.Append($"<td>{Html(partida.Concepto)}</td>");
+                    html.Append($"<td>{Formato((double)partida.Cantidad, "0.00")}</td>");
+                    html.Append($"<td>{Html(partida.Unidad)}</td>");
+                    html.Append($"<td class='num'>{Formato((double)partida.PrecioUnitario, "0.00")} €</td>");
+                    html.Append($"<td class='num'>{Formato((double)partida.Total, "0.00")} €</td>");
+                    html.Append("</tr>");
+                }
+
+                html.Append($"<tr><td colspan='5' class='num'><strong>{Html(Lang("Total instalación", "Installation total"))}</strong></td><td class='num'><strong>{Formato((double)totalInstalacion, "0.00")} €</strong></td></tr>");
+                html.Append("</tbody></table>");
+            }
+
+            html.Append($"<div class='section-title'>{Html(Lang("Resumen económico", "Economic summary"))}</div>");
+            html.Append("<table><tbody>");
+            html.Append($"<tr><td><strong>{Html(Lang("Total materiales", "Materials total"))}</strong></td><td class='num'><strong>{Formato(totalMaterial, "0.00")} €</strong></td></tr>");
+            html.Append($"<tr><td><strong>{Html(Lang("Total instalación", "Installation total"))}</strong></td><td class='num'><strong>{Formato((double)totalInstalacion, "0.00")} €</strong></td></tr>");
+            html.Append($"<tr><td><strong>{Html(Lang("TOTAL GENERAL", "GRAND TOTAL"))}</strong></td><td class='num'><strong>{Formato((double)totalGeneral, "0.00")} €</strong></td></tr>");
+            html.Append("</tbody></table>");
+
+            html.Append($"<div class='footer-note'><h3>{Html(Lang("Nota", "Note"))}</h3><div class='multiline'>{Html(Lang("Este presupuesto se genera únicamente con cantidades del cálculo actual, precios reales encontrados en catálogo y los cálculos de instalación derivados del estimador Excel integrado. Si no existe dato real suficiente, la línea no se incluye.", "This budget is generated only with quantities from the current calculation, real catalog prices and installation calculations derived from the integrated Excel estimator. If there is not enough real data, the line is not included."))}</div></div>");
             html.Append(DocumentoFin());
             return html.ToString();
         }

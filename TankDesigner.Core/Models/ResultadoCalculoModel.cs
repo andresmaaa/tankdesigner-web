@@ -1,7 +1,10 @@
-﻿namespace TankDesigner.Core.Models
+﻿using TankDesigner.Core.Models.Presupuestos;
+
+namespace TankDesigner.Core.Models
 {
     public class ResultadoCalculoModel
     {
+        public PresupuestoInstalacionResultadoModel? PresupuestoInstalacion { get; set; }
         // Resultado general del cálculo
         public List<ResultadoAnilloModel> Anillos { get; set; } = new List<ResultadoAnilloModel>();
         public bool EsValido { get; set; }

@@ -11,7 +11,9 @@ using TankDesigner.Web.Services;
 using TankDesigner.Web.Services.Ai;
 
 var builder = WebApplication.CreateBuilder(args);
+
 builder.Services.AddScoped<EmailService>();
+
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
@@ -40,11 +42,17 @@ builder.Services
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
-var keysPath = Path.Combine(builder.Environment.ContentRootPath, "App_Data", "DataProtectionKeys");
-Directory.CreateDirectory(keysPath);
+var dataProtectionPath = Environment.GetEnvironmentVariable("DATA_PROTECTION_KEYS_PATH");
+
+if (string.IsNullOrWhiteSpace(dataProtectionPath))
+{
+    dataProtectionPath = Path.Combine(builder.Environment.ContentRootPath, "App_Data", "DataProtectionKeys");
+}
+
+Directory.CreateDirectory(dataProtectionPath);
 
 builder.Services.AddDataProtection()
-    .PersistKeysToFileSystem(new DirectoryInfo(keysPath))
+    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionPath))
     .SetApplicationName("TankDesigner");
 
 builder.Services.ConfigureApplicationCookie(options =>

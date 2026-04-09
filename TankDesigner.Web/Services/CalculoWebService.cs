@@ -1,4 +1,7 @@
-﻿using TankDesigner.Core.Models;
+﻿using System.Globalization;
+using System.Linq;
+using TankDesigner.Core.Models;
+using TankDesigner.Core.Models.Presupuestos;
 using TankDesigner.Core.Services;
 
 namespace TankDesigner.Web.Services
@@ -8,12 +11,14 @@ namespace TankDesigner.Web.Services
         private readonly MotorCalculoService _motorCalculoService;
         private readonly CalculoInputAdapterService _inputAdapterService;
         private readonly CalculoGeometriaService _calculoGeometriaService;
+        private readonly PresupuestoInstalacionExcelService _presupuestoInstalacionExcelService;
 
         public CalculoWebService()
         {
             _motorCalculoService = new MotorCalculoService();
             _inputAdapterService = new CalculoInputAdapterService();
             _calculoGeometriaService = new CalculoGeometriaService();
+            _presupuestoInstalacionExcelService = new PresupuestoInstalacionExcelService();
         }
 
         public ResultadoCalculoModel Calcular(
@@ -77,6 +82,8 @@ namespace TankDesigner.Web.Services
             if (resultado.Anillos == null)
                 resultado.Anillos = new List<ResultadoAnilloModel>();
 
+            resultado.PresupuestoInstalacion = CalcularPresupuestoInstalacion(proyecto, tanque, instalacion, resultado);
+
             if (string.IsNullOrWhiteSpace(resultado.Mensaje))
             {
                 resultado.Mensaje = resultado.Anillos.Count > 0
@@ -107,13 +114,13 @@ namespace TankDesigner.Web.Services
         private static void NormalizarTanque(TankModel tanque)
         {
             if (tanque.ChapasPorAnillo <= 0)
-                tanque.ChapasPorAnillo = 16; // igual que WPF (SelectedIndex=0)
+                tanque.ChapasPorAnillo = 16;
 
             if (tanque.NumeroAnillos <= 0)
-                tanque.NumeroAnillos = 6; // igual que WPF (SelectedIndex=0)
+                tanque.NumeroAnillos = 6;
 
             if (tanque.AnilloArranque <= 0)
-                tanque.AnilloArranque = 1; // igual que WPF (SelectedIndex=0)
+                tanque.AnilloArranque = 1;
 
             if (tanque.AnilloArranque > tanque.NumeroAnillos)
                 tanque.AnilloArranque = tanque.NumeroAnillos;
@@ -121,12 +128,12 @@ namespace TankDesigner.Web.Services
             if (tanque.BordeLibre < 0)
                 tanque.BordeLibre = 0;
             else if (tanque.BordeLibre == 0)
-                tanque.BordeLibre = 300; // igual que WPF
+                tanque.BordeLibre = 300;
 
             if (tanque.DensidadLiquido < 0)
                 tanque.DensidadLiquido = 0;
             else if (tanque.DensidadLiquido == 0)
-                tanque.DensidadLiquido = 1; // igual que WPF
+                tanque.DensidadLiquido = 1;
 
             tanque.Modelo = (tanque.Modelo ?? string.Empty).Trim();
         }
@@ -197,6 +204,149 @@ namespace TankDesigner.Web.Services
 
             if (resultado.DensidadLiquido <= 0)
                 resultado.DensidadLiquido = input.DensidadLiquido;
+        }
+
+        private PresupuestoInstalacionResultadoModel? CalcularPresupuestoInstalacion(
+            ProyectoGeneralModel proyecto,
+            TankModel tanque,
+            InstalacionModel instalacion,
+            ResultadoCalculoModel resultado)
+        {
+            try
+            {
+                if (resultado == null || resultado.Anillos == null || resultado.Anillos.Count == 0)
+                    return null;
+
+                var espesores = resultado.Anillos
+                    .OrderBy(x => x.NumeroAnillo)
+                    .Select(x => x.EspesorSeleccionado > 0
+                        ? Convert.ToDecimal(x.EspesorSeleccionado, CultureInfo.InvariantCulture)
+                        : Convert.ToDecimal(x.EspesorRequerido, CultureInfo.InvariantCulture))
+                    .Where(x => x > 0)
+                    .ToList();
+
+                if (espesores.Count == 0)
+                    return null;
+
+                var input = new PresupuestoInstalacionInputModel
+                {
+                    Fabricante = MapearFabricante(proyecto.Fabricante),
+                    NumeroPlacasPorAnillo = resultado.ChapasPorAnillo > 0 ? resultado.ChapasPorAnillo : tanque.ChapasPorAnillo,
+                    NumeroAnillos = resultado.NumeroAnillos > 0 ? resultado.NumeroAnillos : tanque.NumeroAnillos,
+                    TieneStarterRing = instalacion.StarterRing || resultado.TieneStarterRing,
+                    TipoTecho = MapearTipoTecho(instalacion.TipoTecho),
+                    TipoEscalera = MapearTipoEscalera(instalacion.TipoEscalera),
+                    NumeroEscaleras = Math.Max(0, instalacion.NumeroEscaleras),
+
+                    ConexionesDn25a150 = Math.Max(0, instalacion.ConexionesDN25_DN150),
+                    ConexionesDn150a300 = Math.Max(0, instalacion.ConexionesDN150_DN300),
+                    ConexionesDn300a500 = Math.Max(0, instalacion.ConexionesDN300_DN500),
+                    ConexionesMayor500 = Math.Max(0, instalacion.ConexionesMayorDN500),
+                    NumeroBocasHombre = 1,
+
+                    TamanoCuadrilla = Math.Max(1, instalacion.TamanoCuadrilla),
+                    HorasTrabajoPorDia = Convert.ToDecimal(
+                        instalacion.HorasTrabajoDia > 0 ? instalacion.HorasTrabajoDia : 8,
+                        CultureInfo.InvariantCulture),
+
+                    PorcentajeLluvia = Convert.ToDecimal(
+                        instalacion.DiasLluviaPorcentaje > 1
+                            ? instalacion.DiasLluviaPorcentaje / 100.0
+                            : instalacion.DiasLluviaPorcentaje,
+                        CultureInfo.InvariantCulture),
+
+                    NumeroSiteManagers = Math.Max(0, instalacion.SiteManager),
+                    NumeroTecnicosSeguridad = Math.Max(0, instalacion.TecnicoSeguridad),
+                    UbicacionObra = MapearUbicacion(instalacion.LugarObra),
+
+                    DiametroMetros = Convert.ToDecimal(
+                        (resultado.Diametro > 0 ? resultado.Diametro : tanque.Diametro) / 1000.0,
+                        CultureInfo.InvariantCulture),
+
+                    EspesoresAnillosMm = espesores,
+                    DistanciaAlojamientoObraHoras = Convert.ToDecimal(instalacion.DistanciaAlojamientoObra, CultureInfo.InvariantCulture)
+                };
+
+                if (input.NumeroAnillos <= 0 || input.NumeroPlacasPorAnillo <= 0 || input.DiametroMetros <= 0)
+                    return null;
+
+                if (input.EspesoresAnillosMm.Count != input.NumeroAnillos)
+                    return null;
+
+                return _presupuestoInstalacionExcelService.Calcular(input);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static FabricantePresupuesto MapearFabricante(string? fabricante)
+        {
+            var clave = NormalizarClave(fabricante);
+
+            if (clave.Contains("balmoral"))
+                return FabricantePresupuesto.Balmoral;
+
+            if (clave.Contains("permastore"))
+                return FabricantePresupuesto.Permastore;
+
+            return FabricantePresupuesto.DL2;
+        }
+
+        private static TipoTechoPresupuesto MapearTipoTecho(string? tipoTecho)
+        {
+            var clave = NormalizarClave(tipoTecho);
+
+            if (clave.Contains("conico"))
+                return TipoTechoPresupuesto.Conico;
+
+            if (clave.Contains("plano"))
+                return TipoTechoPresupuesto.Plano;
+
+            if (clave.Contains("domo"))
+                return TipoTechoPresupuesto.DomoGeodesico;
+
+            return TipoTechoPresupuesto.SinTecho;
+        }
+
+        private static TipoEscaleraPresupuesto MapearTipoEscalera(string? tipoEscalera)
+        {
+            var clave = NormalizarClave(tipoEscalera);
+
+            if (clave.Contains("vertical"))
+                return TipoEscaleraPresupuesto.Vertical;
+
+            if (clave.Contains("helicoidal"))
+                return TipoEscaleraPresupuesto.Helicoidal;
+
+            return TipoEscaleraPresupuesto.SinEscalera;
+        }
+
+        private static UbicacionObraPresupuesto MapearUbicacion(string? ubicacion)
+        {
+            var clave = NormalizarClave(ubicacion);
+
+            if (clave.Contains("internacional"))
+                return UbicacionObraPresupuesto.Internacional;
+
+            if (clave.Contains("europa"))
+                return UbicacionObraPresupuesto.Europa;
+
+            return UbicacionObraPresupuesto.Nacional;
+        }
+
+        private static string NormalizarClave(string? valor)
+        {
+            return (valor ?? string.Empty)
+                .Trim()
+                .ToLowerInvariant()
+                .Replace("á", "a")
+                .Replace("é", "e")
+                .Replace("í", "i")
+                .Replace("ó", "o")
+                .Replace("ú", "u")
+                .Replace("ü", "u");
         }
     }
 }
