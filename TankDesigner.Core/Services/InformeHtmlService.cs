@@ -525,25 +525,36 @@ namespace TankDesigner.Core.Services
 
             if (_resultado != null && _resultado.TieneStarterRing && _resultado.AlturaStarterRing > 0)
             {
-                lineas.Add(new LineaPresupuestoRow
+                int cantidadStarterRing = Math.Max(1, chapasPorAnillo);
+                double precioStarterRing = Math.Max(0, _resultado.PrecioStarterRing);
+
+                if (precioStarterRing > 0)
                 {
-                    Cantidad = Math.Max(1, chapasPorAnillo),
-                    Descripcion = $"Starter Ring - h {Formato(_resultado.AlturaStarterRing, "0.###")} mm - F {Formato(_resultado.DistanciaFStarterRing, "0.###")} mm",
-                    PrecioUnitario = 0,
-                    Precio = 0
-                });
+                    lineas.Add(new LineaPresupuestoRow
+                    {
+                        Cantidad = cantidadStarterRing,
+                        Descripcion = $"Starter Ring - h {Formato(_resultado.AlturaStarterRing, "0.###")} mm - F {Formato(_resultado.DistanciaFStarterRing, "0.###")} mm",
+                        PrecioUnitario = precioStarterRing,
+                        Precio = cantidadStarterRing * precioStarterRing
+                    });
+                }
 
                 int totalShearKeys = Math.Max(1, _resultado.ShearKeysPorLineaStarterRing * Math.Max(1, chapasPorAnillo));
-                lineas.Add(new LineaPresupuestoRow
-                {
-                    Cantidad = totalShearKeys,
-                    Descripcion = $"Shear Keys - {Lang("según cálculo real", "according to real calculation")}",
-                    PrecioUnitario = 0,
-                    Precio = 0
-                });
-            }
+                double precioShearKey = Math.Max(0, _resultado.PrecioShearKey);
 
+                if (precioShearKey > 0)
+                {
+                    lineas.Add(new LineaPresupuestoRow
+                    {
+                        Cantidad = totalShearKeys,
+                        Descripcion = $"Shear Keys - {Lang("según cálculo real", "according to real calculation")}",
+                        PrecioUnitario = precioShearKey,
+                        Precio = totalShearKeys * precioShearKey
+                    });
+                }
+            }
             return lineas;
+
         }
 
         private double ObtenerPrecioUnitarioPorEspesorReal(double espesor)

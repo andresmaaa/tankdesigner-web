@@ -13,5 +13,9 @@
         public List<double> F { get; set; } = new List<double>();
 
         public List<double> MaxShearKeysPerSheet { get; set; } = new List<double>();
+
+        public double Precio { get; set; }
+
+        public double PrecioShearKey { get; set; }
     }
 }

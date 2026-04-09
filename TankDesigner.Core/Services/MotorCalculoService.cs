@@ -298,6 +298,9 @@ namespace TankDesigner.Core.Services
                 resultado.MaxShearKeysPorPlanchaTexto = starterRingBase.MaxShearKeysPerSheet != null
                     ? string.Join(", ", starterRingBase.MaxShearKeysPerSheet)
                     : string.Empty;
+
+                resultado.PrecioStarterRing = starterRingBase.Precio;
+                resultado.PrecioShearKey = starterRingBase.PrecioShearKey;
             }
             else
             {
@@ -307,6 +310,8 @@ namespace TankDesigner.Core.Services
                 resultado.ShearKeysPorLineaStarterRing = 0;
                 resultado.FStarterRingTexto = string.Empty;
                 resultado.MaxShearKeysPorPlanchaTexto = string.Empty;
+                resultado.PrecioStarterRing = 0;
+                resultado.PrecioShearKey = 0;
             }
         }
 

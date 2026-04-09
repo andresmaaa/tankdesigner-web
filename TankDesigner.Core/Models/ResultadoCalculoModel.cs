@@ -55,6 +55,8 @@
         public int ShearKeysPorLineaStarterRing { get; set; }
         public string FStarterRingTexto { get; set; } = string.Empty;
         public string MaxShearKeysPorPlanchaTexto { get; set; } = string.Empty;
+        public double PrecioStarterRing { get; set; }
+        public double PrecioShearKey { get; set; }
 
         // Selección real obtenida a partir del cálculo de anillos
         public string NombreConfiguracionCalculada { get; set; } = string.Empty;
