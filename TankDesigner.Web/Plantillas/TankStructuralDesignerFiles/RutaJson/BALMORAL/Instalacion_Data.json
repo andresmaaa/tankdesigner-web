@@ -20,7 +20,6 @@
     "horasBocaHombre": 4.5,
     "horasCambioGato": 1
   },
-
   "costesManoObra": {
     "operarioNacional": 32,
     "ingenieroNacional": 40,
@@ -29,7 +28,6 @@
     "ingenieroInternacional": 50,
     "tecnicoSeguridadInternacional": 55
   },
-
   "mediosAuxiliares": {
     "camionGruaDia": 650,
     "alquilerGatosDia": 50,
@@ -39,7 +37,6 @@
     "tripodesPorMetro": 0.35,
     "consumiblesTechoM2": 3
   },
-
   "panelesFabricante": [
     {
       "fabricante": "Balmoral",
@@ -60,9 +57,7 @@
       "pesoKgM2": 40
     }
   ],
-
   "densidadAcero": 7850,
-
   "techo": [
     {
       "tipo": "Sin techo",
@@ -89,11 +84,10 @@
       "factorIzados": 1
     }
   ],
-
   "escaleras": [
     {
       "tipo": "Sin escalera",
-      "precioMetro": 0
+      "precioMetro": 73.91
     },
     {
       "tipo": "Vertical",
@@ -104,7 +98,6 @@
       "precioMetro": 980
     }
   ],
-
   "conexiones": [
     {
       "rango": "DN25-DN150",
@@ -123,26 +116,22 @@
       "horas": 10
     }
   ],
-
   "calculoEstructural": {
     "densidadContenido": 1020,
     "gravedad": 9.81,
     "sobrepresion": 0
   },
-
   "transporte": {
     "nacional": 3600,
     "europa": 4500,
     "internacional": 6000,
     "pesoMaximoContenedor": 20000
   },
-
   "vuelos": {
     "nacional": 0,
     "europa": 500,
     "internacional": 1000
   },
-
   "pesos": {
     "escaleraVerticalKgMetro": 60,
     "escaleraHelicoidalKgMetro": 160

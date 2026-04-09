@@ -2,11 +2,20 @@
   {
     "Fabricante": "BALMORAL",
     "Acabado": "GFS",
-    "Material": [ "S235", "S275" ],
-    "Fy": [ 235.0, 275.0 ],
-    "Fu": [ 360.0, 410.0 ],
+    "Material": [
+      "S235",
+      "S275"
+    ],
+    "Fy": [
+      235.0,
+      275.0
+    ],
+    "Fu": [
+      360.0,
+      410.0
+    ],
     "ModuloResistente": 3050.0,
-    "Precio": 0.0,
+    "Precio": 100.0,
     "Peso": 3.4,
     "Longitud": 2.41,
     "Nombre": "FA 50x50x5 - L 2410",
@@ -16,11 +25,20 @@
   {
     "Fabricante": "BALMORAL",
     "Acabado": "GFS",
-    "Material": [ "S235", "S275" ],
-    "Fy": [ 235.0, 275.0 ],
-    "Fu": [ 360.0, 410.0 ],
+    "Material": [
+      "S235",
+      "S275"
+    ],
+    "Fy": [
+      235.0,
+      275.0
+    ],
+    "Fu": [
+      360.0,
+      410.0
+    ],
     "ModuloResistente": 5290.0,
-    "Precio": 0.0,
+    "Precio": 110.0,
     "Peso": 5.4,
     "Longitud": 2.41,
     "Nombre": "FA 60x60x6 - L 2410",
@@ -30,11 +48,20 @@
   {
     "Fabricante": "BALMORAL",
     "Acabado": "GFS",
-    "Material": [ "S235", "S275" ],
-    "Fy": [ 235.0, 275.0 ],
-    "Fu": [ 360.0, 410.0 ],
+    "Material": [
+      "S235",
+      "S275"
+    ],
+    "Fy": [
+      235.0,
+      275.0
+    ],
+    "Fu": [
+      360.0,
+      410.0
+    ],
     "ModuloResistente": 8410.0,
-    "Precio": 0.0,
+    "Precio": 120.0,
     "Peso": 7.4,
     "Longitud": 2.41,
     "Nombre": "FA 70x70x7 - L 2410",
@@ -44,11 +71,20 @@
   {
     "Fabricante": "BALMORAL",
     "Acabado": "GFS",
-    "Material": [ "S235", "S275" ],
-    "Fy": [ 235.0, 275.0 ],
-    "Fu": [ 360.0, 410.0 ],
+    "Material": [
+      "S235",
+      "S275"
+    ],
+    "Fy": [
+      235.0,
+      275.0
+    ],
+    "Fu": [
+      360.0,
+      410.0
+    ],
     "ModuloResistente": 12600.0,
-    "Precio": 0.0,
+    "Precio": 130.0,
     "Peso": 9.7,
     "Longitud": 2.41,
     "Nombre": "FA 80x80x8 - L 2410",
@@ -58,11 +94,20 @@
   {
     "Fabricante": "BALMORAL",
     "Acabado": "GFS",
-    "Material": [ "S235", "S275" ],
-    "Fy": [ 235.0, 275.0 ],
-    "Fu": [ 360.0, 410.0 ],
+    "Material": [
+      "S235",
+      "S275"
+    ],
+    "Fy": [
+      235.0,
+      275.0
+    ],
+    "Fu": [
+      360.0,
+      410.0
+    ],
     "ModuloResistente": 16100.0,
-    "Precio": 0.0,
+    "Precio": 140.0,
     "Peso": 12.2,
     "Longitud": 2.41,
     "Nombre": "FA 90x90x9 - L 2410",
@@ -72,11 +117,20 @@
   {
     "Fabricante": "BALMORAL",
     "Acabado": "GFS",
-    "Material": [ "S235", "S275" ],
-    "Fy": [ 235.0, 275.0 ],
-    "Fu": [ 360.0, 410.0 ],
+    "Material": [
+      "S235",
+      "S275"
+    ],
+    "Fy": [
+      235.0,
+      275.0
+    ],
+    "Fu": [
+      360.0,
+      410.0
+    ],
     "ModuloResistente": 24600.0,
-    "Precio": 0.0,
+    "Precio": 150.0,
     "Peso": 15.1,
     "Longitud": 2.41,
     "Nombre": "FA 100x100x10 - L 2410",
@@ -86,11 +140,20 @@
   {
     "Fabricante": "BALMORAL",
     "Acabado": "EPOXI",
-    "Material": [ "S235", "S275" ],
-    "Fy": [ 235.0, 275.0 ],
-    "Fu": [ 360.0, 410.0 ],
+    "Material": [
+      "S235",
+      "S275"
+    ],
+    "Fy": [
+      235.0,
+      275.0
+    ],
+    "Fu": [
+      360.0,
+      410.0
+    ],
     "ModuloResistente": 3050.0,
-    "Precio": 0.0,
+    "Precio": 100.0,
     "Peso": 3.4,
     "Longitud": 2.41,
     "Nombre": "FA 50x50x5 - L 2410",
@@ -100,11 +163,20 @@
   {
     "Fabricante": "BALMORAL",
     "Acabado": "EPOXI",
-    "Material": [ "S235", "S275" ],
-    "Fy": [ 235.0, 275.0 ],
-    "Fu": [ 360.0, 410.0 ],
+    "Material": [
+      "S235",
+      "S275"
+    ],
+    "Fy": [
+      235.0,
+      275.0
+    ],
+    "Fu": [
+      360.0,
+      410.0
+    ],
     "ModuloResistente": 5290.0,
-    "Precio": 0.0,
+    "Precio": 110.0,
     "Peso": 5.4,
     "Longitud": 2.41,
     "Nombre": "FA 60x60x6 - L 2410",
@@ -114,11 +186,20 @@
   {
     "Fabricante": "BALMORAL",
     "Acabado": "EPOXI",
-    "Material": [ "S235", "S275" ],
-    "Fy": [ 235.0, 275.0 ],
-    "Fu": [ 360.0, 410.0 ],
+    "Material": [
+      "S235",
+      "S275"
+    ],
+    "Fy": [
+      235.0,
+      275.0
+    ],
+    "Fu": [
+      360.0,
+      410.0
+    ],
     "ModuloResistente": 8410.0,
-    "Precio": 0.0,
+    "Precio": 120.0,
     "Peso": 7.4,
     "Longitud": 2.41,
     "Nombre": "FA 70x70x7 - L 2410",
@@ -128,11 +209,20 @@
   {
     "Fabricante": "BALMORAL",
     "Acabado": "EPOXI",
-    "Material": [ "S235", "S275" ],
-    "Fy": [ 235.0, 275.0 ],
-    "Fu": [ 360.0, 410.0 ],
+    "Material": [
+      "S235",
+      "S275"
+    ],
+    "Fy": [
+      235.0,
+      275.0
+    ],
+    "Fu": [
+      360.0,
+      410.0
+    ],
     "ModuloResistente": 12600.0,
-    "Precio": 0.0,
+    "Precio": 130.0,
     "Peso": 9.7,
     "Longitud": 2.41,
     "Nombre": "FA 80x80x8 - L 2410",
@@ -142,11 +232,20 @@
   {
     "Fabricante": "BALMORAL",
     "Acabado": "EPOXI",
-    "Material": [ "S235", "S275" ],
-    "Fy": [ 235.0, 275.0 ],
-    "Fu": [ 360.0, 410.0 ],
+    "Material": [
+      "S235",
+      "S275"
+    ],
+    "Fy": [
+      235.0,
+      275.0
+    ],
+    "Fu": [
+      360.0,
+      410.0
+    ],
     "ModuloResistente": 16100.0,
-    "Precio": 0.0,
+    "Precio": 140.0,
     "Peso": 12.2,
     "Longitud": 2.41,
     "Nombre": "FA 90x90x9 - L 2410",
@@ -156,11 +255,20 @@
   {
     "Fabricante": "BALMORAL",
     "Acabado": "EPOXI",
-    "Material": [ "S235", "S275" ],
-    "Fy": [ 235.0, 275.0 ],
-    "Fu": [ 360.0, 410.0 ],
+    "Material": [
+      "S235",
+      "S275"
+    ],
+    "Fy": [
+      235.0,
+      275.0
+    ],
+    "Fu": [
+      360.0,
+      410.0
+    ],
     "ModuloResistente": 24600.0,
-    "Precio": 0.0,
+    "Precio": 150.0,
     "Peso": 15.1,
     "Longitud": 2.41,
     "Nombre": "FA 100x100x10 - L 2410",
