@@ -7,71 +7,56 @@ namespace TankDesigner.Core.Services
 {
     public sealed class PresupuestoInstalacionExcelService
     {
-        // === Datos equivalentes a la hoja "Data" del Excel ===
-
-        private const decimal DensidadAceroKgM3 = 7850m;
-
-        // Productividad / tiempos
-        private const decimal HorasBasePorPlacaSinGrua = 0.5m;           // Data!J3
-        private const decimal HorasPor100KgSinGrua = 1.0m;               // Data!J4
-        private const decimal HorasPor100KgConGrua = 0.2m;               // Data!J5
-        private const decimal UmbralPesoPanelGruaKg = 150m;              // Data!J7
-        private const decimal HorasPorRigidizador = 0.4m;                // Data!J9
-        private const decimal HorasSelladoPorMetro = 0.06m;              // Data!J10
-        private const decimal HorasEscaleraVerticalPorMetro = 0.5m;      // Data!J11
-        private const decimal HorasEscaleraHelicoidalPorMetro = 1.5m;    // Data!J12
-        private const decimal HorasConexion25a150 = 0.5m;                // Data!J13
-        private const decimal HorasConexion150a300 = 0.7m;               // Data!J14
-        private const decimal HorasConexion300a500 = 1.0m;               // Data!J15
-        private const decimal HorasConexionMayor500 = 1.2m;              // Data!J16
-        private const decimal HorasPorStarterRing = 1.3m;                // Data!J17
-        private const decimal HorasAnclajePorMetro = 2.0m;               // Data!J18
-        private const decimal HorasBocaHombre = 4.5m;                    // Data!J19
-        private const decimal HorasCambioGato = 1.0m;                    // Data!J20
-
-        // Costes hora
-        private const decimal CosteHoraOperarioNacional = 32m;           // Data!J21
-        private const decimal CosteHoraIngenieroNacional = 40m;          // Data!J22
-        private const decimal CosteHoraSeguridadNacional = 45m;          // Data!J23
-        private const decimal CosteHoraOperarioInternacional = 45m;      // Data!J24
-        private const decimal CosteHoraIngenieroInternacional = 50m;     // Data!J25
-        private const decimal CosteHoraSeguridadInternacional = 55m;     // Data!J26
-
-        // Costes adicionales
-        private const decimal CosteVueloEuropa = 500m;                   // Data!J72
-        private const decimal CosteVueloInternacional = 1000m;           // Data!J73
-
-        // Techo
-        private const decimal HorasTechoEstructuraConico = 0.4m;         // Data!J44
-        private const decimal HorasTechoPanelesConico = 0.8m;            // Data!K44
-        private const decimal HorasTechoEstructuraPlano = 0.2m;          // Data!J45
-        private const decimal HorasTechoPanelesPlano = 0.7m;             // Data!K45
-        private const decimal HorasTechoEstructuraDomo = 1.0m;           // Data!J46
-        private const decimal HorasTechoPanelesDomo = 0.8m;              // Data!K46
-
-        // Escaleras fabricación
-        private const decimal CosteEscaleraVerticalPorMetro = 250m;      // Data!J50 = 2500/10
-        private const decimal CosteEscaleraHelicoidalPorMetro = 980m;    // Data!J51
+        private readonly JsonCatalogService _jsonCatalogService = new();
 
         public PresupuestoInstalacionResultadoModel Calcular(PresupuestoInstalacionInputModel input)
         {
             input.Validar();
 
-            var resultado = new PresupuestoInstalacionResultadoModel();
+            var config = _jsonCatalogService.CargarDatosInstalacion(MapearFabricante(input.Fabricante));
+            var panel = ObtenerPanelFabricante(config, input.Fabricante);
+            var techo = ObtenerTecho(config, input.TipoTecho);
+            var escalera = ObtenerEscalera(config, input.TipoEscalera);
 
-            decimal alturaPanel = ObtenerAlturaPanel(input.Fabricante);
-            decimal longitudPanel = ObtenerLongitudPanel(input.Fabricante);
+            decimal densidadAcero = config.DensidadAcero > 0 ? config.DensidadAcero : 7850m;
+            decimal alturaPanel = panel?.AltoPanel > 0 ? panel.AltoPanel : ObtenerAlturaPanelFallback(input.Fabricante);
+            decimal longitudPanel = panel?.LargoPanel > 0 ? panel.LargoPanel : ObtenerLongitudPanelFallback(input.Fabricante);
+
+            decimal horasBasePorPlaca = config.Productividad.HorasPorPlacaPersona > 0 ? config.Productividad.HorasPorPlacaPersona : 0.5m;
+            decimal horasPor100KgSinGrua = config.Productividad.HorasPor100kgPlacaSinGrua > 0 ? config.Productividad.HorasPor100kgPlacaSinGrua : 1.0m;
+            decimal horasPor100KgConGrua = config.Productividad.HorasPor100kgPlacaConGrua > 0 ? config.Productividad.HorasPor100kgPlacaConGrua : 0.2m;
+            decimal umbralPesoPanelGrua = config.Productividad.UmbralPesoPanelGrua > 0 ? config.Productividad.UmbralPesoPanelGrua : 150m;
+            decimal horasPorRigidizador = config.Productividad.HorasPorRigidizador > 0 ? config.Productividad.HorasPorRigidizador : 0.4m;
+            decimal horasSelladoPorMetro = config.Productividad.HorasSelladoMetro > 0 ? config.Productividad.HorasSelladoMetro : 0.06m;
+            decimal horasEscaleraVerticalMetro = config.Productividad.HorasEscaleraVerticalMetro > 0 ? config.Productividad.HorasEscaleraVerticalMetro : 0.5m;
+            decimal horasEscaleraHelicoidalMetro = config.Productividad.HorasEscaleraHelicoidalMetro > 0 ? config.Productividad.HorasEscaleraHelicoidalMetro : 1.5m;
+            decimal horasConexion25a150 = config.Productividad.HorasConexion.DN25_DN150 > 0 ? config.Productividad.HorasConexion.DN25_DN150 : 0.5m;
+            decimal horasConexion150a300 = config.Productividad.HorasConexion.DN150_DN300 > 0 ? config.Productividad.HorasConexion.DN150_DN300 : 0.7m;
+            decimal horasConexion300a500 = config.Productividad.HorasConexion.DN300_DN500 > 0 ? config.Productividad.HorasConexion.DN300_DN500 : 1.0m;
+            decimal horasConexionMayor500 = config.Productividad.HorasConexion.DN500 > 0 ? config.Productividad.HorasConexion.DN500 : 1.2m;
+            decimal horasAnclajePorMetro = config.Productividad.HorasAnclajeMetro > 0 ? config.Productividad.HorasAnclajeMetro : 2.0m;
+            decimal horasBocaHombre = config.Productividad.HorasBocaHombre > 0 ? config.Productividad.HorasBocaHombre : 4.5m;
+            decimal horasCambioGato = config.Productividad.HorasCambioGato > 0 ? config.Productividad.HorasCambioGato : 1.0m;
+
+            decimal costeHoraOperario = ObtenerCosteHoraOperario(config, input.UbicacionObra);
+            decimal costeHoraIngeniero = ObtenerCosteHoraIngeniero(config, input.UbicacionObra);
+            decimal costeHoraSeguridad = ObtenerCosteHoraSeguridad(config, input.UbicacionObra);
+            decimal costeVueloUnitario = ObtenerCosteVuelo(config, input.UbicacionObra);
+            decimal costeFabricacionEscaleraMetro = escalera?.PrecioMetro ?? ObtenerPrecioEscaleraFallback(input.TipoEscalera);
+
             decimal alturaTanque = alturaPanel * input.NumeroAnillos;
             decimal perimetro = (decimal)Math.PI * input.DiametroMetros;
             decimal areaTecho = (decimal)Math.PI * input.DiametroMetros * input.DiametroMetros / 4m;
 
-            resultado.AlturaPanelMetros = Round2(alturaPanel);
-            resultado.LongitudPanelMetros = Round2(longitudPanel);
-            resultado.AlturaTanqueMetros = Round2(alturaTanque);
-            resultado.PerimetroTanqueMetros = Round2(perimetro);
-            resultado.AreaTechoM2 = Round2(areaTecho);
+            var resultado = new PresupuestoInstalacionResultadoModel
+            {
+                AlturaPanelMetros = Round2(alturaPanel),
+                LongitudPanelMetros = Round2(longitudPanel),
+                AlturaTanqueMetros = Round2(alturaTanque),
+                PerimetroTanqueMetros = Round2(perimetro),
+                AreaTechoM2 = Round2(areaTecho)
+            };
 
-            // 1) Horas por placas según espesores reales del cálculo
             var conteoEspesores = input.EspesoresAnillosMm
                 .GroupBy(x => x)
                 .ToDictionary(g => g.Key, g => g.Count() * input.NumeroPlacasPorAnillo);
@@ -84,66 +69,48 @@ namespace TankDesigner.Core.Services
                 decimal espesorMm = item.Key;
                 int numeroPlacas = item.Value;
 
-                decimal pesoPanelKg = alturaPanel * longitudPanel * (espesorMm / 1000m) * DensidadAceroKgM3;
+                decimal pesoPanelKg = alturaPanel * longitudPanel * (espesorMm / 1000m) * densidadAcero;
 
-                decimal horasPanelSinGrua = HorasBasePorPlacaSinGrua + (HorasPor100KgSinGrua * pesoPanelKg / 100m);
-                decimal horasPanelConGrua = HorasBasePorPlacaSinGrua + (HorasPor100KgConGrua * pesoPanelKg / 100m);
+                decimal horasPanelSinGrua = horasBasePorPlaca + (horasPor100KgSinGrua * pesoPanelKg / 100m);
+                decimal horasPanelConGrua = horasBasePorPlaca + (horasPor100KgConGrua * pesoPanelKg / 100m);
 
-                bool requiereGrua = pesoPanelKg >= UmbralPesoPanelGruaKg;
+                bool requiereGrua = pesoPanelKg >= umbralPesoPanelGrua;
                 decimal horasUnitarias = requiereGrua ? horasPanelConGrua : horasPanelSinGrua;
                 decimal horasTotalesEspesor = horasUnitarias * numeroPlacas;
 
                 horasMontajePlacas += horasTotalesEspesor;
 
                 if (requiereGrua)
-                {
                     horasCamionGrua += horasTotalesEspesor;
-                }
             }
 
-            // 2) Resto de horas según Excel
-            decimal horasCambiosGato = input.NumeroAnillos * input.NumeroPlacasPorAnillo * HorasCambioGato;
+            decimal horasCambiosGato = input.NumeroAnillos * input.NumeroPlacasPorAnillo * horasCambioGato;
 
             decimal horasEscaleras = input.TipoEscalera switch
             {
                 TipoEscaleraPresupuesto.SinEscalera => 0m,
-                TipoEscaleraPresupuesto.Vertical => input.NumeroEscaleras * alturaTanque * HorasEscaleraVerticalPorMetro,
-                TipoEscaleraPresupuesto.Helicoidal => input.NumeroEscaleras * alturaTanque * HorasEscaleraHelicoidalPorMetro,
+                TipoEscaleraPresupuesto.Vertical => input.NumeroEscaleras * alturaTanque * horasEscaleraVerticalMetro,
+                TipoEscaleraPresupuesto.Helicoidal => input.NumeroEscaleras * alturaTanque * horasEscaleraHelicoidalMetro,
                 _ => 0m
             };
 
             decimal horasConexiones =
-                (input.ConexionesDn25a150 * HorasConexion25a150) +
-                (input.ConexionesDn150a300 * HorasConexion150a300) +
-                (input.ConexionesDn300a500 * HorasConexion300a500) +
-                (input.ConexionesMayor500 * HorasConexionMayor500) +
-                (input.NumeroBocasHombre * HorasBocaHombre);
+                (input.ConexionesDn25a150 * horasConexion25a150) +
+                (input.ConexionesDn150a300 * horasConexion150a300) +
+                (input.ConexionesDn300a500 * horasConexion300a500) +
+                (input.ConexionesMayor500 * horasConexionMayor500) +
+                (input.NumeroBocasHombre * horasBocaHombre);
 
             decimal horasRigidizadores =
                 (decimal)Math.Ceiling((double)input.NumeroPlacasPorAnillo / input.NumeroAnillos) *
                 input.NumeroPlacasPorAnillo *
-                HorasPorRigidizador;
+                horasPorRigidizador;
 
-            decimal horasAnclaje = perimetro * HorasAnclajePorMetro;
-            decimal horasSellado = perimetro * HorasSelladoPorMetro;
+            decimal horasAnclaje = perimetro * horasAnclajePorMetro;
+            decimal horasSellado = perimetro * horasSelladoPorMetro;
 
-            decimal horasTechoEstructura = input.TipoTecho switch
-            {
-                TipoTechoPresupuesto.SinTecho => 0m,
-                TipoTechoPresupuesto.Conico => areaTecho * HorasTechoEstructuraConico,
-                TipoTechoPresupuesto.Plano => areaTecho * HorasTechoEstructuraPlano,
-                TipoTechoPresupuesto.DomoGeodesico => areaTecho * HorasTechoEstructuraDomo,
-                _ => 0m
-            };
-
-            decimal horasTechoPaneles = input.TipoTecho switch
-            {
-                TipoTechoPresupuesto.SinTecho => 0m,
-                TipoTechoPresupuesto.Conico => areaTecho * HorasTechoPanelesConico,
-                TipoTechoPresupuesto.Plano => areaTecho * HorasTechoPanelesPlano,
-                TipoTechoPresupuesto.DomoGeodesico => areaTecho * HorasTechoPanelesDomo,
-                _ => 0m
-            };
+            decimal horasTechoEstructura = techo?.HorasEstructuraM2 > 0 ? areaTecho * techo.HorasEstructuraM2 : 0m;
+            decimal horasTechoPaneles = techo?.HorasPanelM2 > 0 ? areaTecho * techo.HorasPanelM2 : 0m;
 
             decimal horasTotalesTecho = horasTechoEstructura + horasTechoPaneles;
             decimal horasTotalesDeposito =
@@ -155,7 +122,6 @@ namespace TankDesigner.Core.Services
                 horasAnclaje +
                 horasSellado;
 
-            // Excel X28
             decimal horasDescanso = 0m;
             if (input.TamanoCuadrilla > 0)
             {
@@ -163,18 +129,15 @@ namespace TankDesigner.Core.Services
                                * (input.HorasTrabajoPorDia * 2m);
             }
 
-            // Ajuste por lluvia
             if (input.PorcentajeLluvia > 0m)
             {
                 horasDescanso += (horasTotalesTecho + horasTotalesDeposito) * input.PorcentajeLluvia;
             }
 
-            // Excel X29
             decimal horasDesplazamiento = Math.Max(
                 (decimal)Math.Ceiling((double)((horasTotalesTecho + horasTotalesDeposito + horasDescanso) / (input.HorasTrabajoPorDia * 60m))) * 2m * input.HorasTrabajoPorDia,
                 input.HorasTrabajoPorDia * 2m * input.TamanoCuadrilla);
 
-            // 3) Calendario
             decimal horasEquipoTecho = (decimal)Math.Ceiling((double)(horasTotalesTecho / input.TamanoCuadrilla));
             decimal diasTecho = (decimal)Math.Ceiling((double)(horasEquipoTecho / input.HorasTrabajoPorDia));
 
@@ -187,7 +150,6 @@ namespace TankDesigner.Core.Services
             decimal horasEquipoDesplazamiento = (decimal)Math.Ceiling((double)(horasDesplazamiento / input.TamanoCuadrilla));
             decimal diasDesplazamiento = (decimal)Math.Ceiling((double)(horasEquipoDesplazamiento / input.HorasTrabajoPorDia));
 
-            // Reproduce el Excel: C39 = SUM(C35:C38), pero C37/C38 vienen vacías
             decimal diasTotalesExcel = diasTecho + diasDeposito;
 
             resultado.Horas = new HorasInstalacionDetalleModel
@@ -219,12 +181,6 @@ namespace TankDesigner.Core.Services
                 DiasTotalesExcel = Round2(diasTotalesExcel)
             };
 
-            // 4) Costes
-            decimal costeHoraOperario = ObtenerCosteHoraOperario(input.UbicacionObra);
-            decimal costeHoraIngeniero = ObtenerCosteHoraIngeniero(input.UbicacionObra);
-            decimal costeHoraSeguridad = ObtenerCosteHoraSeguridad(input.UbicacionObra);
-
-            // Excel C46 / C47
             decimal divisorDias = (diasTecho + diasDeposito) <= 0m ? 1m : (diasTecho + diasDeposito);
             decimal diasRepartidosTecho = Math.Round((diasTotalesExcel / divisorDias) * diasTecho, 0, MidpointRounding.AwayFromZero);
             decimal diasRepartidosDeposito = Math.Round((diasTotalesExcel / divisorDias) * diasDeposito, 0, MidpointRounding.AwayFromZero);
@@ -238,15 +194,12 @@ namespace TankDesigner.Core.Services
             decimal numeroVuelos = (horasDesplazamiento + ((input.NumeroSiteManagers + input.NumeroTecnicosSeguridad) * input.HorasTrabajoPorDia * 2m))
                                  / input.HorasTrabajoPorDia;
 
-            decimal costeVueloUnitario = ObtenerCosteVuelo(input.UbicacionObra);
             decimal costeVuelos = numeroVuelos * costeVueloUnitario;
 
             decimal costeFabricacionEscalera = input.TipoEscalera switch
             {
                 TipoEscaleraPresupuesto.SinEscalera => 0m,
-                TipoEscaleraPresupuesto.Vertical => input.NumeroEscaleras * alturaTanque * CosteEscaleraVerticalPorMetro,
-                TipoEscaleraPresupuesto.Helicoidal => input.NumeroEscaleras * alturaTanque * CosteEscaleraHelicoidalPorMetro,
-                _ => 0m
+                _ => input.NumeroEscaleras * alturaTanque * costeFabricacionEscaleraMetro
             };
 
             var partidas = new List<PartidaPresupuestoModel>
@@ -267,9 +220,7 @@ namespace TankDesigner.Core.Services
                     costeVueloUnitario, costeVuelos),
 
                 CrearPartida("INST-06", "Fabricación escalera", input.NumeroEscaleras * alturaTanque, "m",
-                    input.TipoEscalera == TipoEscaleraPresupuesto.Vertical ? CosteEscaleraVerticalPorMetro :
-                    input.TipoEscalera == TipoEscaleraPresupuesto.Helicoidal ? CosteEscaleraHelicoidalPorMetro : 0m,
-                    costeFabricacionEscalera)
+                    costeFabricacionEscaleraMetro, costeFabricacionEscalera)
             };
 
             if (input.CosteTransporteManual > 0m)
@@ -303,7 +254,74 @@ namespace TankDesigner.Core.Services
             };
         }
 
-        private static decimal ObtenerAlturaPanel(FabricantePresupuesto fabricante)
+        private PanelFabricantePresupuestoJsonModel? ObtenerPanelFabricante(PresupuestoConfigJsonModel config, FabricantePresupuesto fabricante)
+        {
+            string nombre = MapearFabricante(fabricante);
+
+            return config.PanelesFabricante
+                .FirstOrDefault(x => NormalizarClave(x.Fabricante) == NormalizarClave(nombre));
+        }
+
+        private static TechoPresupuestoJsonModel? ObtenerTecho(PresupuestoConfigJsonModel config, TipoTechoPresupuesto tipoTecho)
+        {
+            string nombre = tipoTecho switch
+            {
+                TipoTechoPresupuesto.SinTecho => "Sin techo",
+                TipoTechoPresupuesto.Conico => "Conico",
+                TipoTechoPresupuesto.Plano => "Plano",
+                TipoTechoPresupuesto.DomoGeodesico => "Domo geodesico",
+                _ => "Sin techo"
+            };
+
+            return config.Techo.FirstOrDefault(x => NormalizarClave(x.Tipo) == NormalizarClave(nombre));
+        }
+
+        private static EscaleraPresupuestoJsonModel? ObtenerEscalera(PresupuestoConfigJsonModel config, TipoEscaleraPresupuesto tipoEscalera)
+        {
+            string nombre = tipoEscalera switch
+            {
+                TipoEscaleraPresupuesto.SinEscalera => "Sin escalera",
+                TipoEscaleraPresupuesto.Vertical => "Vertical",
+                TipoEscaleraPresupuesto.Helicoidal => "Helicoidal",
+                _ => "Sin escalera"
+            };
+
+            return config.Escaleras.FirstOrDefault(x => NormalizarClave(x.Tipo) == NormalizarClave(nombre));
+        }
+
+        private static decimal ObtenerCosteHoraOperario(PresupuestoConfigJsonModel config, UbicacionObraPresupuesto ubicacion)
+        {
+            return ubicacion == UbicacionObraPresupuesto.Nacional
+                ? (config.CostesManoObra.OperarioNacional > 0 ? config.CostesManoObra.OperarioNacional : 32m)
+                : (config.CostesManoObra.TrabajadorInternacional > 0 ? config.CostesManoObra.TrabajadorInternacional : 45m);
+        }
+
+        private static decimal ObtenerCosteHoraIngeniero(PresupuestoConfigJsonModel config, UbicacionObraPresupuesto ubicacion)
+        {
+            return ubicacion == UbicacionObraPresupuesto.Nacional
+                ? (config.CostesManoObra.IngenieroNacional > 0 ? config.CostesManoObra.IngenieroNacional : 40m)
+                : (config.CostesManoObra.IngenieroInternacional > 0 ? config.CostesManoObra.IngenieroInternacional : 50m);
+        }
+
+        private static decimal ObtenerCosteHoraSeguridad(PresupuestoConfigJsonModel config, UbicacionObraPresupuesto ubicacion)
+        {
+            return ubicacion == UbicacionObraPresupuesto.Nacional
+                ? (config.CostesManoObra.TecnicoSeguridadNacional > 0 ? config.CostesManoObra.TecnicoSeguridadNacional : 45m)
+                : (config.CostesManoObra.TecnicoSeguridadInternacional > 0 ? config.CostesManoObra.TecnicoSeguridadInternacional : 55m);
+        }
+
+        private static decimal ObtenerCosteVuelo(PresupuestoConfigJsonModel config, UbicacionObraPresupuesto ubicacion)
+        {
+            return ubicacion switch
+            {
+                UbicacionObraPresupuesto.Nacional => config.Vuelos.Nacional,
+                UbicacionObraPresupuesto.Europa => config.Vuelos.Europa > 0 ? config.Vuelos.Europa : 500m,
+                UbicacionObraPresupuesto.Internacional => config.Vuelos.Internacional > 0 ? config.Vuelos.Internacional : 1000m,
+                _ => 0m
+            };
+        }
+
+        private static decimal ObtenerAlturaPanelFallback(FabricantePresupuesto fabricante)
         {
             return fabricante switch
             {
@@ -314,7 +332,7 @@ namespace TankDesigner.Core.Services
             };
         }
 
-        private static decimal ObtenerLongitudPanel(FabricantePresupuesto fabricante)
+        private static decimal ObtenerLongitudPanelFallback(FabricantePresupuesto fabricante)
         {
             return fabricante switch
             {
@@ -325,36 +343,38 @@ namespace TankDesigner.Core.Services
             };
         }
 
-        private static decimal ObtenerCosteHoraOperario(UbicacionObraPresupuesto ubicacion)
+        private static decimal ObtenerPrecioEscaleraFallback(TipoEscaleraPresupuesto tipoEscalera)
         {
-            return ubicacion == UbicacionObraPresupuesto.Nacional
-                ? CosteHoraOperarioNacional
-                : CosteHoraOperarioInternacional;
-        }
-
-        private static decimal ObtenerCosteHoraIngeniero(UbicacionObraPresupuesto ubicacion)
-        {
-            return ubicacion == UbicacionObraPresupuesto.Nacional
-                ? CosteHoraIngenieroNacional
-                : CosteHoraIngenieroInternacional;
-        }
-
-        private static decimal ObtenerCosteHoraSeguridad(UbicacionObraPresupuesto ubicacion)
-        {
-            return ubicacion == UbicacionObraPresupuesto.Nacional
-                ? CosteHoraSeguridadNacional
-                : CosteHoraSeguridadInternacional;
-        }
-
-        private static decimal ObtenerCosteVuelo(UbicacionObraPresupuesto ubicacion)
-        {
-            return ubicacion switch
+            return tipoEscalera switch
             {
-                UbicacionObraPresupuesto.Nacional => 0m,
-                UbicacionObraPresupuesto.Europa => CosteVueloEuropa,
-                UbicacionObraPresupuesto.Internacional => CosteVueloInternacional,
+                TipoEscaleraPresupuesto.Vertical => 250m,
+                TipoEscaleraPresupuesto.Helicoidal => 980m,
                 _ => 0m
             };
+        }
+
+        private static string MapearFabricante(FabricantePresupuesto fabricante)
+        {
+            return fabricante switch
+            {
+                FabricantePresupuesto.Balmoral => "BALMORAL",
+                FabricantePresupuesto.Permastore => "PERMASTORE",
+                FabricantePresupuesto.DL2 => "DL2",
+                _ => "BALMORAL"
+            };
+        }
+
+        private static string NormalizarClave(string? valor)
+        {
+            return (valor ?? string.Empty)
+                .Trim()
+                .ToLowerInvariant()
+                .Replace("á", "a")
+                .Replace("é", "e")
+                .Replace("í", "i")
+                .Replace("ó", "o")
+                .Replace("ú", "u")
+                .Replace("ü", "u");
         }
 
         private static decimal Round2(decimal value)

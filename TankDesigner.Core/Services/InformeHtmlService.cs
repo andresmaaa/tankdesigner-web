@@ -9,6 +9,7 @@ namespace TankDesigner.Core.Services
     public class InformeHtmlService
     {
         private readonly CalculoTanqueService _calculoTanqueService = new();
+        private readonly JsonCatalogService _jsonCatalogService = new();
 
         private ProyectoGeneralModel? _proyecto;
         private TankModel? _tanque;
@@ -764,6 +765,29 @@ namespace TankDesigner.Core.Services
             });
         }
 
+        private PresupuestoConfigJsonModel ObtenerConfigPresupuestoActual()
+        {
+            return _jsonCatalogService.CargarDatosInstalacion(_proyecto?.Fabricante ?? string.Empty);
+        }
+
+        private PanelFabricantePresupuestoJsonModel? ObtenerPanelConfigActual()
+        {
+            var config = ObtenerConfigPresupuestoActual();
+            string fabricante = NormalizarClave(_proyecto?.Fabricante);
+
+            return config.PanelesFabricante
+                .FirstOrDefault(x => NormalizarClave(x.Fabricante) == fabricante);
+        }
+
+        private TechoPresupuestoJsonModel? ObtenerTechoConfigActual()
+        {
+            var config = ObtenerConfigPresupuestoActual();
+            string tipoTecho = NormalizarClave(_instalacion?.TipoTecho);
+
+            return config.Techo
+                .FirstOrDefault(x => NormalizarClave(x.Tipo) == tipoTecho);
+        }
+
         private string ObtenerTipoTechoPresupuesto()
         {
             return NormalizarClave(_instalacion?.TipoTecho);
@@ -803,6 +827,10 @@ namespace TankDesigner.Core.Services
 
         private double ObtenerLongitudPanelMetrosPresupuesto()
         {
+            var panel = ObtenerPanelConfigActual();
+            if (panel != null && panel.LargoPanel > 0)
+                return (double)panel.LargoPanel;
+
             string fabricante = NormalizarClave(_proyecto?.Fabricante);
 
             if (fabricante.Contains("balmoral"))
@@ -828,55 +856,74 @@ namespace TankDesigner.Core.Services
 
         private double ObtenerPrecioConsumiblesPanel()
         {
-            return 2.5; // Excel/Data
+            var config = ObtenerConfigPresupuestoActual();
+            return config.MediosAuxiliares.ConsumiblesPanel > 0
+                ? (double)config.MediosAuxiliares.ConsumiblesPanel
+                : 2.5;
         }
 
         private double ObtenerPrecioConsumiblesTechoM2()
         {
-            return 3.0; // Excel/Data
+            var config = ObtenerConfigPresupuestoActual();
+            return config.MediosAuxiliares.ConsumiblesTechoM2 > 0
+                ? (double)config.MediosAuxiliares.ConsumiblesTechoM2
+                : 3.0;
         }
 
         private double ObtenerPrecioSuministroTecho()
         {
-            return 6000.0; // Excel Tank1!C42
+            var techo = ObtenerTechoConfigActual();
+            if (techo != null && techo.PrecioSuministro > 0)
+                return (double)techo.PrecioSuministro;
+
+            return 0;
         }
 
         private double ObtenerPrecioTransportePorUbicacion()
         {
+            var config = ObtenerConfigPresupuestoActual();
             string ubicacion = ObtenerUbicacionObraPresupuesto();
 
             if (ubicacion.Contains("internacional"))
-                return 6000.0;
+                return config.Transporte.Internacional > 0 ? (double)config.Transporte.Internacional : 6000.0;
 
             if (ubicacion.Contains("europa"))
-                return 4500.0;
+                return config.Transporte.Europa > 0 ? (double)config.Transporte.Europa : 4500.0;
 
-            return 3600.0;
+            return config.Transporte.Nacional > 0 ? (double)config.Transporte.Nacional : 3600.0;
         }
 
         private double ObtenerPesoMaximoContenedorKg()
         {
-            return 20000.0; // Excel/Data
+            var config = ObtenerConfigPresupuestoActual();
+            return config.Transporte.PesoMaximoContenedor > 0
+                ? (double)config.Transporte.PesoMaximoContenedor
+                : 20000.0;
         }
 
         private double ObtenerPesoEscaleraKgMetro()
         {
+            var config = ObtenerConfigPresupuestoActual();
             string tipoEscalera = NormalizarClave(_instalacion?.TipoEscalera);
 
             if (tipoEscalera.Contains("helicoidal"))
-                return 160.0;
+                return config.Pesos.EscaleraHelicoidalKgMetro > 0 ? (double)config.Pesos.EscaleraHelicoidalKgMetro : 160.0;
 
             if (tipoEscalera.Contains("vertical"))
-                return 60.0;
+                return config.Pesos.EscaleraVerticalKgMetro > 0 ? (double)config.Pesos.EscaleraVerticalKgMetro : 60.0;
 
             return 0.0;
         }
 
         private double ObtenerPesoEstimadoTransporteKg(int chapasPorAnillo)
         {
-            double densidadAcero = 7850.0;
+            var config = ObtenerConfigPresupuestoActual();
+            var panel = ObtenerPanelConfigActual();
+
+            double densidadAcero = config.DensidadAcero > 0 ? (double)config.DensidadAcero : 7850.0;
             double alturaPanelM = ObtenerAlturaPanelMetrosPresupuesto();
-            double longitudPanelM = ObtenerLongitudPanelMetrosPresupuesto();
+            double longitudPanelM = panel != null && panel.LargoPanel > 0 ? (double)panel.LargoPanel : ObtenerLongitudPanelMetrosPresupuesto();
+            double pesoKgM2Panel = panel != null && panel.PesoKgM2 > 0 ? (double)panel.PesoKgM2 : 40.0;
 
             double pesoVirolaKg = 0.0;
 
@@ -908,7 +955,7 @@ namespace TankDesigner.Core.Services
             {
                 double areaTechoM2 = ObtenerAreaTechoM2Presupuesto();
                 if (areaTechoM2 > 0)
-                    pesoTechoKg = areaTechoM2 * 40.0; // dato de panel fabricante / Excel
+                    pesoTechoKg = areaTechoM2 * pesoKgM2Panel;
             }
 
             double pesoEscaleraKg = 0.0;
@@ -936,6 +983,7 @@ namespace TankDesigner.Core.Services
                 .Replace("ú", "u")
                 .Replace("ü", "u");
         }
+  
 
         private double ObtenerPrecioUnitarioPorEspesorReal(double espesor)
         {

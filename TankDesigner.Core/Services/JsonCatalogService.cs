@@ -1,108 +1,129 @@
 ﻿using Newtonsoft.Json;
 using TankDesigner.Core.Models.Catalogos;
+using TankDesigner.Core.Models.Presupuestos;
 
 namespace TankDesigner.Core.Services
 {
-    // Servicio encargado de cargar datos de catálogo desde archivos JSON.
-    // Se usa para obtener planchas, configuraciones, tornillos, etc.
     public class JsonCatalogService
     {
-        // Construye la ruta base donde están los JSON del fabricante.
         private string ObtenerRutaFabricante(string fabricante)
         {
-            if (string.IsNullOrWhiteSpace(fabricante))
-                throw new ArgumentException("El fabricante no puede estar vacío.");
+            string fabricanteNormalizado = NormalizarFabricante(fabricante);
 
             return Path.Combine(
                 AppDomain.CurrentDomain.BaseDirectory,
                 "Plantillas",
                 "TankStructuralDesignerFiles",
                 "RutaJson",
-                fabricante.ToUpper()
+                fabricanteNormalizado
             );
         }
 
-        // Método genérico para cargar una lista desde un archivo JSON.
-        // Si hay cualquier problema, devuelve lista vacía para evitar errores.
+        private static string NormalizarFabricante(string fabricante)
+        {
+            if (string.IsNullOrWhiteSpace(fabricante))
+                return "BALMORAL";
+
+            string clave = fabricante.Trim().ToUpperInvariant();
+
+            if (clave.Contains("PERMASTORE"))
+                return "PERMASTORE";
+
+            if (clave.Contains("DL2"))
+                return "DL2";
+
+            return "BALMORAL";
+        }
+
         private List<T> CargarListaDesdeJson<T>(string rutaArchivo)
         {
             try
             {
-                // Si el archivo no existe, devuelve lista vacía.
                 if (!File.Exists(rutaArchivo))
                     return new List<T>();
 
                 string json = File.ReadAllText(rutaArchivo);
 
-                // Si el contenido está vacío, devuelve lista vacía.
                 if (string.IsNullOrWhiteSpace(json))
                     return new List<T>();
 
-                // Deserializa el JSON a lista del tipo indicado.
-                List<T> resultado = JsonConvert.DeserializeObject<List<T>>(json);
-
+                List<T>? resultado = JsonConvert.DeserializeObject<List<T>>(json);
                 return resultado ?? new List<T>();
             }
             catch
             {
-                // En caso de error (lectura o parseo), no rompe la app.
                 return new List<T>();
             }
         }
 
-        // Carga las planchas disponibles del fabricante.
+        private T CargarObjetoDesdeJson<T>(string rutaArchivo) where T : new()
+        {
+            try
+            {
+                if (!File.Exists(rutaArchivo))
+                    return new T();
+
+                string json = File.ReadAllText(rutaArchivo);
+
+                if (string.IsNullOrWhiteSpace(json))
+                    return new T();
+
+                T? resultado = JsonConvert.DeserializeObject<T>(json);
+                return resultado ?? new T();
+            }
+            catch
+            {
+                return new T();
+            }
+        }
+
+        private string ObtenerRutaConFallback(string fabricante, string nombreArchivo)
+        {
+            string rutaPrincipal = Path.Combine(ObtenerRutaFabricante(fabricante), nombreArchivo);
+            if (File.Exists(rutaPrincipal))
+                return rutaPrincipal;
+
+            string rutaBalmoral = Path.Combine(ObtenerRutaFabricante("BALMORAL"), nombreArchivo);
+            if (File.Exists(rutaBalmoral))
+                return rutaBalmoral;
+
+            return rutaPrincipal;
+        }
+
         public List<PosiblePlanchaModel> CargarPlanchas(string fabricante)
         {
-            string ruta = Path.Combine(
-                ObtenerRutaFabricante(fabricante),
-                "ListaPosiblesPlanchas.json"
-            );
-
+            string ruta = ObtenerRutaConFallback(fabricante, "ListaPosiblesPlanchas.json");
             return CargarListaDesdeJson<PosiblePlanchaModel>(ruta);
         }
 
-        // Carga las configuraciones de unión disponibles.
         public List<PosibleConfiguracionModel> CargarConfiguraciones(string fabricante)
         {
-            string ruta = Path.Combine(
-                ObtenerRutaFabricante(fabricante),
-                "ListaPosiblesConfiguraciones.json"
-            );
-
+            string ruta = ObtenerRutaConFallback(fabricante, "ListaPosiblesConfiguraciones.json");
             return CargarListaDesdeJson<PosibleConfiguracionModel>(ruta);
         }
 
-        // Carga los rigidizadores disponibles.
         public List<PosibleRigidizadorModel> CargarRigidizadores(string fabricante)
         {
-            string ruta = Path.Combine(
-                ObtenerRutaFabricante(fabricante),
-                "ListaPosiblesRigidizadores.json"
-            );
-
+            string ruta = ObtenerRutaConFallback(fabricante, "ListaPosiblesRigidizadores.json");
             return CargarListaDesdeJson<PosibleRigidizadorModel>(ruta);
         }
 
-        // Carga los starter rings disponibles.
         public List<PosibleStarterRingModel> CargarStarterRings(string fabricante)
         {
-            string ruta = Path.Combine(
-                ObtenerRutaFabricante(fabricante),
-                "ListaPosiblesSR.json"
-            );
-
+            string ruta = ObtenerRutaConFallback(fabricante, "ListaPosiblesSR.json");
             return CargarListaDesdeJson<PosibleStarterRingModel>(ruta);
         }
 
-        // Carga los tornillos disponibles.
         public List<PosibleTornilloModel> CargarTornillos(string fabricante)
         {
-            string ruta = Path.Combine(
-                ObtenerRutaFabricante(fabricante),
-                "ListaPosiblesTornillos.json"
-            );
-
+            string ruta = ObtenerRutaConFallback(fabricante, "ListaPosiblesTornillos.json");
             return CargarListaDesdeJson<PosibleTornilloModel>(ruta);
+        }
+
+        public PresupuestoConfigJsonModel CargarDatosInstalacion(string fabricante)
+        {
+            string ruta = ObtenerRutaConFallback(fabricante, "Instalacion_Data.json");
+            return CargarObjetoDesdeJson<PresupuestoConfigJsonModel>(ruta);
         }
     }
 }
