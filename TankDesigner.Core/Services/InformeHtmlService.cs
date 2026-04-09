@@ -2,6 +2,7 @@
 using System.Net;
 using System.Text;
 using TankDesigner.Core.Models;
+using TankDesigner.Core.Models.Catalogos;
 
 namespace TankDesigner.Core.Services
 {
@@ -579,30 +580,74 @@ namespace TankDesigner.Core.Services
 
         private double ObtenerPrecioJuegoTornilloBaseReal()
         {
-            if (_resultado == null || _proyecto == null || _resultado.DiametroTornilloBase <= 0) return 0;
+            if (_resultado == null || _proyecto == null || _resultado.DiametroTornilloBase <= 0)
+                return 0;
+
             var tornillos = _calculoTanqueService.ObtenerTornillosDisponibles(_proyecto);
-            if (tornillos == null || tornillos.Count == 0) return 0;
+            if (tornillos == null || tornillos.Count == 0)
+                return 0;
 
-            foreach (var tornillo in tornillos)
+            string nombreBuscado = (_resultado.NombreTornilloBase ?? string.Empty).Trim();
+            double diametroBuscado = _resultado.DiametroTornilloBase;
+
+            // 1. Intento exacto: nombre + diámetro
+            var coincidenciaExacta = tornillos.FirstOrDefault(t =>
+                t != null
+                && !string.IsNullOrWhiteSpace(nombreBuscado)
+                && (string.Equals((t.CalidadTornillo ?? string.Empty).Trim(), nombreBuscado, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals((t.TipoTornillo ?? string.Empty).Trim(), nombreBuscado, StringComparison.OrdinalIgnoreCase))
+                && Math.Abs(t.Diametro - diametroBuscado) < 0.2);
+
+            if (coincidenciaExacta != null)
             {
-                if (tornillo == null) continue;
+                double precioExacto = ObtenerPrecioJuego(coincidenciaExacta);
+                if (precioExacto > 0)
+                    return precioExacto;
+            }
 
-                bool mismoNombre = !string.IsNullOrWhiteSpace(_resultado.NombreTornilloBase)
-                    && (string.Equals(tornillo.CalidadTornillo, _resultado.NombreTornilloBase, StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(tornillo.TipoTornillo, _resultado.NombreTornilloBase, StringComparison.OrdinalIgnoreCase));
+            // 2. Fallback: por nombre
+            var coincidenciaPorNombre = tornillos.FirstOrDefault(t =>
+                t != null
+                && !string.IsNullOrWhiteSpace(nombreBuscado)
+                && (string.Equals((t.CalidadTornillo ?? string.Empty).Trim(), nombreBuscado, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals((t.TipoTornillo ?? string.Empty).Trim(), nombreBuscado, StringComparison.OrdinalIgnoreCase)));
 
-                bool mismoDiametro = Math.Abs(tornillo.Diametro - _resultado.DiametroTornilloBase) < 0.0001;
-                if (!mismoNombre && !mismoDiametro) continue;
+            if (coincidenciaPorNombre != null)
+            {
+                double precioNombre = ObtenerPrecioJuego(coincidenciaPorNombre);
+                if (precioNombre > 0)
+                    return precioNombre;
+            }
 
-                double precioBase = tornillo.Precio != null && tornillo.Precio.Count > 0 ? tornillo.Precio[0] : 0;
-                double precioJuego = precioBase
-                    + (tornillo.PrecioTuerca > 0 ? tornillo.PrecioTuerca : 0)
-                    + (tornillo.PrecioArandela > 0 ? tornillo.PrecioArandela : 0);
+            // 3. Fallback: por diámetro cercano
+            var coincidenciaPorDiametro = tornillos
+                .Where(t => t != null)
+                .OrderBy(t => Math.Abs(t.Diametro - diametroBuscado))
+                .FirstOrDefault();
 
-                if (precioJuego > 0) return precioJuego;
+            if (coincidenciaPorDiametro != null)
+            {
+                double precioDiametro = ObtenerPrecioJuego(coincidenciaPorDiametro);
+                if (precioDiametro > 0)
+                    return precioDiametro;
             }
 
             return 0;
+        }
+
+        private double ObtenerPrecioJuego(PosibleTornilloModel tornillo)
+        {
+            if (tornillo == null)
+                return 0;
+
+            double precioBase = tornillo.Precio != null && tornillo.Precio.Count > 0
+                ? tornillo.Precio[0]
+                : 0;
+
+            double precioTuerca = tornillo.PrecioTuerca > 0 ? tornillo.PrecioTuerca : 0;
+            double precioArandela = tornillo.PrecioArandela > 0 ? tornillo.PrecioArandela : 0;
+
+            return precioBase + precioTuerca + precioArandela;
         }
 
         private string GenerarTablaHtmlMaterialesPlanchas(int numeroAnillos, int chapasPorAnillo)
