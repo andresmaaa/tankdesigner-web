@@ -995,13 +995,15 @@
 
     private async Task GenerarInvitacionAsync()
     {
-        if (!_esSuperAdmin)
+        if (!_esSuperAdmin || _usuarioActual == null)
             return;
 
         _mensaje = "";
         _enlaceInvitacionGenerado = "";
 
-        if (string.IsNullOrWhiteSpace(_correoInvitacion))
+        var correoNormalizado = (_correoInvitacion ?? string.Empty).Trim().ToLowerInvariant();
+
+        if (string.IsNullOrWhiteSpace(correoNormalizado))
         {
             _mensaje = "Debes indicar un correo para la invitación.";
             return;
@@ -1015,30 +1017,37 @@
 
         try
         {
-            var correoNormalizado = _correoInvitacion.Trim();
-
-            // Ajusta esta llamada solo si tu servicio tiene otro nombre o firma.
-            var invitacion = await InvitacionesService.CrearInvitacionAsync(
+            var resultado = await InvitacionesService.CrearInvitacionAsync(
                 correoNormalizado,
                 _rolInvitacion,
-                _usuarioActual!.Id);
+                _usuarioActual.Id);
 
-            if (invitacion == null)
+            if (resultado == null)
             {
                 _mensaje = "No se pudo generar la invitación.";
                 return;
             }
 
-            var token = invitacion.Token;
-            _enlaceInvitacionGenerado = $"{NavigationManager.BaseUri.TrimEnd('/')}/invitacion/{Uri.EscapeDataString(token)}";
-            _mensaje = "Enlace de invitación generado correctamente.";
+            _mensaje = resultado.Mensaje;
+
+            if (!resultado.Ok || string.IsNullOrWhiteSpace(resultado.Token))
+            {
+                return;
+            }
+
+            _enlaceInvitacionGenerado =
+                $"{NavigationManager.BaseUri.TrimEnd('/')}/invitacion/{Uri.EscapeDataString(resultado.Token)}?email={Uri.EscapeDataString(resultado.Email)}";
 
             _correoInvitacion = "";
             _rolInvitacion = RolesAplicacion.Admin;
+
+            await CargarTodoAsync();
+            _modoActivo = "usuarios";
+            StateHasChanged();
         }
-        catch
+        catch (Exception ex)
         {
-            _mensaje = "Se produjo un error al generar la invitación.";
+            _mensaje = $"Se produjo un error al generar la invitación: {ex.Message}";
         }
     }
 
@@ -1049,7 +1058,7 @@
 
         try
         {
-            await JS.InvokeVoidAsync("navigator.clipboard.writeText", _enlaceInvitacionGenerado);
+            await JS.InvokeVoidAsync("eval", $"navigator.clipboard.writeText('{_enlaceInvitacionGenerado.Replace("'", "\\'")}')");
             _mensaje = "Enlace copiado al portapapeles.";
         }
         catch
