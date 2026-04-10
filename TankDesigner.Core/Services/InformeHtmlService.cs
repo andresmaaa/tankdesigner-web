@@ -983,8 +983,6 @@ namespace TankDesigner.Core.Services
                 .Replace("ú", "u")
                 .Replace("ü", "u");
         }
-  
-
         private double ObtenerPrecioUnitarioPorEspesorReal(double espesor)
         {
             if (espesor <= 0 || _proyecto == null) return 0;
