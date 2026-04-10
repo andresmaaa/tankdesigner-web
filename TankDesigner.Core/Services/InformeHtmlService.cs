@@ -279,6 +279,8 @@ namespace TankDesigner.Core.Services
             List<LineaPresupuestoRow> lineasMaterial = GenerarLineasPresupuesto(numeroAnillos, chapasPorAnillo, anilloArranque);
             double totalMaterial = lineasMaterial.Sum(x => x.Precio);
 
+            double totalTransporte = ObtenerTotalTransporte(lineasMaterial);
+            double totalMaterialSinTransporte = totalMaterial - totalTransporte;
             PresupuestoInstalacionResultadoModel? presupuestoInstalacion = _resultado?.PresupuestoInstalacion;
             decimal totalInstalacion = presupuestoInstalacion?.TotalInstalacion ?? 0m;
             decimal totalGeneral = (decimal)totalMaterial + totalInstalacion;
@@ -398,7 +400,10 @@ namespace TankDesigner.Core.Services
             }
 
             html.Append($"<div class='section-title'>{Html(Lang("Resumen económico", "Economic summary"))}</div>");
+
             html.Append("<table><tbody>");
+            html.Append($"<tr><td><strong>{Html(Lang("Materiales sin transporte", "Materials excluding transport"))}</strong></td><td class='num'><strong>{Formato(totalMaterialSinTransporte, "0.00")} €</strong></td></tr>");
+            html.Append($"<tr><td><strong>{Html(Lang("Total transporte", "Transport total"))}</strong></td><td class='num'><strong>{Formato(totalTransporte, "0.00")} €</strong></td></tr>");
             html.Append($"<tr><td><strong>{Html(Lang("Total materiales", "Materials total"))}</strong></td><td class='num'><strong>{Formato(totalMaterial, "0.00")} €</strong></td></tr>");
             html.Append($"<tr><td><strong>{Html(Lang("Total instalación", "Installation total"))}</strong></td><td class='num'><strong>{Formato((double)totalInstalacion, "0.00")} €</strong></td></tr>");
             html.Append($"<tr><td><strong>{Html(Lang("TOTAL GENERAL", "GRAND TOTAL"))}</strong></td><td class='num'><strong>{Formato((double)totalGeneral, "0.00")} €</strong></td></tr>");
@@ -1495,6 +1500,18 @@ td{{padding:9px;border:1px solid #EAF0F4;}}
             return $"{Html(label)}: {(valor.HasValue && valor.Value > 0 ? Formato(valor.Value, "0.###") + " " + Html(unidad) : "—")}<br/>";
         }
 
+        private double ObtenerTotalTransporte(List<LineaPresupuestoRow> lineas)
+        {
+            if (lineas == null || lineas.Count == 0)
+                return 0;
+
+            return lineas
+                .Where(x =>
+                    !string.IsNullOrWhiteSpace(x.Descripcion) &&
+                    (x.Descripcion.Contains("Transporte de suministro", StringComparison.OrdinalIgnoreCase)
+                     || x.Descripcion.Contains("Supply transport", StringComparison.OrdinalIgnoreCase)))
+                .Sum(x => x.Precio);
+        }
         private string Lang(string es, string en) => EsIngles() ? en : es;
         private string LangHtml(string es, string en) => Html(Lang(es, en));
 
@@ -1612,5 +1629,7 @@ td{{padding:9px;border:1px solid #EAF0F4;}}
             public string ModuloRequerido { get; set; } = "—";
             public string ModuloProvisto { get; set; } = "—";
         }
+
     }
+
 }
