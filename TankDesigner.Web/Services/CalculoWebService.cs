@@ -6,8 +6,11 @@ using TankDesigner.Core.Services;
 
 namespace TankDesigner.Web.Services
 {
+    // Servicio principal que orquesta todo el cálculo en la web
+    // Actúa como puente entre UI (Blazor) y el motor de cálculo real
     public class CalculoWebService
     {
+        // Servicios internos de cálculo
         private readonly MotorCalculoService _motorCalculoService;
         private readonly CalculoInputAdapterService _inputAdapterService;
         private readonly CalculoGeometriaService _calculoGeometriaService;
@@ -15,30 +18,38 @@ namespace TankDesigner.Web.Services
 
         public CalculoWebService()
         {
+            // Se inicializan manualmente (no usando DI aquí)
             _motorCalculoService = new MotorCalculoService();
             _inputAdapterService = new CalculoInputAdapterService();
             _calculoGeometriaService = new CalculoGeometriaService();
             _presupuestoInstalacionExcelService = new PresupuestoInstalacionExcelService();
         }
 
+        // Método principal que ejecuta todo el flujo de cálculo
         public ResultadoCalculoModel Calcular(
             ProyectoGeneralModel proyecto,
             TankModel tanque,
             CargasModel cargas,
             InstalacionModel instalacion)
         {
+            // Evita nulls creando objetos vacíos si vienen null
             proyecto ??= new ProyectoGeneralModel();
             tanque ??= new TankModel();
             cargas ??= new CargasModel();
             instalacion ??= new InstalacionModel();
 
+            // Normaliza todos los datos de entrada
             NormalizarProyecto(proyecto);
             NormalizarTanque(tanque);
             NormalizarCargas(proyecto, tanque, cargas);
+
+            // Recalcula geometría antes de calcular
             RecalcularGeometria(proyecto, tanque);
 
+            // Construye el input real del motor de cálculo
             var input = _inputAdapterService.Construir(proyecto, tanque, cargas);
 
+            // Validaciones básicas del input
             if (input == null)
             {
                 return new ResultadoCalculoModel
@@ -75,15 +86,20 @@ namespace TankDesigner.Web.Services
                 };
             }
 
+            // Ejecuta el motor de cálculo principal
             var resultado = _motorCalculoService.Calcular(input) ?? new ResultadoCalculoModel();
 
+            // Completa datos que puedan faltar en el resultado
             HidratarResultadoDesdeInput(resultado, input);
 
+            // Asegura que la lista de anillos existe
             if (resultado.Anillos == null)
                 resultado.Anillos = new List<ResultadoAnilloModel>();
 
+            // Calcula el presupuesto de instalación
             resultado.PresupuestoInstalacion = CalcularPresupuestoInstalacion(proyecto, tanque, instalacion, resultado);
 
+            // Mensaje final del cálculo
             if (string.IsNullOrWhiteSpace(resultado.Mensaje))
             {
                 resultado.Mensaje = resultado.Anillos.Count > 0
@@ -94,6 +110,7 @@ namespace TankDesigner.Web.Services
             return resultado;
         }
 
+        // Normaliza datos del proyecto (strings, idioma, etc.)
         private static void NormalizarProyecto(ProyectoGeneralModel proyecto)
         {
             proyecto.IdiomaInforme = string.IsNullOrWhiteSpace(proyecto.IdiomaInforme)
@@ -111,6 +128,7 @@ namespace TankDesigner.Web.Services
             proyecto.ClienteReferencia = (proyecto.ClienteReferencia ?? string.Empty).Trim();
         }
 
+        // Normaliza datos del tanque y aplica valores por defecto
         private static void NormalizarTanque(TankModel tanque)
         {
             if (tanque.ChapasPorAnillo <= 0)
@@ -138,6 +156,7 @@ namespace TankDesigner.Web.Services
             tanque.Modelo = (tanque.Modelo ?? string.Empty).Trim();
         }
 
+        // Normaliza cargas y sincroniza con el tanque si hace falta
         private static void NormalizarCargas(
             ProyectoGeneralModel proyecto,
             TankModel tanque,
@@ -154,10 +173,12 @@ namespace TankDesigner.Web.Services
             cargas.SeismicUseGroup = (cargas.SeismicUseGroup ?? string.Empty).Trim();
             cargas.Observaciones = (cargas.Observaciones ?? string.Empty).Trim();
 
+            // Si no hay densidad en cargas, usa la del tanque
             if (cargas.DensidadLiquido <= 0 && tanque.DensidadLiquido > 0)
                 cargas.DensidadLiquido = tanque.DensidadLiquido;
         }
 
+        // Recalcula dimensiones del tanque según geometría
         private void RecalcularGeometria(ProyectoGeneralModel proyecto, TankModel tanque)
         {
             tanque.AlturaPanelBase = _calculoGeometriaService.ObtenerAlturaPanelBase(tanque, proyecto);
@@ -165,6 +186,7 @@ namespace TankDesigner.Web.Services
             tanque.Diametro = _calculoGeometriaService.ObtenerDiametro(tanque, proyecto);
         }
 
+        // Rellena datos del resultado usando el input si faltan
         private static void HidratarResultadoDesdeInput(
             ResultadoCalculoModel resultado,
             CalculoTanqueInputModel input)
@@ -195,17 +217,9 @@ namespace TankDesigner.Web.Services
 
             if (resultado.NumeroAnillos <= 0)
                 resultado.NumeroAnillos = input.NumeroAnillos;
-
-            if (resultado.AnilloArranque <= 0)
-                resultado.AnilloArranque = input.AnilloArranque;
-
-            if (resultado.BordeLibre <= 0)
-                resultado.BordeLibre = input.BordeLibre;
-
-            if (resultado.DensidadLiquido <= 0)
-                resultado.DensidadLiquido = input.DensidadLiquido;
         }
 
+        // Calcula el presupuesto de instalación basado en el resultado
         private PresupuestoInstalacionResultadoModel? CalcularPresupuestoInstalacion(
             ProyectoGeneralModel proyecto,
             TankModel tanque,
@@ -214,9 +228,11 @@ namespace TankDesigner.Web.Services
         {
             try
             {
+                // Validaciones básicas
                 if (resultado == null || resultado.Anillos == null || resultado.Anillos.Count == 0)
                     return null;
 
+                // Obtiene espesores de los anillos
                 var espesores = resultado.Anillos
                     .OrderBy(x => x.NumeroAnillo)
                     .Select(x => x.EspesorSeleccionado > 0
@@ -228,6 +244,7 @@ namespace TankDesigner.Web.Services
                 if (espesores.Count == 0)
                     return null;
 
+                // Construye el input del presupuesto
                 var input = new PresupuestoInstalacionInputModel
                 {
                     Fabricante = MapearFabricante(proyecto.Fabricante),
@@ -238,27 +255,32 @@ namespace TankDesigner.Web.Services
                     TipoEscalera = MapearTipoEscalera(instalacion.TipoEscalera),
                     NumeroEscaleras = Math.Max(0, instalacion.NumeroEscaleras),
 
+                    // Conexiones
                     ConexionesDn25a150 = Math.Max(0, instalacion.ConexionesDN25_DN150),
                     ConexionesDn150a300 = Math.Max(0, instalacion.ConexionesDN150_DN300),
                     ConexionesDn300a500 = Math.Max(0, instalacion.ConexionesDN300_DN500),
                     ConexionesMayor500 = Math.Max(0, instalacion.ConexionesMayorDN500),
                     NumeroBocasHombre = 1,
 
+                    // Cuadrilla y tiempos
                     TamanoCuadrilla = Math.Max(1, instalacion.TamanoCuadrilla),
                     HorasTrabajoPorDia = Convert.ToDecimal(
                         instalacion.HorasTrabajoDia > 0 ? instalacion.HorasTrabajoDia : 8,
                         CultureInfo.InvariantCulture),
 
+                    // Lluvia
                     PorcentajeLluvia = Convert.ToDecimal(
                         instalacion.DiasLluviaPorcentaje > 1
                             ? instalacion.DiasLluviaPorcentaje / 100.0
                             : instalacion.DiasLluviaPorcentaje,
                         CultureInfo.InvariantCulture),
 
+                    // Personal
                     NumeroSiteManagers = Math.Max(0, instalacion.SiteManager),
                     NumeroTecnicosSeguridad = Math.Max(0, instalacion.TecnicoSeguridad),
                     UbicacionObra = MapearUbicacion(instalacion.LugarObra),
 
+                    // Geometría
                     DiametroMetros = Convert.ToDecimal(
                         (resultado.Diametro > 0 ? resultado.Diametro : tanque.Diametro) / 1000.0,
                         CultureInfo.InvariantCulture),
@@ -267,20 +289,24 @@ namespace TankDesigner.Web.Services
                     DistanciaAlojamientoObraHoras = Convert.ToDecimal(instalacion.DistanciaAlojamientoObra, CultureInfo.InvariantCulture)
                 };
 
+                // Validaciones finales
                 if (input.NumeroAnillos <= 0 || input.NumeroPlacasPorAnillo <= 0 || input.DiametroMetros <= 0)
                     return null;
 
                 if (input.EspesoresAnillosMm.Count != input.NumeroAnillos)
                     return null;
 
+                // Llama al servicio de cálculo de presupuesto
                 return _presupuestoInstalacionExcelService.Calcular(input);
             }
             catch
             {
+                // Si falla algo → no rompe el cálculo general
                 return null;
             }
         }
 
+        // Métodos auxiliares de mapeo (string → enum)
         private static FabricantePresupuesto MapearFabricante(string? fabricante)
         {
             var clave = NormalizarClave(fabricante);
@@ -336,6 +362,7 @@ namespace TankDesigner.Web.Services
             return UbicacionObraPresupuesto.Nacional;
         }
 
+        // Normaliza texto (quita acentos, pasa a minúsculas, etc.)
         private static string NormalizarClave(string? valor)
         {
             return (valor ?? string.Empty)
