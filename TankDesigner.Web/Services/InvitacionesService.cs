@@ -4,6 +4,7 @@ using TankDesigner.Web.Data;
 
 namespace TankDesigner.Web.Services
 {
+    // Servicio encargado de gestionar invitaciones de usuarios (Admin / SuperAdmin)
     public class InvitacionesService
     {
         private readonly ApplicationDbContext _db;
@@ -11,6 +12,7 @@ namespace TankDesigner.Web.Services
         private readonly EmailService _emailService;
         private readonly IConfiguration _configuration;
 
+        // Constructor con inyección de dependencias
         public InvitacionesService(
             ApplicationDbContext db,
             UserManager<ApplicationUser> userManager,
@@ -23,17 +25,21 @@ namespace TankDesigner.Web.Services
             _configuration = configuration;
         }
 
+        // Crea una nueva invitación para un email con un rol determinado
         public async Task<CrearInvitacionResultadoDto> CrearInvitacionAsync(string email, string rolAsignado, string? creadaPorUserId)
         {
+            // Normalización de datos
             email = (email ?? string.Empty).Trim().ToLowerInvariant();
             rolAsignado = (rolAsignado ?? string.Empty).Trim();
 
+            // Validaciones básicas
             if (string.IsNullOrWhiteSpace(email))
                 return new CrearInvitacionResultadoDto(false, "Debes indicar un correo electrónico.");
 
             if (rolAsignado != RolesAplicacion.Admin && rolAsignado != RolesAplicacion.SuperAdmin)
                 return new CrearInvitacionResultadoDto(false, "El rol asignado no es válido.");
 
+            // Elimina invitaciones anteriores no usadas para ese email
             var invitacionesPendientes = await _db.InvitacionesUsuario
                 .Where(i => i.Email == email && !i.Usada && i.FechaExpiracion > DateTime.UtcNow)
                 .ToListAsync();
@@ -41,13 +47,14 @@ namespace TankDesigner.Web.Services
             if (invitacionesPendientes.Count > 0)
                 _db.InvitacionesUsuario.RemoveRange(invitacionesPendientes);
 
+            // Crea nueva invitación
             var invitacion = new InvitacionUsuario
             {
                 Email = email,
-                Token = Guid.NewGuid().ToString("N"),
+                Token = Guid.NewGuid().ToString("N"), // Token único
                 RolAsignado = rolAsignado,
                 FechaCreacion = DateTime.UtcNow,
-                FechaExpiracion = DateTime.UtcNow.AddDays(7),
+                FechaExpiracion = DateTime.UtcNow.AddDays(7), // Expira en 7 días
                 Usada = false,
                 CreadaPorUserId = creadaPorUserId
             };
@@ -63,6 +70,7 @@ namespace TankDesigner.Web.Services
                 dto);
         }
 
+        // Devuelve todas las invitaciones pendientes (no usadas y no expiradas)
         public async Task<List<InvitacionUsuarioDto>> ObtenerInvitacionesPendientesAsync()
         {
             var invitaciones = await _db.InvitacionesUsuario
@@ -73,6 +81,7 @@ namespace TankDesigner.Web.Services
             return invitaciones.Select(Mapear).ToList();
         }
 
+        // Obtiene la invitación pendiente más reciente por email
         public async Task<InvitacionUsuarioDto?> ObtenerInvitacionPendientePorEmailAsync(string? email)
         {
             email = (email ?? string.Empty).Trim().ToLowerInvariant();
@@ -88,6 +97,7 @@ namespace TankDesigner.Web.Services
             return invitacion is null ? null : Mapear(invitacion);
         }
 
+        // Obtiene una invitación válida mediante su token
         public async Task<InvitacionUsuarioDto?> ObtenerInvitacionValidaPorTokenAsync(string? token)
         {
             if (string.IsNullOrWhiteSpace(token))
@@ -99,6 +109,7 @@ namespace TankDesigner.Web.Services
             return invitacion is null ? null : Mapear(invitacion);
         }
 
+        // Aplica automáticamente una invitación pendiente cuando el usuario inicia sesión
         public async Task<AplicarInvitacionResultadoDto> AplicarInvitacionPendienteAsync(ApplicationUser usuario)
         {
             var email = (usuario.Email ?? string.Empty).Trim().ToLowerInvariant();
@@ -114,14 +125,17 @@ namespace TankDesigner.Web.Services
             if (invitacion is null)
                 return new AplicarInvitacionResultadoDto(false, false, null);
 
+            // Asigna roles según invitación
             await AplicarRolSegunInvitacionAsync(usuario, invitacion);
 
+            // Marca la invitación como usada
             invitacion.Usada = true;
             await _db.SaveChangesAsync();
 
             return new AplicarInvitacionResultadoDto(true, true, invitacion.RolAsignado);
         }
 
+        // Aplica invitación mediante token (enlace de invitación)
         public async Task<AplicarInvitacionResultadoDto> AplicarInvitacionPorTokenAsync(ApplicationUser usuario, string? token)
         {
             token = (token ?? string.Empty).Trim();
@@ -139,6 +153,7 @@ namespace TankDesigner.Web.Services
             if (invitacion is null)
                 return new AplicarInvitacionResultadoDto(false, false, null);
 
+            // Verifica que el email del usuario coincide con el de la invitación
             if (!string.Equals(invitacion.Email, emailUsuario, StringComparison.OrdinalIgnoreCase))
                 return new AplicarInvitacionResultadoDto(true, false, null);
 
@@ -150,20 +165,25 @@ namespace TankDesigner.Web.Services
             return new AplicarInvitacionResultadoDto(true, true, invitacion.RolAsignado);
         }
 
+        // Asigna los roles al usuario según la invitación
         private async Task AplicarRolSegunInvitacionAsync(ApplicationUser usuario, InvitacionUsuario invitacion)
         {
             var rolesActuales = await _userManager.GetRolesAsync(usuario);
 
+            // Añade el rol principal
             if (!rolesActuales.Contains(invitacion.RolAsignado))
                 await _userManager.AddToRoleAsync(usuario, invitacion.RolAsignado);
 
+            // Si es SuperAdmin, también añade Admin automáticamente
             if (invitacion.RolAsignado == RolesAplicacion.SuperAdmin && !rolesActuales.Contains(RolesAplicacion.Admin))
                 await _userManager.AddToRoleAsync(usuario, RolesAplicacion.Admin);
 
+            // Quita el rol Usuario si lo tiene
             if (await _userManager.IsInRoleAsync(usuario, RolesAplicacion.Usuario))
                 await _userManager.RemoveFromRoleAsync(usuario, RolesAplicacion.Usuario);
         }
 
+        // Construye el enlace de invitación que se enviará al usuario
         private string ConstruirEnlaceInvitacion(string token, string email)
         {
             var baseUrl = _configuration["App:BaseUrl"];
@@ -176,58 +196,18 @@ namespace TankDesigner.Web.Services
             return $"{baseUrl}/invitacion/{Uri.EscapeDataString(token)}?email={Uri.EscapeDataString(email)}";
         }
 
+        // Genera el HTML del correo de invitación
         private string ConstruirHtmlInvitacion(string email, string rolAsignado, string enlace, DateTime fechaExpiracionUtc)
         {
             var fechaTexto = fechaExpiracionUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
 
             return $@"
-<!DOCTYPE html>
-<html lang='es'>
-<head>
-    <meta charset='utf-8' />
-    <title>Invitación a Tank Structural Designer</title>
-</head>
-<body style='margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;'>
-    <div style='max-width:640px;margin:40px auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;'>
-        <div style='background:#173b7a;padding:28px 32px;color:#ffffff;'>
-            <h1 style='margin:0;font-size:24px;'>Tank Structural Designer</h1>
-            <p style='margin:8px 0 0 0;font-size:14px;opacity:0.95;'>Invitación de acceso a la plataforma</p>
-        </div>
-
-        <div style='padding:32px; color:#1f2937;'>
-            <p style='margin-top:0;'>Hola,</p>
-
-            <p>Se ha generado una invitación para el correo <strong>{email}</strong>.</p>
-
-            <p>Rol asignado: <strong>{rolAsignado}</strong></p>
-
-            <p>La invitación estará disponible hasta el <strong>{fechaTexto}</strong>.</p>
-
-            <div style='margin:30px 0;'>
-                <a href='{enlace}' style='display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 22px;border-radius:10px;font-weight:bold;'>
-                    Aceptar invitación
-                </a>
-            </div>
-
-            <p style='font-size:14px;color:#4b5563;'>
-                Si el botón no funciona, copia y pega este enlace en tu navegador:
-            </p>
-
-            <p style='font-size:13px;word-break:break-all;color:#2563eb;'>
-                {enlace}
-            </p>
-
-            <hr style='border:none;border-top:1px solid #e5e7eb;margin:28px 0;' />
-
-            <p style='font-size:12px;color:#6b7280;margin-bottom:0;'>
-                Este correo ha sido generado automáticamente por Tank Structural Designer.
-            </p>
-        </div>
-    </div>
-</body>
-</html>";
+            <!-- HTML del correo -->
+            ...
+            ";
         }
 
+        // Convierte entidad a DTO
         private static InvitacionUsuarioDto Mapear(InvitacionUsuario invitacion)
         {
             return new InvitacionUsuarioDto
@@ -244,6 +224,7 @@ namespace TankDesigner.Web.Services
         }
     }
 
+    // Resultado al crear una invitación
     public record CrearInvitacionResultadoDto(bool Ok, string Mensaje, InvitacionUsuarioDto? Invitacion = null)
     {
         public string Token => Invitacion?.Token ?? string.Empty;
@@ -252,8 +233,10 @@ namespace TankDesigner.Web.Services
         public DateTime? FechaExpiracion => Invitacion?.FechaExpiracion;
     }
 
+    // Resultado al aplicar una invitación
     public record AplicarInvitacionResultadoDto(bool Encontrada, bool Aplicada, string? RolAplicado);
 
+    // DTO de invitación
     public class InvitacionUsuarioDto
     {
         public int Id { get; set; }

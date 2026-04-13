@@ -8,8 +8,16 @@ namespace TankDesigner.Core.Services
 {
     public class InformeHtmlService
     {
+        // Servicio principal que me permite consultar catálogos reales
+        // de planchas, tornillos y demás elementos que ya existen en el cálculo.
+
         private readonly CalculoTanqueService _calculoTanqueService = new();
         private readonly JsonCatalogService _jsonCatalogService = new();
+
+        // Contexto del informe actual.
+        // Estos campos se cargan una vez con SetContext(...) y luego los reutilizo
+        // en todos los métodos auxiliares para no estar pasando los mismos parámetros continuamente.
+
 
         private ProyectoGeneralModel? _proyecto;
         private TankModel? _tanque;
@@ -17,8 +25,13 @@ namespace TankDesigner.Core.Services
         private InstalacionModel? _instalacion;
         private ResultadoCalculoModel? _resultado;
 
+        // Genera el informe técnico principal de cálculo estructural.
+        // Aquí NO calculo el tanque desde cero, sino que tomo el resultado ya calculado
+        // y lo transformo a HTML con formato de informe.
         public string GenerarInformeCalculo(ProyectoGeneralModel proyecto, TankModel tanque, CargasModel cargas, InstalacionModel instalacion, ResultadoCalculoModel resultado)
         {
+            // Cargo en memoria el proyecto actual, el tanque, las cargas, la instalación
+            // y el resultado de cálculo para que el resto de métodos trabajen sobre ese contexto.
             SetContext(proyecto, tanque, cargas, instalacion, resultado);
 
             string nombreProyecto = Html(TextoSeguroSinInventar(_proyecto?.NombreProyecto));
@@ -55,17 +68,25 @@ namespace TankDesigner.Core.Services
             string seismicUseGroup = Html(TextoSeguroSinInventar(_cargas?.SeismicUseGroup));
             string normativaAplicada = Html(TextoSeguroSinInventar(_cargas?.NormativaAplicada));
 
+            // Conversión de geometría a metros para mostrar datos de resumen del tanque.
             double diametroRealM = DiametroMm() > 0 ? DiametroMm() / 1000.0 : 0;
             double alturaRealM = AlturaTotalMm() > 0 ? AlturaTotalMm() / 1000.0 : 0;
+            // Volumen geométrico simple del tanque:
+            // V = π · (D/2)^2 · H
             double volumenRealM3 = diametroRealM > 0 && alturaRealM > 0
                 ? Math.PI * Math.Pow(diametroRealM / 2.0, 2) * alturaRealM
                 : 0;
+            // Presión hidrostática base.
+            // Si el resultado ya trae la presión calculada, se usa esa.
+            // Si no, PresionBase() intenta reconstruirla con densidad y altura.
             double presionBaseMostrar = PresionBase();
             double longitudPlancha = diametroRealM > 0 && chapasPorAnillo > 0
                 ? (Math.PI * diametroRealM * 1000.0) / chapasPorAnillo
                 : 0;
             double alturaPanelBase = AlturaPanelBaseMm();
 
+            // Comprobaciones para decidir si muestro rigidizador y starter ring
+            // como datos reales del cálculo o dejo "—" en el informe.
             bool rigidizadorRealValido = _resultado != null
                 && _resultado.TieneRigidizadorBase
                 && !string.IsNullOrWhiteSpace(_resultado.NombreRigidizadorBase)
@@ -100,6 +121,8 @@ namespace TankDesigner.Core.Services
                     : _resultado.DiametroAgujero;
             }
 
+            // A partir de aquí construyo el HTML del informe técnico.
+            // Todo lo que se añade a "html" es lo que luego se verá en la vista previa/PDF.
             var html = new StringBuilder();
             html.Append(DocumentoInicio(Lang("Cálculo estructural", "Structural calculation"), modeloTanque));
             html.Append(TopBar(Lang("CÁLCULO ESTRUCTURAL", "STRUCTURAL CALCULATION"), modeloTanque));
@@ -257,6 +280,8 @@ namespace TankDesigner.Core.Services
             return html.ToString();
         }
 
+        // Genera el informe económico/presupuesto.
+        // Aquí junto materiales + instalación + transporte y construyo el resumen económico final.
         public string GenerarInformePresupuesto(ProyectoGeneralModel proyecto, TankModel tanque, CargasModel cargas, InstalacionModel instalacion, ResultadoCalculoModel resultado)
         {
             SetContext(proyecto, tanque, cargas, instalacion, resultado);
@@ -276,13 +301,22 @@ namespace TankDesigner.Core.Services
             double alturaRealM = AlturaTotalMm() > 0 ? AlturaTotalMm() / 1000.0 : 0;
             double volumenRealM3 = diametroRealM > 0 && alturaRealM > 0 ? Math.PI * Math.Pow(diametroRealM / 2.0, 2) * alturaRealM : 0;
 
+            // Genero todas las líneas económicas de materiales:
+            // chapas, tornillería, rigidizador, starter ring, consumibles, techo y transporte.
             List<LineaPresupuestoRow> lineasMaterial = GenerarLineasPresupuesto(numeroAnillos, chapasPorAnillo, anilloArranque);
+            // Suma completa del bloque de materiales.
+            // Ojo: aquí YA va incluido el transporte porque transporte se mete como línea material.
             double totalMaterial = lineasMaterial.Sum(x => x.Precio);
 
+            // Extraigo el total de transporte de las líneas de materiales para poder mostrarlo
+            // separado en el resumen económico final.
             double totalTransporte = ObtenerTotalTransporte(lineasMaterial);
             double totalMaterialSinTransporte = totalMaterial - totalTransporte;
             PresupuestoInstalacionResultadoModel? presupuestoInstalacion = _resultado?.PresupuestoInstalacion;
+            // Total de instalación calculado previamente por el servicio de presupuesto de instalación.
             decimal totalInstalacion = presupuestoInstalacion?.TotalInstalacion ?? 0m;
+            // Total general del presupuesto:
+            // materiales (incluyendo transporte) + instalación.
             decimal totalGeneral = (decimal)totalMaterial + totalInstalacion;
 
             var html = new StringBuilder();
@@ -358,6 +392,7 @@ namespace TankDesigner.Core.Services
                 html.Append($"<p><strong>{Html(Lang("Cambios de gato", "Jack changes"))}:</strong> {Formato((double)presupuestoInstalacion.Horas.HorasCambiosGato, "0.00")} h</p>");
                 html.Append($"<p><strong>{Html(Lang("Escaleras", "Ladders"))}:</strong> {Formato((double)presupuestoInstalacion.Horas.HorasEscaleras, "0.00")} h</p>");
                 html.Append($"<p><strong>{Html(Lang("Conexiones", "Connections"))}:</strong> {Formato((double)presupuestoInstalacion.Horas.HorasConexionesYBocaHombre, "0.00")} h</p>");
+                html.Append($"<p><strong>{Html(Lang("Starter ring", "Starter ring"))}:</strong> {Formato((double)presupuestoInstalacion.Horas.HorasStarterRing, "0.00")} h</p>");
                 html.Append($"<p><strong>{Html(Lang("Rigidizadores", "Stiffeners"))}:</strong> {Formato((double)presupuestoInstalacion.Horas.HorasRigidizadores, "0.00")} h</p>");
                 html.Append($"<p><strong>{Html(Lang("Anclaje", "Anchorage"))}:</strong> {Formato((double)presupuestoInstalacion.Horas.HorasAnclaje, "0.00")} h</p>");
                 html.Append($"<p><strong>{Html(Lang("Sellado", "Sealing"))}:</strong> {Formato((double)presupuestoInstalacion.Horas.HorasSelladoCimentacionPared, "0.00")} h</p>");
@@ -414,6 +449,8 @@ namespace TankDesigner.Core.Services
             return html.ToString();
         }
 
+        // Genera el listado de materiales.
+        // Este informe no es económico: muestra elementos y cantidades/componentes del tanque.
         public string GenerarInformeMateriales(ProyectoGeneralModel proyecto, TankModel tanque, CargasModel cargas, InstalacionModel instalacion, ResultadoCalculoModel resultado)
         {
             SetContext(proyecto, tanque, cargas, instalacion, resultado);
@@ -460,6 +497,8 @@ namespace TankDesigner.Core.Services
             return html.ToString();
         }
 
+        // Guarda el contexto actual del informe en campos privados para que los métodos auxiliares
+        // puedan acceder a proyecto, tanque, cargas, instalación y resultado sin repetir parámetros.
         private void SetContext(ProyectoGeneralModel proyecto, TankModel tanque, CargasModel cargas, InstalacionModel instalacion, ResultadoCalculoModel resultado)
         {
             _proyecto = proyecto ?? new ProyectoGeneralModel();
@@ -478,6 +517,9 @@ namespace TankDesigner.Core.Services
         private double AlturaTotalMm() => _resultado?.AlturaTotal > 0 ? _resultado.AlturaTotal : (_tanque?.AlturaTotal ?? 0);
         private double AlturaPanelBaseMm() => _resultado?.AlturaPanelBase > 0 ? _resultado.AlturaPanelBase : (_tanque?.AlturaPanelBase ?? 0);
 
+        // Devuelve la presión hidrostática en base.
+        // 1) Si el resultado ya la trae calculada, usa ese valor.
+        // 2) Si no, intenta recalcularla con densidad y altura.
         private double PresionBase()
         {
             if (_resultado?.PresionHidrostaticaBase > 0) return _resultado.PresionHidrostaticaBase;
@@ -491,6 +533,8 @@ namespace TankDesigner.Core.Services
             return 0;
         }
 
+        // Construye las filas del resumen del tanque anillo a anillo.
+        // Aquí se decide qué espesor, configuración, tornillo y rigidizador se muestran por cada anillo.
         private List<ResumenTanqueRow> GenerarResumenTanque(int numeroAnillos, int chapasPorAnillo)
         {
             var lista = new List<ResumenTanqueRow>();
@@ -547,6 +591,15 @@ namespace TankDesigner.Core.Services
             return lista;
         }
 
+        // Método CLAVE del presupuesto de materiales.
+        // Aquí se generan todas las líneas económicas que luego se pintan en el informe:
+        // 1) Chapas
+        // 2) Tornillería
+        // 3) Rigidizador base
+        // 4) Starter ring + shear keys
+        // 5) Consumibles de virola
+        // 6) Techo
+        // 7) Transporte
         private List<LineaPresupuestoRow> GenerarLineasPresupuesto(int numeroAnillos, int chapasPorAnillo, int anilloArranque)
         {
             var lineas = new List<LineaPresupuestoRow>();
@@ -559,6 +612,7 @@ namespace TankDesigner.Core.Services
                 : TextoSeguroSinInventar(_proyecto?.MaterialPrincipal);
 
             // 1) CHAPAS AGRUPADAS POR ESPESOR REAL + CONFIGURACIÓN
+            // Agrupo anillos con mismo espesor/altura/configuración para no repetir líneas innecesarias.
             if (_resultado.Anillos != null && _resultado.Anillos.Count > 0)
             {
                 var gruposChapas = _resultado.Anillos
@@ -615,6 +669,8 @@ namespace TankDesigner.Core.Services
             }
 
             // 2) TORNILLERÍA
+            // Calcula la cantidad total de juegos tornillo-tuerca-arandela a partir
+            // de tornillos verticales + horizontales de cada anillo.
             double precioJuegoTornillo = ObtenerPrecioJuegoTornilloBaseReal();
 
             if ((!string.IsNullOrWhiteSpace(_resultado.NombreTornilloBase) || _resultado.DiametroTornilloBase > 0)
@@ -654,6 +710,7 @@ namespace TankDesigner.Core.Services
             }
 
             // 3) RIGIDIZADOR BASE
+            // Añade la línea económica del rigidizador base solo si existe en el resultado.
             if (_resultado.TieneRigidizadorBase
                 && !string.IsNullOrWhiteSpace(_resultado.NombreRigidizadorBase)
                 && _resultado.PrecioRigidizadorBase > 0)
@@ -666,6 +723,7 @@ namespace TankDesigner.Core.Services
             }
 
             // 4) STARTER RING + SHEAR KEYS
+            // Añade el starter ring y las shear keys asociadas cuando el cálculo las requiere.
             if (_resultado.TieneStarterRing && _resultado.AlturaStarterRing > 0)
             {
                 int cantidadStarterRing = Math.Max(1, chapasPorAnillo);
@@ -694,6 +752,7 @@ namespace TankDesigner.Core.Services
             }
 
             // 5) CONSUMIBLES POR PANEL
+            // Consumibles asociados a virola/paneles: sellante y pequeños auxiliares.
             double precioConsumiblesPanel = ObtenerPrecioConsumiblesPanel();
             int totalPaneles = Math.Max(0, numeroAnillos) * Math.Max(0, chapasPorAnillo);
 
@@ -707,6 +766,7 @@ namespace TankDesigner.Core.Services
             }
 
             // 6) SUMINISTRO DE TECHO
+            // Si el tanque tiene techo, añado suministro de techo y consumibles de techo.
             string tipoTecho = ObtenerTipoTechoPresupuesto();
             bool tieneTecho = !tipoTecho.Equals("sin techo", StringComparison.OrdinalIgnoreCase);
             double areaTechoM2 = ObtenerAreaTechoM2Presupuesto();
@@ -735,11 +795,16 @@ namespace TankDesigner.Core.Services
             }
 
             // 7) TRANSPORTE POR PESO ESTIMADO
+            // Estima el peso del suministro, calcula nº de contenedores y añade
+            // la línea económica de transporte según ubicación de obra.
+            // Si ya existe un transporte manual dentro del presupuesto de instalación,
+            // no añado el automático para no duplicar el coste.
+            bool tieneTransporteManualInstalacion = TieneTransporteManualInstalacion();
             double pesoTotalKg = ObtenerPesoEstimadoTransporteKg(chapasPorAnillo);
             double pesoMaximoContenedorKg = ObtenerPesoMaximoContenedorKg();
             double precioContenedor = ObtenerPrecioTransportePorUbicacion();
 
-            if (pesoTotalKg > 0 && pesoMaximoContenedorKg > 0 && precioContenedor > 0)
+            if (!tieneTransporteManualInstalacion && pesoTotalKg > 0 && pesoMaximoContenedorKg > 0 && precioContenedor > 0)
             {
                 double numeroContenedores = Math.Ceiling(pesoTotalKg / pesoMaximoContenedorKg);
 
@@ -756,6 +821,8 @@ namespace TankDesigner.Core.Services
                 .ToList();
         }
 
+        // Añade una línea al presupuesto solo si tiene sentido económico:
+        // cantidad > 0 y precio unitario > 0.
         private void AgregarLineaSiValida(List<LineaPresupuestoRow> lineas, double cantidad, string descripcion, double precioUnitario)
         {
             if (cantidad <= 0 || precioUnitario <= 0)
@@ -770,6 +837,8 @@ namespace TankDesigner.Core.Services
             });
         }
 
+        // Carga la configuración de presupuesto/instalación desde JSON
+        // según el fabricante del proyecto actual.
         private PresupuestoConfigJsonModel ObtenerConfigPresupuestoActual()
         {
             return _jsonCatalogService.CargarDatosInstalacion(_proyecto?.Fabricante ?? string.Empty);
@@ -847,6 +916,9 @@ namespace TankDesigner.Core.Services
             return 2.68;
         }
 
+        // Calcula el área de techo:
+        // 1) Si cargas ya trae área proyectada, usa esa.
+        // 2) Si no, la calcula geométricamente con el diámetro del tanque.
         private double ObtenerAreaTechoM2Presupuesto()
         {
             if (_cargas?.RoofProjectedArea > 0)
@@ -884,6 +956,8 @@ namespace TankDesigner.Core.Services
             return 0;
         }
 
+        // Devuelve el precio unitario de transporte según ubicación de obra
+        // leyendo el JSON de configuración.
         private double ObtenerPrecioTransportePorUbicacion()
         {
             var config = ObtenerConfigPresupuestoActual();
@@ -920,6 +994,9 @@ namespace TankDesigner.Core.Services
             return 0.0;
         }
 
+        // Estima el peso total transportado del suministro.
+        // Usa primero los pesos reales del resultado si existen y, si no,
+        // cae al cálculo geométrico por paneles.
         private double ObtenerPesoEstimadoTransporteKg(int chapasPorAnillo)
         {
             var config = ObtenerConfigPresupuestoActual();
@@ -931,8 +1008,18 @@ namespace TankDesigner.Core.Services
             double pesoKgM2Panel = panel != null && panel.PesoKgM2 > 0 ? (double)panel.PesoKgM2 : 40.0;
 
             double pesoVirolaKg = 0.0;
+            double pesoTechoKg = 0.0;
 
-            if (_resultado?.Anillos != null && _resultado.Anillos.Count > 0)
+            if (_resultado != null)
+            {
+                if (_resultado.TankShellDeadLoad > 0)
+                    pesoVirolaKg = _resultado.TankShellDeadLoad * 1000.0 / 9.80665;
+
+                if (_resultado.RoofDeadLoad > 0)
+                    pesoTechoKg = _resultado.RoofDeadLoad * 1000.0 / 9.80665;
+            }
+
+            if (pesoVirolaKg <= 0 && _resultado?.Anillos != null && _resultado.Anillos.Count > 0)
             {
                 foreach (var anillo in _resultado.Anillos)
                 {
@@ -955,8 +1042,7 @@ namespace TankDesigner.Core.Services
                 }
             }
 
-            double pesoTechoKg = 0.0;
-            if (!ObtenerTipoTechoPresupuesto().Contains("sin techo"))
+            if (pesoTechoKg <= 0 && !ObtenerTipoTechoPresupuesto().Contains("sin techo"))
             {
                 double areaTechoM2 = ObtenerAreaTechoM2Presupuesto();
                 if (areaTechoM2 > 0)
@@ -976,6 +1062,19 @@ namespace TankDesigner.Core.Services
             return Math.Max(0, pesoVirolaKg + pesoTechoKg + pesoEscaleraKg + pesoRigidizadorKg);
         }
 
+        private bool TieneTransporteManualInstalacion()
+        {
+            var presupuestoInstalacion = _resultado?.PresupuestoInstalacion;
+
+            if (presupuestoInstalacion?.Partidas == null || presupuestoInstalacion.Partidas.Count == 0)
+                return false;
+
+            return presupuestoInstalacion.Partidas.Any(x =>
+                x.Total > 0m &&
+                !string.IsNullOrWhiteSpace(x.Concepto) &&
+                x.Concepto.Contains("Transporte", StringComparison.OrdinalIgnoreCase));
+        }
+
         private static string NormalizarClave(string? valor)
         {
             return (valor ?? string.Empty)
@@ -988,6 +1087,8 @@ namespace TankDesigner.Core.Services
                 .Replace("ú", "u")
                 .Replace("ü", "u");
         }
+        // Busca en catálogo el precio unitario real de una plancha a partir del espesor.
+        // Se usa para construir las líneas de chapas del presupuesto.
         private double ObtenerPrecioUnitarioPorEspesorReal(double espesor)
         {
             if (espesor <= 0 || _proyecto == null) return 0;
@@ -1008,6 +1109,11 @@ namespace TankDesigner.Core.Services
             return 0;
         }
 
+        // Busca el precio real del juego de tornillería (tornillo + tuerca + arandela).
+        // Orden de búsqueda:
+        // 1) coincidencia exacta por nombre y diámetro
+        // 2) coincidencia por nombre
+        // 3) coincidencia por diámetro más cercano
         private double ObtenerPrecioJuegoTornilloBaseReal()
         {
             if (_resultado == null || _proyecto == null || _resultado.DiametroTornilloBase <= 0)
@@ -1065,6 +1171,8 @@ namespace TankDesigner.Core.Services
             return 0;
         }
 
+        // Devuelve el precio completo de un juego de tornillería:
+        // tornillo base + tuerca + arandela.
         private double ObtenerPrecioJuego(PosibleTornilloModel tornillo)
         {
             if (tornillo == null)
@@ -1080,6 +1188,7 @@ namespace TankDesigner.Core.Services
             return precioBase + precioTuerca + precioArandela;
         }
 
+        // Genera la tabla HTML de planchas del listado de materiales.
         private string GenerarTablaHtmlMaterialesPlanchas(int numeroAnillos, int chapasPorAnillo)
         {
             List<ResumenTanqueRow> resumen = GenerarResumenTanque(numeroAnillos, chapasPorAnillo);
@@ -1097,6 +1206,8 @@ namespace TankDesigner.Core.Services
             return sb.ToString();
         }
 
+        // Genera la tabla HTML de elementos auxiliares del listado de materiales:
+        // tornillería, rigidizador base, starter ring y shear keys.
         private string GenerarTablaHtmlMaterialesAuxiliares(int numeroAnillos, int chapasPorAnillo)
         {
             var sb = new StringBuilder();
@@ -1150,6 +1261,7 @@ namespace TankDesigner.Core.Services
             return sb.ToString();
         }
 
+        // Genera la tabla resumen del tanque para el informe técnico.
         private string GenerarTablaHtmlResumenTanque(int numeroAnillos, int chapasPorAnillo)
         {
             var lista = GenerarResumenTanque(numeroAnillos, chapasPorAnillo);
@@ -1167,6 +1279,7 @@ namespace TankDesigner.Core.Services
             return sb.ToString();
         }
 
+        // Genera la tabla HTML del análisis hidrostático.
         private string GenerarTablaHtmlHidrostatica(int numeroAnillos)
         {
             var lista = GenerarTablaHidrostatica(numeroAnillos);
@@ -1184,6 +1297,11 @@ namespace TankDesigner.Core.Services
             return sb.ToString();
         }
 
+        // Genera la tabla HTML del análisis axial.
+        // El factor se usa para distinguir:
+        // 1.00 = axial base
+        // 1.18 = axial por viento
+        // 1.42 = axial por sismo
         private string GenerarTablaHtmlAxial(int numeroAnillos, double factor)
         {
             var lista = GenerarTablaAxial(numeroAnillos, factor);
@@ -1201,6 +1319,7 @@ namespace TankDesigner.Core.Services
             return sb.ToString();
         }
 
+        // Genera la tabla HTML del análisis hidrodinámico.
         private string GenerarTablaHtmlHidrodinamica(int numeroAnillos)
         {
             var lista = GenerarTablaHidrodinamica(numeroAnillos);
@@ -1218,6 +1337,7 @@ namespace TankDesigner.Core.Services
             return sb.ToString();
         }
 
+        // Genera la tabla HTML de rigidizadores/starter ring.
         private string GenerarTablaHtmlRigidizadores(int numeroAnillos)
         {
             var lista = GenerarRigidizadores(numeroAnillos);
@@ -1235,6 +1355,7 @@ namespace TankDesigner.Core.Services
             return sb.ToString();
         }
 
+        // Construye las filas de datos para la tabla hidrostática.
         private List<TensionHidrostaticaRow> GenerarTablaHidrostatica(int numeroAnillos)
         {
             var lista = new List<TensionHidrostaticaRow>();
@@ -1279,6 +1400,8 @@ namespace TankDesigner.Core.Services
             return lista;
         }
 
+        // Construye las filas de datos para la tabla axial.
+        // Decide si usar valores base, de viento o sísmicos según el factor recibido.
         private List<TensionAxialRow> GenerarTablaAxial(int numeroAnillos, double factor)
         {
             var lista = new List<TensionAxialRow>();
@@ -1324,12 +1447,15 @@ namespace TankDesigner.Core.Services
             return lista;
         }
 
+        // Devuelve el valor formateado según el caso que se esté pintando en la tabla axial:
+        // axial normal, axial por viento o axial por sismo.
         private string ValorSegunCaso(double axial, double wind, double seismic, bool esViento, bool esSismo)
         {
             double valor = esSismo ? seismic : esViento ? wind : axial;
             return valor > 0 ? Formato(valor, "0.###") : "—";
         }
 
+        // Construye las filas de datos para la tabla hidrodinámica.
         private List<TensionHidrodinamicaRow> GenerarTablaHidrodinamica(int numeroAnillos)
         {
             var lista = new List<TensionHidrodinamicaRow>();
@@ -1372,6 +1498,8 @@ namespace TankDesigner.Core.Services
             return lista;
         }
 
+        // Construye las filas de rigidizadores para el informe técnico.
+        // Si no hay datos reales, devuelve una fila vacía con "—".
         private List<RigidizadorRow> GenerarRigidizadores(int numeroAnillos)
         {
             var lista = new List<RigidizadorRow>();
@@ -1424,6 +1552,8 @@ namespace TankDesigner.Core.Services
             return lista;
         }
 
+        // Cabecera HTML general del documento.
+        // Aquí está todo el CSS del informe.
         private string DocumentoInicio(string titulo, string subtitulo)
         {
             return $@"<!DOCTYPE html>
@@ -1472,6 +1602,7 @@ td{{padding:9px;border:1px solid #EAF0F4;}}
 <body><div class='wrapper'>";
         }
 
+        // Cabecera visual superior del informe (branding, logo, código de documento).
         private string TopBar(string codigo, string modeloTanque)
         {
             var sb = new StringBuilder();
@@ -1488,6 +1619,7 @@ td{{padding:9px;border:1px solid #EAF0F4;}}
             return sb.ToString();
         }
 
+        // Cierre del documento HTML.
         private string DocumentoFin() => "</div></body></html>";
 
         private string LabelValue(string label, string value)
@@ -1500,6 +1632,8 @@ td{{padding:9px;border:1px solid #EAF0F4;}}
             return $"{Html(label)}: {(valor.HasValue && valor.Value > 0 ? Formato(valor.Value, "0.###") + " " + Html(unidad) : "—")}<br/>";
         }
 
+        // Suma solo las líneas de transporte dentro del bloque de materiales.
+        // Sirve para mostrar el transporte separado en el resumen económico.
         private double ObtenerTotalTransporte(List<LineaPresupuestoRow> lineas)
         {
             if (lineas == null || lineas.Count == 0)
@@ -1566,6 +1700,7 @@ td{{padding:9px;border:1px solid #EAF0F4;}}
             return WebUtility.HtmlEncode(texto ?? "—");
         }
 
+        // Fila interna para manejar líneas económicas del presupuesto.
         private class LineaPresupuestoRow
         {
             public double Cantidad { get; set; }
@@ -1574,6 +1709,7 @@ td{{padding:9px;border:1px solid #EAF0F4;}}
             public double Precio { get; set; }
         }
 
+        // Fila interna para el resumen del tanque.
         private class ResumenTanqueRow
         {
             public int Anillo { get; set; }
@@ -1585,6 +1721,7 @@ td{{padding:9px;border:1px solid #EAF0F4;}}
             public string TipoAcero { get; set; } = "—";
         }
 
+        // Fila interna para la tabla hidrostática.
         private class TensionHidrostaticaRow
         {
             public int Anillo { get; set; }
@@ -1598,6 +1735,7 @@ td{{padding:9px;border:1px solid #EAF0F4;}}
             public string TensionTornillosAdmisible { get; set; } = "—";
         }
 
+        // Fila interna para la tabla axial.
         private class TensionAxialRow
         {
             public int Anillo { get; set; }
@@ -1610,6 +1748,7 @@ td{{padding:9px;border:1px solid #EAF0F4;}}
             public string TensionTornillosAdmisible { get; set; } = "—";
         }
 
+        // Fila interna para la tabla hidrodinámica.
         private class TensionHidrodinamicaRow
         {
             public int Anillo { get; set; }
@@ -1622,6 +1761,7 @@ td{{padding:9px;border:1px solid #EAF0F4;}}
             public string TensionTornillosAdmisible { get; set; } = "—";
         }
 
+        // Fila interna para la tabla de rigidizadores.
         private class RigidizadorRow
         {
             public string Rigidizador { get; set; } = "—";

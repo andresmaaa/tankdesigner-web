@@ -13,6 +13,7 @@
         public int ConexionesDN150_DN300 { get; set; }
         public int ConexionesDN300_DN500 { get; set; }
         public int ConexionesMayorDN500 { get; set; }
+        public int NumeroBocasHombre { get; set; } = 1;
 
         public int TamanoCuadrilla { get; set; } = 4;
         public double HorasTrabajoDia { get; set; } = 8;
@@ -23,5 +24,6 @@
 
         public string LugarObra { get; set; } = "Nacional";
         public double DistanciaAlojamientoObra { get; set; } = 0;
+        public double CosteTransporteManual { get; set; } = 0;
     }
 }

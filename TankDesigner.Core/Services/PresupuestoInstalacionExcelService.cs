@@ -25,6 +25,7 @@ namespace TankDesigner.Core.Services
             decimal horasBasePorPlaca = config.Productividad.HorasPorPlacaPersona > 0 ? config.Productividad.HorasPorPlacaPersona : 0.5m;
             decimal horasPor100KgSinGrua = config.Productividad.HorasPor100kgPlacaSinGrua > 0 ? config.Productividad.HorasPor100kgPlacaSinGrua : 1.0m;
             decimal horasPor100KgConGrua = config.Productividad.HorasPor100kgPlacaConGrua > 0 ? config.Productividad.HorasPor100kgPlacaConGrua : 0.2m;
+            decimal panelesPorDiaCamionGrua = config.Productividad.PanelesPorDiaCamionGrua > 0 ? config.Productividad.PanelesPorDiaCamionGrua : 0m;
             decimal umbralPesoPanelGrua = config.Productividad.UmbralPesoPanelGrua > 0 ? config.Productividad.UmbralPesoPanelGrua : 150m;
             decimal horasPorRigidizador = config.Productividad.HorasPorRigidizador > 0 ? config.Productividad.HorasPorRigidizador : 0.4m;
             decimal horasSelladoPorMetro = config.Productividad.HorasSelladoMetro > 0 ? config.Productividad.HorasSelladoMetro : 0.06m;
@@ -34,6 +35,7 @@ namespace TankDesigner.Core.Services
             decimal horasConexion150a300 = config.Productividad.HorasConexion.DN150_DN300 > 0 ? config.Productividad.HorasConexion.DN150_DN300 : 0.7m;
             decimal horasConexion300a500 = config.Productividad.HorasConexion.DN300_DN500 > 0 ? config.Productividad.HorasConexion.DN300_DN500 : 1.0m;
             decimal horasConexionMayor500 = config.Productividad.HorasConexion.DN500 > 0 ? config.Productividad.HorasConexion.DN500 : 1.2m;
+            decimal horasStarterRing = config.Productividad.HorasStarterRing > 0 ? config.Productividad.HorasStarterRing : 0m;
             decimal horasAnclajePorMetro = config.Productividad.HorasAnclajeMetro > 0 ? config.Productividad.HorasAnclajeMetro : 2.0m;
             decimal horasBocaHombre = config.Productividad.HorasBocaHombre > 0 ? config.Productividad.HorasBocaHombre : 4.5m;
             decimal horasCambioGato = config.Productividad.HorasCambioGato > 0 ? config.Productividad.HorasCambioGato : 1.0m;
@@ -43,6 +45,9 @@ namespace TankDesigner.Core.Services
             decimal costeHoraSeguridad = ObtenerCosteHoraSeguridad(config, input.UbicacionObra);
             decimal costeVueloUnitario = ObtenerCosteVuelo(config, input.UbicacionObra);
             decimal costeFabricacionEscaleraMetro = escalera?.PrecioMetro ?? ObtenerPrecioEscaleraFallback(input.TipoEscalera);
+            decimal costeCamionGruaDia = config.MediosAuxiliares.CamionGruaDia > 0 ? config.MediosAuxiliares.CamionGruaDia : 0m;
+            decimal costeAlquilerGatosDia = config.MediosAuxiliares.AlquilerGatosDia > 0 ? config.MediosAuxiliares.AlquilerGatosDia : 0m;
+            decimal costeVehiculoAlquilerDia = config.MediosAuxiliares.VehiculoAlquilerDia > 0 ? config.MediosAuxiliares.VehiculoAlquilerDia : 0m;
 
             decimal alturaTanque = alturaPanel * input.NumeroAnillos;
             decimal perimetro = (decimal)Math.PI * input.DiametroMetros;
@@ -63,6 +68,7 @@ namespace TankDesigner.Core.Services
 
             decimal horasMontajePlacas = 0m;
             decimal horasCamionGrua = 0m;
+            int numeroPanelesConGrua = 0;
 
             foreach (var item in conteoEspesores.OrderBy(x => x.Key))
             {
@@ -81,7 +87,10 @@ namespace TankDesigner.Core.Services
                 horasMontajePlacas += horasTotalesEspesor;
 
                 if (requiereGrua)
+                {
                     horasCamionGrua += horasTotalesEspesor;
+                    numeroPanelesConGrua += numeroPlacas;
+                }
             }
 
             decimal horasCambiosGato = input.NumeroAnillos * input.NumeroPlacasPorAnillo * horasCambioGato;
@@ -101,23 +110,27 @@ namespace TankDesigner.Core.Services
                 (input.ConexionesMayor500 * horasConexionMayor500) +
                 (input.NumeroBocasHombre * horasBocaHombre);
 
-            decimal horasRigidizadores =
-                (decimal)Math.Ceiling((double)input.NumeroPlacasPorAnillo / input.NumeroAnillos) *
-                input.NumeroPlacasPorAnillo *
-                horasPorRigidizador;
+            decimal horasMontajeStarterRing =
+                input.TieneStarterRing && horasStarterRing > 0m
+                    ? input.NumeroPlacasPorAnillo * horasStarterRing
+                    : 0m;
+
+            int numeroLineasRigidizador = Math.Max(0, input.NumeroLineasRigidizador);
+            decimal horasRigidizadores = numeroLineasRigidizador * input.NumeroPlacasPorAnillo * horasPorRigidizador;
 
             decimal horasAnclaje = perimetro * horasAnclajePorMetro;
             decimal horasSellado = perimetro * horasSelladoPorMetro;
 
             decimal horasTechoEstructura = techo?.HorasEstructuraM2 > 0 ? areaTecho * techo.HorasEstructuraM2 : 0m;
             decimal horasTechoPaneles = techo?.HorasPanelM2 > 0 ? areaTecho * techo.HorasPanelM2 : 0m;
-
             decimal horasTotalesTecho = horasTechoEstructura + horasTechoPaneles;
+
             decimal horasTotalesDeposito =
                 horasMontajePlacas +
                 horasCambiosGato +
                 horasEscaleras +
                 horasConexiones +
+                horasMontajeStarterRing +
                 horasRigidizadores +
                 horasAnclaje +
                 horasSellado;
@@ -134,18 +147,34 @@ namespace TankDesigner.Core.Services
                 horasDescanso += (horasTotalesTecho + horasTotalesDeposito) * input.PorcentajeLluvia;
             }
 
-            decimal horasDesplazamiento = Math.Max(
+            decimal horasDesplazamientoBase = Math.Max(
                 (decimal)Math.Ceiling((double)((horasTotalesTecho + horasTotalesDeposito + horasDescanso) / (input.HorasTrabajoPorDia * 60m))) * 2m * input.HorasTrabajoPorDia,
                 input.HorasTrabajoPorDia * 2m * input.TamanoCuadrilla);
 
-            decimal horasEquipoTecho = (decimal)Math.Ceiling((double)(horasTotalesTecho / input.TamanoCuadrilla));
-            decimal diasTecho = (decimal)Math.Ceiling((double)(horasEquipoTecho / input.HorasTrabajoPorDia));
+            decimal horasEquipoTechoPre = (decimal)Math.Ceiling((double)(horasTotalesTecho / input.TamanoCuadrilla));
+            decimal diasTechoPre = (decimal)Math.Ceiling((double)(horasEquipoTechoPre / input.HorasTrabajoPorDia));
+            decimal horasEquipoDepositoPre = (decimal)Math.Ceiling((double)(horasTotalesDeposito / input.TamanoCuadrilla));
+            decimal diasDepositoPre = (decimal)Math.Ceiling((double)(horasEquipoDepositoPre / input.HorasTrabajoPorDia));
+            decimal horasEquipoDescansoPre = (decimal)Math.Ceiling((double)(horasDescanso / input.TamanoCuadrilla));
+            decimal diasDescansoPre = (decimal)Math.Ceiling((double)(horasEquipoDescansoPre / input.HorasTrabajoPorDia));
 
-            decimal horasEquipoDeposito = (decimal)Math.Ceiling((double)(horasTotalesDeposito / input.TamanoCuadrilla));
-            decimal diasDeposito = (decimal)Math.Ceiling((double)(horasEquipoDeposito / input.HorasTrabajoPorDia));
+            decimal horasDesplazamientoAlojamiento = 0m;
+            if (input.DistanciaAlojamientoObraHoras > 0m)
+            {
+                decimal diasConDesplazamiento = diasTechoPre + diasDepositoPre + diasDescansoPre;
+                horasDesplazamientoAlojamiento = diasConDesplazamiento * input.TamanoCuadrilla * input.DistanciaAlojamientoObraHoras * 2m;
+            }
 
-            decimal horasEquipoDescanso = (decimal)Math.Ceiling((double)(horasDescanso / input.TamanoCuadrilla));
-            decimal diasDescanso = (decimal)Math.Ceiling((double)(horasEquipoDescanso / input.HorasTrabajoPorDia));
+            decimal horasDesplazamiento = horasDesplazamientoBase + horasDesplazamientoAlojamiento;
+
+            decimal horasEquipoTecho = horasEquipoTechoPre;
+            decimal diasTecho = diasTechoPre;
+
+            decimal horasEquipoDeposito = horasEquipoDepositoPre;
+            decimal diasDeposito = diasDepositoPre;
+
+            decimal horasEquipoDescanso = horasEquipoDescansoPre;
+            decimal diasDescanso = diasDescansoPre;
 
             decimal horasEquipoDesplazamiento = (decimal)Math.Ceiling((double)(horasDesplazamiento / input.TamanoCuadrilla));
             decimal diasDesplazamiento = (decimal)Math.Ceiling((double)(horasEquipoDesplazamiento / input.HorasTrabajoPorDia));
@@ -158,6 +187,7 @@ namespace TankDesigner.Core.Services
                 HorasCambiosGato = Round2(horasCambiosGato),
                 HorasEscaleras = Round2(horasEscaleras),
                 HorasConexionesYBocaHombre = Round2(horasConexiones),
+                HorasStarterRing = Round2(horasMontajeStarterRing),
                 HorasRigidizadores = Round2(horasRigidizadores),
                 HorasAnclaje = Round2(horasAnclaje),
                 HorasSelladoCimentacionPared = Round2(horasSellado),
@@ -191,7 +221,7 @@ namespace TankDesigner.Core.Services
             decimal costeSiteManager = input.NumeroSiteManagers * diasTotalesExcel * input.HorasTrabajoPorDia * costeHoraIngeniero;
             decimal costeSeguridad = input.NumeroTecnicosSeguridad * diasTotalesExcel * input.HorasTrabajoPorDia * costeHoraSeguridad;
 
-            decimal numeroVuelos = (horasDesplazamiento + ((input.NumeroSiteManagers + input.NumeroTecnicosSeguridad) * input.HorasTrabajoPorDia * 2m))
+            decimal numeroVuelos = (horasDesplazamientoBase + ((input.NumeroSiteManagers + input.NumeroTecnicosSeguridad) * input.HorasTrabajoPorDia * 2m))
                                  / input.HorasTrabajoPorDia;
 
             decimal costeVuelos = numeroVuelos * costeVueloUnitario;
@@ -201,6 +231,25 @@ namespace TankDesigner.Core.Services
                 TipoEscaleraPresupuesto.SinEscalera => 0m,
                 _ => input.NumeroEscaleras * alturaTanque * costeFabricacionEscaleraMetro
             };
+
+            decimal diasCamionGrua = 0m;
+            if (costeCamionGruaDia > 0m && numeroPanelesConGrua > 0)
+            {
+                decimal diasPorPaneles = panelesPorDiaCamionGrua > 0m
+                    ? (decimal)Math.Ceiling(numeroPanelesConGrua / panelesPorDiaCamionGrua)
+                    : 0m;
+
+                decimal diasPorHoras = input.TamanoCuadrilla > 0 && input.HorasTrabajoPorDia > 0
+                    ? (decimal)Math.Ceiling((double)(horasCamionGrua / (input.TamanoCuadrilla * input.HorasTrabajoPorDia)))
+                    : 0m;
+
+                diasCamionGrua = Math.Max(diasPorPaneles, diasPorHoras);
+            }
+
+            decimal diasAlquilerGatos = diasDeposito;
+            decimal diasVehiculoAlquiler = input.DistanciaAlojamientoObraHoras > 0m
+                ? (diasTecho + diasDeposito + diasDescanso + diasDesplazamiento)
+                : 0m;
 
             var partidas = new List<PartidaPresupuestoModel>
             {
@@ -220,12 +269,21 @@ namespace TankDesigner.Core.Services
                     costeVueloUnitario, costeVuelos),
 
                 CrearPartida("INST-06", "Fabricación escalera", input.NumeroEscaleras * alturaTanque, "m",
-                    costeFabricacionEscaleraMetro, costeFabricacionEscalera)
+                    costeFabricacionEscaleraMetro, costeFabricacionEscalera),
+
+                CrearPartida("INST-07", "Camión grúa", diasCamionGrua, "día",
+                    costeCamionGruaDia, diasCamionGrua * costeCamionGruaDia),
+
+                CrearPartida("INST-08", "Alquiler gatos", diasAlquilerGatos, "día",
+                    costeAlquilerGatosDia, diasAlquilerGatos * costeAlquilerGatosDia),
+
+                CrearPartida("INST-09", "Vehículo alquiler", diasVehiculoAlquiler, "día",
+                    costeVehiculoAlquilerDia, diasVehiculoAlquiler * costeVehiculoAlquilerDia)
             };
 
             if (input.CosteTransporteManual > 0m)
             {
-                partidas.Add(CrearPartida("INST-07", "Transporte", 1m, "ud", input.CosteTransporteManual, input.CosteTransporteManual));
+                partidas.Add(CrearPartida("INST-10", "Transporte", 1m, "ud", input.CosteTransporteManual, input.CosteTransporteManual));
             }
 
             resultado.Partidas = partidas

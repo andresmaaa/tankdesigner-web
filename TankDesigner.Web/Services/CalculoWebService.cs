@@ -260,7 +260,8 @@ namespace TankDesigner.Web.Services
                     ConexionesDn150a300 = Math.Max(0, instalacion.ConexionesDN150_DN300),
                     ConexionesDn300a500 = Math.Max(0, instalacion.ConexionesDN300_DN500),
                     ConexionesMayor500 = Math.Max(0, instalacion.ConexionesMayorDN500),
-                    NumeroBocasHombre = 1,
+                    NumeroBocasHombre = Math.Max(1, instalacion.NumeroBocasHombre),
+                    NumeroLineasRigidizador = Math.Max(0, resultado.TieneRigidizadorBase ? 1 : 0),
 
                     // Cuadrilla y tiempos
                     TamanoCuadrilla = Math.Max(1, instalacion.TamanoCuadrilla),
@@ -286,7 +287,8 @@ namespace TankDesigner.Web.Services
                         CultureInfo.InvariantCulture),
 
                     EspesoresAnillosMm = espesores,
-                    DistanciaAlojamientoObraHoras = Convert.ToDecimal(instalacion.DistanciaAlojamientoObra, CultureInfo.InvariantCulture)
+                    DistanciaAlojamientoObraHoras = Convert.ToDecimal(instalacion.DistanciaAlojamientoObra, CultureInfo.InvariantCulture),
+                    CosteTransporteManual = Convert.ToDecimal(instalacion.CosteTransporteManual, CultureInfo.InvariantCulture)
                 };
 
                 // Validaciones finales

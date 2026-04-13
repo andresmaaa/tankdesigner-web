@@ -50,6 +50,7 @@ namespace TankDesigner.Core.Models.Presupuestos
         public int ConexionesDn300a500 { get; set; }
         public int ConexionesMayor500 { get; set; }
         public int NumeroBocasHombre { get; set; } = 1;
+        public int NumeroLineasRigidizador { get; set; }
 
         // Mano de obra
         public int TamanoCuadrilla { get; set; }
@@ -108,6 +109,7 @@ namespace TankDesigner.Core.Models.Presupuestos
         public decimal HorasCambiosGato { get; set; }
         public decimal HorasEscaleras { get; set; }
         public decimal HorasConexionesYBocaHombre { get; set; }
+        public decimal HorasStarterRing { get; set; }
         public decimal HorasRigidizadores { get; set; }
         public decimal HorasAnclaje { get; set; }
         public decimal HorasSelladoCimentacionPared { get; set; }
@@ -122,6 +124,7 @@ namespace TankDesigner.Core.Models.Presupuestos
             HorasCambiosGato +
             HorasEscaleras +
             HorasConexionesYBocaHombre +
+            HorasStarterRing +
             HorasRigidizadores +
             HorasAnclaje +
             HorasSelladoCimentacionPared;

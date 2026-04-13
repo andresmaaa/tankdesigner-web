@@ -4,12 +4,12 @@ namespace TankDesigner.Web.Data
 {
     public class ApplicationUser : IdentityUser
     {
-        // 👤 Perfil
+        // Perfil
         public string NombreCompleto { get; set; } = string.Empty;
         public string? TelefonoContacto { get; set; }
         public string? Cargo { get; set; }
 
-        // 🏢 Empresa
+        // Empresa
         public string? EmpresaNombre { get; set; }
         public string? EmpresaDireccion { get; set; }
         public string? EmpresaCiudad { get; set; }
