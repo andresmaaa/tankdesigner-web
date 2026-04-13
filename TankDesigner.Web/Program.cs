@@ -207,7 +207,11 @@ app.MapStaticAssets();
 // Configuración de Blazor
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
-
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    db.Database.Migrate();
+}
 // Seed de roles y SuperAdmin al arrancar
 await IdentitySeedData.InicializarAsync(app.Services, app.Configuration);
 
