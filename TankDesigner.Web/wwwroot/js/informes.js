@@ -19,6 +19,39 @@
         }
     },
 
+    openPreviewAndPrint: function (title, html) {
+        try {
+            const win = window.open("", "_blank");
+            if (!win) return false;
+
+            win.document.open();
+            win.document.write(html);
+            win.document.close();
+
+            try {
+                win.document.title = title || "Informe";
+            } catch { }
+
+            const lanzarImpresion = () => {
+                try {
+                    win.focus();
+                    win.print();
+                } catch { }
+            };
+
+            if (win.document.readyState === "complete") {
+                setTimeout(lanzarImpresion, 250);
+            } else {
+                win.addEventListener("load", () => setTimeout(lanzarImpresion, 250), { once: true });
+            }
+
+            return true;
+        } catch (e) {
+            console.error("openPreviewAndPrint error:", e);
+            return false;
+        }
+    },
+
     downloadFileFromBytes: function (fileName, contentType, base64Data) {
         try {
             const link = document.createElement("a");

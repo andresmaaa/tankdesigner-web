@@ -2,7 +2,7 @@
 {
     public class InstalacionModel
     {
-        public string TipoMedioAnillo { get; set; } = "No";
+        public string TipoMedioAnillo { get; set; } = "Anillo entero";
         public bool StarterRing { get; set; } = true;
         public string TipoTecho { get; set; } = "Sin techo";
 

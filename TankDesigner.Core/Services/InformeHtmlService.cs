@@ -282,6 +282,41 @@ namespace TankDesigner.Core.Services
 
         // Genera el informe económico/presupuesto.
         // Aquí junto materiales + instalación + transporte y construyo el resumen económico final.
+        public ResumenEconomicoPresupuestoModel ObtenerResumenEconomicoPresupuesto(
+            ProyectoGeneralModel proyecto,
+            TankModel tanque,
+            CargasModel cargas,
+            InstalacionModel instalacion,
+            ResultadoCalculoModel resultado)
+        {
+            _proyecto = proyecto ?? new ProyectoGeneralModel();
+            _tanque = tanque ?? new TankModel();
+            _cargas = cargas ?? new CargasModel();
+            _instalacion = instalacion ?? new InstalacionModel();
+            _resultado = resultado ?? new ResultadoCalculoModel();
+
+            int numeroAnillos = _tanque.NumeroAnillos > 0 ? _tanque.NumeroAnillos : _resultado.NumeroAnillos;
+            int chapasPorAnillo = _tanque.ChapasPorAnillo > 0 ? _tanque.ChapasPorAnillo : _resultado.ChapasPorAnillo;
+            int anilloArranque = _tanque.AnilloArranque > 0 ? _tanque.AnilloArranque : _resultado.AnilloArranque;
+
+            List<LineaPresupuestoRow> lineasMaterial = GenerarLineasPresupuesto(numeroAnillos, chapasPorAnillo, anilloArranque);
+
+            double totalMaterial = lineasMaterial.Sum(x => x.Precio);
+            double totalTransporte = ObtenerTotalTransporte(lineasMaterial);
+            var presupuestoInstalacion = _resultado.PresupuestoInstalacion;
+            double totalInstalacion = presupuestoInstalacion != null ? (double)presupuestoInstalacion.TotalInstalacion : 0d;
+
+            return new ResumenEconomicoPresupuestoModel
+            {
+                TotalMateriales = totalMaterial,
+                TotalInstalacion = totalInstalacion,
+                TotalTransporte = totalTransporte,
+                TotalGeneral = totalMaterial + totalInstalacion,
+                NumeroLineasMaterial = lineasMaterial.Count,
+                NumeroPartidasInstalacion = presupuestoInstalacion?.Partidas?.Count ?? 0
+            };
+        }
+
         public string GenerarInformePresupuesto(ProyectoGeneralModel proyecto, TankModel tanque, CargasModel cargas, InstalacionModel instalacion, ResultadoCalculoModel resultado)
         {
             SetContext(proyecto, tanque, cargas, instalacion, resultado);

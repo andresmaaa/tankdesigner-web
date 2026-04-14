@@ -111,6 +111,7 @@ builder.Services.AddScoped<FormularioValidacionService>();
 builder.Services.AddScoped<CalculoGeometriaService>();
 builder.Services.AddScoped<InformeHtmlService>();
 builder.Services.AddScoped<PdfRenderService>();
+builder.Services.AddScoped<InformeResumenProyectosService>();
 
 // Configuración del servicio de IA (Gemini)
 builder.Services.Configure<AiOptions>(builder.Configuration.GetSection("Gemini"));
