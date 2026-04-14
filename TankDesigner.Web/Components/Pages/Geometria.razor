@@ -41,23 +41,23 @@
                     <div class="form-grid">
                         <div class="field">
                             <label>Número de chapas por anillo</label>
-                            <select class="td-input td-select" value="@EstadoProyecto.Tanque.ChapasPorAnillo" @onchange="OnChapasPorAnilloChange">
-                                @foreach (var item in _chapasPorAnillo)
-                                {
-                                    <option value="@item">@item</option>
-                                }
-                            </select>
+                            <input class="td-input"
+                                   type="number"
+                                   min="1"
+                                   step="1"
+                                   value="@EstadoProyecto.Tanque.ChapasPorAnillo"
+                                   @oninput="OnChapasPorAnilloInput" />
                             <small>Cantidad de planchas que forman cada anillo.</small>
                         </div>
 
                         <div class="field">
                             <label>Número de anillos</label>
-                            <select class="td-input td-select" value="@EstadoProyecto.Tanque.NumeroAnillos" @onchange="OnNumeroAnillosChange">
-                                @foreach (var item in _numeroAnillos)
-                                {
-                                    <option value="@item">@item</option>
-                                }
-                            </select>
+                            <input class="td-input"
+                                   type="number"
+                                   min="1"
+                                   step="1"
+                                   value="@EstadoProyecto.Tanque.NumeroAnillos"
+                                   @oninput="OnNumeroAnillosInput" />
                             <small>Número total de anillos del tanque.</small>
                         </div>
 
@@ -124,14 +124,14 @@
                         </div>
 
                         <div class="field">
-                            <label>Tipo medio anillo</label>
+                            <label>Tipo anillo</label>
                             <select class="td-input td-select" value="@EstadoProyecto.Instalacion.TipoMedioAnillo" @onchange="OnTipoMedioAnilloChange">
                                 @foreach (var item in _tiposMedioAnillo)
                                 {
                                     <option value="@item">@item</option>
                                 }
                             </select>
-                            <small>Configuración auxiliar de medio anillo asociada al tanque.</small>
+                            <small>Configuración auxiliar del anillo asociada al tanque.</small>
                         </div>
                     </div>
                 </article>
@@ -189,7 +189,7 @@
                             <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Instalacion.TipoTecho)</span>
                         </div>
                         <div class="summary-row">
-                            <span class="summary-row__label">Medio anillo</span>
+                            <span class="summary-row__label">Tipo anillo</span>
                             <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Instalacion.TipoMedioAnillo)</span>
                         </div>
                         <div class="summary-row">
@@ -216,8 +216,6 @@
 </div>
 
 @code {
-    private List<int> _chapasPorAnillo = new();
-    private List<int> _numeroAnillos = new();
     private List<int> _anillosArranque = new();
     private List<string> _modelos = new();
     private List<string> _tiposMedioAnillo = new();
@@ -226,17 +224,15 @@
 
     protected override void OnInitialized()
     {
-        _chapasPorAnillo = Opciones.ObtenerChapasPorAnillo();
-        _numeroAnillos = Opciones.ObtenerNumeroAnillos();
         _anillosArranque = Opciones.ObtenerAnillosArranque();
         _tiposMedioAnillo = Opciones.ObtenerTiposMedioAnillo();
         _tiposTecho = Opciones.ObtenerTiposTechoInstalacion();
 
         if (EstadoProyecto.Tanque.ChapasPorAnillo <= 0)
-            EstadoProyecto.Tanque.ChapasPorAnillo = _chapasPorAnillo.FirstOrDefault();
+            EstadoProyecto.Tanque.ChapasPorAnillo = 16;
 
         if (EstadoProyecto.Tanque.NumeroAnillos <= 0)
-            EstadoProyecto.Tanque.NumeroAnillos = _numeroAnillos.FirstOrDefault();
+            EstadoProyecto.Tanque.NumeroAnillos = 6;
 
         if (EstadoProyecto.Tanque.AnilloArranque <= 0)
             EstadoProyecto.Tanque.AnilloArranque = _anillosArranque.FirstOrDefault();
@@ -248,7 +244,7 @@
             EstadoProyecto.Tanque.DensidadLiquido = 1;
 
         if (string.IsNullOrWhiteSpace(EstadoProyecto.Instalacion.TipoMedioAnillo))
-            EstadoProyecto.Instalacion.TipoMedioAnillo = "No";
+            EstadoProyecto.Instalacion.TipoMedioAnillo = "Anillo entero";
 
         if (string.IsNullOrWhiteSpace(EstadoProyecto.Instalacion.TipoTecho))
             EstadoProyecto.Instalacion.TipoTecho = "Sin techo";
@@ -277,23 +273,32 @@
             EstadoProyecto.Tanque.Modelo = _modelos.First();
     }
 
-    private void OnChapasPorAnilloChange(ChangeEventArgs e)
+    private void OnChapasPorAnilloInput(ChangeEventArgs e)
     {
         if (int.TryParse(e.Value?.ToString(), out int valor))
-            EstadoProyecto.Tanque.ChapasPorAnillo = valor;
+        {
+            if (valor < 1)
+                valor = 1;
 
-        RecalcularYValidar();
+            EstadoProyecto.Tanque.ChapasPorAnillo = valor;
+            RecalcularYValidar();
+        }
     }
 
-    private void OnNumeroAnillosChange(ChangeEventArgs e)
+    private void OnNumeroAnillosInput(ChangeEventArgs e)
     {
         if (int.TryParse(e.Value?.ToString(), out int valor))
+        {
+            if (valor < 1)
+                valor = 1;
+
             EstadoProyecto.Tanque.NumeroAnillos = valor;
 
-        if (EstadoProyecto.Tanque.AnilloArranque > EstadoProyecto.Tanque.NumeroAnillos)
-            EstadoProyecto.Tanque.AnilloArranque = EstadoProyecto.Tanque.NumeroAnillos;
+            if (EstadoProyecto.Tanque.AnilloArranque > EstadoProyecto.Tanque.NumeroAnillos)
+                EstadoProyecto.Tanque.AnilloArranque = EstadoProyecto.Tanque.NumeroAnillos;
 
-        RecalcularYValidar();
+            RecalcularYValidar();
+        }
     }
 
     private void OnAnilloArranqueChange(ChangeEventArgs e)
@@ -334,7 +339,7 @@
 
     private void OnTipoMedioAnilloChange(ChangeEventArgs e)
     {
-        EstadoProyecto.Instalacion.TipoMedioAnillo = e.Value?.ToString() ?? "No";
+        EstadoProyecto.Instalacion.TipoMedioAnillo = e.Value?.ToString() ?? "Anillo entero";
         RecalcularYValidar();
     }
 

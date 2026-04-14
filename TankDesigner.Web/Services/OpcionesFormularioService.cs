@@ -58,7 +58,7 @@ namespace TankDesigner.Web.Services
             => new() { "I", "II", "III" };
 
         public List<string> ObtenerTiposMedioAnillo()
-            => new() { "No", "1/2 anillo", "1/4 anillo" };
+        => new() { "Anillo entero", "1/2 anillo", "1/4 anillo" };
 
         public List<string> ObtenerOpcionesStarterRing()
             => new() { "Sí", "No" };
