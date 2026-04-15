@@ -15,7 +15,7 @@ namespace TankDesigner.Web.Services
             => new() { "Simple", "Extendido" };
 
         public List<string> ObtenerNormativas()
-            => new() { "AWWA", "ISO", "EC" };
+            => new() { "AWWA D103-19", "ISO", "EC" };
 
         public List<string> ObtenerFabricantes()
             => new() { "DL2", "Permastore", "Balmoral" };

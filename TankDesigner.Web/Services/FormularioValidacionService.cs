@@ -57,8 +57,6 @@ namespace TankDesigner.Web.Services
             if (tanque.DensidadLiquido <= 0)
                 errores.Add("La densidad del líquido debe ser mayor que 0.");
 
-            if (string.IsNullOrWhiteSpace(tanque.Modelo))
-                errores.Add("Debes seleccionar un modelo.");
 
             return errores;
         }

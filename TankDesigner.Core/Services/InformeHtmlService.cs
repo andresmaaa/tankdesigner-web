@@ -37,7 +37,7 @@ namespace TankDesigner.Core.Services
 
             string nombreProyecto = Html(TextoSeguroSinInventar(_proyecto?.NombreProyecto));
             string cliente = Html(TextoSeguroSinInventar(_proyecto?.ClienteReferencia));
-            string normativa = Html(TextoSeguroSinInventar(_proyecto?.Normativa));
+            string normativa = Html(NormalizarTextoVisibleNormativa(TextoSeguroSinInventar(_proyecto?.Normativa)));
             string fabricante = Html(TextoSeguroSinInventar(_proyecto?.Fabricante));
             string materialTexto = !string.IsNullOrWhiteSpace(_resultado?.MaterialPrincipal)
                 ? _resultado!.MaterialPrincipal.Trim()
@@ -45,7 +45,7 @@ namespace TankDesigner.Core.Services
             string material = Html(materialTexto);
             string modeloCalculo = Html(TextoSeguroSinInventar(_proyecto?.ModeloCalculo));
             string idioma = Html(NombreIdiomaVisible());
-            string modeloTanque = Html(TextoSeguroSinInventar(_tanque?.Modelo));
+            string modeloTanque = Html(ObtenerModeloTanqueVisible());
 
             int numeroAnillos = NumeroAnillos();
             int chapasPorAnillo = ChapasPorAnillo();
@@ -67,7 +67,7 @@ namespace TankDesigner.Core.Services
             double tl = _cargas?.TL ?? 0;
             string siteClass = Html(TextoSeguroSinInventar(_cargas?.SiteClass));
             string seismicUseGroup = Html(TextoSeguroSinInventar(_cargas?.SeismicUseGroup));
-            string normativaAplicada = Html(TextoSeguroSinInventar(_cargas?.NormativaAplicada));
+            string normativaAplicada = Html(NormalizarTextoVisibleNormativa(TextoSeguroSinInventar(_cargas?.NormativaAplicada)));
 
             // Conversión de geometría a metros para mostrar datos de resumen del tanque.
             double diametroRealM = DiametroMm() > 0 ? DiametroMm() / 1000.0 : 0;
@@ -323,10 +323,10 @@ namespace TankDesigner.Core.Services
             SetContext(proyecto, tanque, cargas, instalacion, resultado);
 
             string nombreProyecto = Html(TextoSeguroSinInventar(_proyecto?.NombreProyecto));
-            string normativa = Html(TextoSeguroSinInventar(_proyecto?.Normativa));
+            string normativa = Html(NormalizarTextoVisibleNormativa(TextoSeguroSinInventar(_proyecto?.Normativa)));
             string fabricante = Html(TextoSeguroSinInventar(_proyecto?.Fabricante));
             string material = Html(!string.IsNullOrWhiteSpace(_resultado?.MaterialPrincipal) ? _resultado!.MaterialPrincipal : TextoSeguroSinInventar(_proyecto?.MaterialPrincipal));
-            string modeloTanque = Html(TextoSeguroSinInventar(_tanque?.Modelo));
+            string modeloTanque = Html(ObtenerModeloTanqueVisible());
 
             int numeroAnillos = NumeroAnillos();
             int chapasPorAnillo = ChapasPorAnillo();
@@ -494,7 +494,7 @@ namespace TankDesigner.Core.Services
             string nombreProyecto = Html(TextoSeguroSinInventar(_proyecto?.NombreProyecto));
             string fabricante = Html(TextoSeguroSinInventar(_proyecto?.Fabricante));
             string material = Html(!string.IsNullOrWhiteSpace(_resultado?.MaterialPrincipal) ? _resultado!.MaterialPrincipal : TextoSeguroSinInventar(_proyecto?.MaterialPrincipal));
-            string modeloTanque = Html(TextoSeguroSinInventar(_tanque?.Modelo));
+            string modeloTanque = Html(ObtenerModeloTanqueVisible());
             int numeroAnillos = NumeroAnillos();
             int chapasPorAnillo = ChapasPorAnillo();
 
@@ -1736,6 +1736,82 @@ td{{padding:9px;border:1px solid #EAF0F4;}}
         private string CodigoIdiomaHtml()
         {
             return EsIngles() ? "en" : "es";
+        }
+
+        private string ObtenerModeloTanqueVisible()
+        {
+            string modeloActual = TextoSeguroSinInventar(_tanque?.Modelo);
+            string modeloGenerado = GenerarModeloAutomatico();
+
+            if (modeloActual == "—" || string.IsNullOrWhiteSpace(modeloActual))
+                return string.IsNullOrWhiteSpace(modeloGenerado) ? "—" : modeloGenerado;
+
+            if (string.IsNullOrWhiteSpace(modeloGenerado))
+                return modeloActual;
+
+            return modeloGenerado;
+        }
+
+        private string GenerarModeloAutomatico()
+        {
+            string letraFabricante = ObtenerLetraFabricante(_proyecto?.Fabricante);
+            int chapasPorAnillo = ChapasPorAnillo();
+            double numeroAnillosVisible = ObtenerNumeroAnillosVisible();
+
+            if (string.IsNullOrWhiteSpace(letraFabricante) || chapasPorAnillo <= 0 || numeroAnillosVisible <= 0)
+                return string.Empty;
+
+            string anillosTexto = numeroAnillosVisible % 1 == 0
+                ? ((int)numeroAnillosVisible).ToString(CultureInfo.InvariantCulture)
+                : numeroAnillosVisible.ToString("0.0", CultureInfo.InvariantCulture);
+
+            return $"{letraFabricante}{chapasPorAnillo}/{anillosTexto}";
+        }
+
+        private double ObtenerNumeroAnillosVisible()
+        {
+            double numeroAnillos = NumeroAnillos();
+            string tipoMedioAnillo = (_instalacion?.TipoMedioAnillo ?? string.Empty).Trim();
+
+            if (tipoMedioAnillo.Equals("1/2 anillo", StringComparison.OrdinalIgnoreCase))
+                return numeroAnillos + 0.5;
+
+            if (tipoMedioAnillo.Equals("1/4 anillo", StringComparison.OrdinalIgnoreCase))
+                return numeroAnillos + 0.25;
+
+            return numeroAnillos;
+        }
+
+        private string ObtenerLetraFabricante(string? fabricante)
+        {
+            if (string.IsNullOrWhiteSpace(fabricante))
+                return string.Empty;
+
+            string valor = fabricante.Trim().ToUpperInvariant();
+
+            if (valor.Contains("BALMORAL"))
+                return "B";
+
+            if (valor.Contains("PERMASTORE"))
+                return "P";
+
+            if (valor.Contains("DL2"))
+                return "D";
+
+            return valor.Substring(0, 1);
+        }
+
+        private string NormalizarTextoVisibleNormativa(string? normativa)
+        {
+            string valor = TextoSeguroSinInventar(normativa);
+
+            if (valor.Equals("—", StringComparison.OrdinalIgnoreCase))
+                return valor;
+
+            if (valor.Contains("AWWA", StringComparison.OrdinalIgnoreCase))
+                return "AWWA D103-19";
+
+            return valor;
         }
 
         private string TextoSeguroSinInventar(string? valor)
