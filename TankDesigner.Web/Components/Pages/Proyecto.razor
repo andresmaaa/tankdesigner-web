@@ -178,8 +178,9 @@
         if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.ModeloCalculo))
             EstadoProyecto.Proyecto.ModeloCalculo = _modelosCalculo.FirstOrDefault() ?? "Simple";
 
-        if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.Normativa))
-            EstadoProyecto.Proyecto.Normativa = _normativas.FirstOrDefault() ?? "AWWA";
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.Normativa) ||
+            string.Equals(EstadoProyecto.Proyecto.Normativa.Trim(), "AWWA", StringComparison.OrdinalIgnoreCase))
+            EstadoProyecto.Proyecto.Normativa = _normativas.FirstOrDefault() ?? "AWWA D103-19";
 
         if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.Fabricante))
             EstadoProyecto.Proyecto.Fabricante = _fabricantes.FirstOrDefault() ?? "DL2";

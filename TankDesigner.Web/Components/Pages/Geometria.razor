@@ -94,23 +94,6 @@
                             <small>Densidad relativa del fluido contenido.</small>
                         </div>
 
-                        <div class="field">
-                            <label>Modelo</label>
-                            <select class="td-input td-select" value="@EstadoProyecto.Tanque.Modelo" @onchange="OnModeloChange">
-                                @if (_modelos.Count == 0)
-                                {
-                                    <option value="">Sin modelos disponibles</option>
-                                }
-                                else
-                                {
-                                    @foreach (var item in _modelos)
-                                    {
-                                        <option value="@item">@item</option>
-                                    }
-                                }
-                            </select>
-                            <small>Modelo disponible filtrado por fabricante en catálogo.</small>
-                        </div>
 
                         <div class="field">
                             <label>Tipo de techo</label>
@@ -217,7 +200,6 @@
 
 @code {
     private List<int> _anillosArranque = new();
-    private List<string> _modelos = new();
     private List<string> _tiposMedioAnillo = new();
     private List<string> _tiposTecho = new();
     private List<string> _errores = new();
@@ -249,29 +231,14 @@
         if (string.IsNullOrWhiteSpace(EstadoProyecto.Instalacion.TipoTecho))
             EstadoProyecto.Instalacion.TipoTecho = "Sin techo";
 
-        CargarModelos();
         RecalcularYValidar();
     }
 
     protected override void OnParametersSet()
     {
-        CargarModelos();
         RecalcularYValidar();
     }
 
-    private void CargarModelos()
-    {
-        _modelos = Opciones.ObtenerModelosPorFabricante(EstadoProyecto.Proyecto.Fabricante);
-
-        if (_modelos.Count == 0)
-        {
-            EstadoProyecto.Tanque.Modelo = string.Empty;
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(EstadoProyecto.Tanque.Modelo) || !_modelos.Contains(EstadoProyecto.Tanque.Modelo))
-            EstadoProyecto.Tanque.Modelo = _modelos.First();
-    }
 
     private void OnChapasPorAnilloInput(ChangeEventArgs e)
     {
@@ -325,11 +292,6 @@
         RecalcularYValidar();
     }
 
-    private void OnModeloChange(ChangeEventArgs e)
-    {
-        EstadoProyecto.Tanque.Modelo = e.Value?.ToString() ?? string.Empty;
-        RecalcularYValidar();
-    }
 
     private void OnTipoTechoChange(ChangeEventArgs e)
     {
@@ -343,6 +305,54 @@
         RecalcularYValidar();
     }
 
+    private string GenerarModeloAutomatico()
+    {
+        string letraFabricante = ObtenerLetraFabricante(EstadoProyecto.Proyecto.Fabricante);
+        int chapasPorAnillo = Math.Max(0, EstadoProyecto.Tanque.ChapasPorAnillo);
+        double numeroAnillosVisible = ObtenerNumeroAnillosVisible();
+
+        if (string.IsNullOrWhiteSpace(letraFabricante) || chapasPorAnillo <= 0 || numeroAnillosVisible <= 0)
+            return string.Empty;
+
+        string anillosTexto = numeroAnillosVisible % 1 == 0
+            ? ((int)numeroAnillosVisible).ToString(CultureInfo.InvariantCulture)
+            : numeroAnillosVisible.ToString("0.0", CultureInfo.InvariantCulture);
+
+        return $"{letraFabricante}{chapasPorAnillo}/{anillosTexto}";
+    }
+
+    private double ObtenerNumeroAnillosVisible()
+    {
+        double numeroAnillos = EstadoProyecto.Tanque.NumeroAnillos;
+
+        if (string.Equals(EstadoProyecto.Instalacion.TipoMedioAnillo, "1/2 anillo", StringComparison.OrdinalIgnoreCase))
+            return numeroAnillos + 0.5;
+
+        if (string.Equals(EstadoProyecto.Instalacion.TipoMedioAnillo, "1/4 anillo", StringComparison.OrdinalIgnoreCase))
+            return numeroAnillos + 0.25;
+
+        return numeroAnillos;
+    }
+
+    private static string ObtenerLetraFabricante(string? fabricante)
+    {
+        if (string.IsNullOrWhiteSpace(fabricante))
+            return string.Empty;
+
+        var valor = fabricante.Trim().ToUpperInvariant();
+
+        if (valor.Contains("BALMORAL"))
+            return "B";
+
+        if (valor.Contains("PERMASTORE"))
+            return "P";
+
+        if (valor.Contains("DL2"))
+            return "D";
+
+        return valor.Substring(0, 1);
+    }
+
     private void RecalcularYValidar()
     {
         EstadoProyecto.Tanque.AlturaPanelBase =
@@ -353,6 +363,8 @@
 
         EstadoProyecto.Tanque.Diametro =
             CalculoGeometriaService.ObtenerDiametro(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);
+
+        EstadoProyecto.Tanque.Modelo = GenerarModeloAutomatico();
 
         _errores = ValidacionService.ValidarGeometria(EstadoProyecto.Tanque);
         StateHasChanged();
