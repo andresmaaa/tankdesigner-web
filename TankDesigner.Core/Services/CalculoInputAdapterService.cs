@@ -74,16 +74,19 @@ namespace TankDesigner.Core.Services
             // Añade datos de cargas al input.
             inputBase.NormativaAplicadaCargas = (cargas.NormativaAplicada ?? string.Empty).Trim();
 
-            inputBase.VelocidadViento = cargas.VelocidadViento;
-            inputBase.SnowLoad = cargas.SnowLoad;
+            bool techoNone = string.IsNullOrWhiteSpace(cargas.RoofType)
+                             || cargas.RoofType.Trim().Equals("None", StringComparison.OrdinalIgnoreCase);
 
-            inputBase.RoofType = (cargas.RoofType ?? string.Empty).Trim();
-            inputBase.RoofDeadLoad = cargas.RoofDeadLoad;
-            inputBase.RoofSnowLoad = cargas.RoofSnowLoad;
-            inputBase.RoofLiveLoad = cargas.RoofLiveLoad;
-            inputBase.RoofCentroid = cargas.RoofCentroid;
-            inputBase.RoofProjectedArea = cargas.RoofProjectedArea;
-            inputBase.RoofAngle = (cargas.RoofAngle ?? string.Empty).Trim();
+            inputBase.VelocidadViento = cargas.VelocidadViento;
+            inputBase.SnowLoad = techoNone ? 0 : cargas.SnowLoad;
+
+            inputBase.RoofType = techoNone ? "None" : (cargas.RoofType ?? string.Empty).Trim();
+            inputBase.RoofDeadLoad = techoNone ? 0 : cargas.RoofDeadLoad;
+            inputBase.RoofSnowLoad = techoNone ? 0 : cargas.RoofSnowLoad;
+            inputBase.RoofLiveLoad = techoNone ? 0 : cargas.RoofLiveLoad;
+            inputBase.RoofCentroid = techoNone ? 0 : cargas.RoofCentroid;
+            inputBase.RoofProjectedArea = techoNone ? 0 : cargas.RoofProjectedArea;
+            inputBase.RoofAngle = techoNone ? "0°" : (cargas.RoofAngle ?? string.Empty).Trim();
 
             inputBase.ClaseExposicion = (cargas.ClaseExposicion ?? string.Empty).Trim();
 

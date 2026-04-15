@@ -53,13 +53,14 @@ namespace TankDesigner.Core.Services
             double bordeLibre = BordeLibre();
             double densidad = Densidad();
 
-            string roofType = Html(TextoSeguroSinInventar(_cargas?.RoofType));
-            double roofDeadLoad = _cargas?.RoofDeadLoad ?? 0;
-            double roofSnowLoad = _cargas?.RoofSnowLoad > 0 ? _cargas.RoofSnowLoad : (_cargas?.SnowLoad ?? 0);
-            double roofLiveLoad = _cargas?.RoofLiveLoad ?? 0;
-            double roofCentroid = _cargas?.RoofCentroid ?? 0;
-            double roofProjectedArea = _cargas?.RoofProjectedArea ?? 0;
-            string roofAngle = Html(TextoSeguroSinInventar(_cargas?.RoofAngle));
+            bool techoNone = EsTechoNone(_cargas?.RoofType);
+            string roofType = Html(techoNone ? "None" : TextoSeguroSinInventar(_cargas?.RoofType));
+            double roofDeadLoad = techoNone ? 0 : (_cargas?.RoofDeadLoad ?? 0);
+            double roofSnowLoad = techoNone ? 0 : (_cargas?.RoofSnowLoad > 0 ? _cargas.RoofSnowLoad : (_cargas?.SnowLoad ?? 0));
+            double roofLiveLoad = techoNone ? 0 : (_cargas?.RoofLiveLoad ?? 0);
+            double roofCentroid = techoNone ? 0 : (_cargas?.RoofCentroid ?? 0);
+            double roofProjectedArea = techoNone ? 0 : (_cargas?.RoofProjectedArea ?? 0);
+            string roofAngle = Html(techoNone ? "0°" : TextoSeguroSinInventar(_cargas?.RoofAngle));
             double velocidadViento = _cargas?.VelocidadViento ?? 0;
             string claseExposicion = Html(TextoSeguroSinInventar(_cargas?.ClaseExposicion));
             double ss = _cargas?.Ss ?? 0;
@@ -77,10 +78,6 @@ namespace TankDesigner.Core.Services
             double volumenRealM3 = diametroRealM > 0 && alturaRealM > 0
                 ? Math.PI * Math.Pow(diametroRealM / 2.0, 2) * alturaRealM
                 : 0;
-            // Presión hidrostática base.
-            // Si el resultado ya trae la presión calculada, se usa esa.
-            // Si no, PresionBase() intenta reconstruirla con densidad y altura.
-            double presionBaseMostrar = PresionBase();
             double longitudPlancha = diametroRealM > 0 && chapasPorAnillo > 0
                 ? (Math.PI * diametroRealM * 1000.0) / chapasPorAnillo
                 : 0;
@@ -157,7 +154,6 @@ namespace TankDesigner.Core.Services
             html.Append(LabelValue(Lang("Borde libre", "Freeboard"), ValorMm(bordeLibre)));
             html.Append(LabelValue(Lang("Densidad relativa del líquido", "Relative liquid density"), ValorNumero(densidad, "0.###")));
             html.Append(LabelValue(Lang("Volumen", "Volume"), volumenRealM3 > 0 ? Formato(volumenRealM3, "0.00") + " m³" : "—"));
-            html.Append(LabelValue(Lang("Presión hidrostática base", "Hydrostatic base pressure"), presionBaseMostrar > 0 ? Formato(presionBaseMostrar, "0.###") + " kPa" : "—"));
             html.Append("</div>");
 
             html.Append($"<div class='block'><h3>{Html(Lang("Cargas y acciones", "Loads and actions"))}</h3>");
@@ -1398,12 +1394,27 @@ namespace TankDesigner.Core.Services
 
             if (_resultado?.Anillos != null && _resultado.Anillos.Count > 0)
             {
-                foreach (var anillo in _resultado.Anillos.OrderBy(a => a.NumeroAnillo))
+                var anillosOrdenados = _resultado.Anillos
+                    .OrderBy(a => a.NumeroAnillo)
+                    .ToList();
+
+                var profundidadesAscendentes = anillosOrdenados
+                    .Select(a => a.Head)
+                    .Where(v => v > 0)
+                    .OrderBy(v => v)
+                    .ToList();
+
+                for (int i = 0; i < anillosOrdenados.Count; i++)
                 {
+                    var anillo = anillosOrdenados[i];
+                    double profundidadMostrar = i < profundidadesAscendentes.Count
+                        ? profundidadesAscendentes[i]
+                        : anillo.Head;
+
                     lista.Add(new TensionHidrostaticaRow
                     {
                         Anillo = anillo.NumeroAnillo,
-                        Profundidad = anillo.Head > 0 ? Formato(anillo.Head, "0.###") : "—",
+                        Profundidad = profundidadMostrar > 0 ? Formato(profundidadMostrar, "0.###") : "—",
                         CargaFluido = anillo.HydrostaticHoopLoad > 0 ? Formato(anillo.HydrostaticHoopLoad, "0.###") : "—",
                         TensionTraccion = anillo.NetTensileStress > 0 ? Formato(anillo.NetTensileStress, "0.###") : "—",
                         TensionTraccionAdmisible = anillo.AllowableTensileStress > 0 ? Formato(anillo.AllowableTensileStress, "0.###") : "—",
@@ -1812,6 +1823,12 @@ td{{padding:9px;border:1px solid #EAF0F4;}}
                 return "AWWA D103-19";
 
             return valor;
+        }
+
+        private bool EsTechoNone(string? roofType)
+        {
+            return string.IsNullOrWhiteSpace(roofType)
+                   || roofType.Trim().Equals("None", StringComparison.OrdinalIgnoreCase);
         }
 
         private string TextoSeguroSinInventar(string? valor)

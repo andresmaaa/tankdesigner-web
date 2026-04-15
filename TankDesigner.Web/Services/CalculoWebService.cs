@@ -173,6 +173,21 @@ namespace TankDesigner.Web.Services
             cargas.SeismicUseGroup = (cargas.SeismicUseGroup ?? string.Empty).Trim();
             cargas.Observaciones = (cargas.Observaciones ?? string.Empty).Trim();
 
+            bool techoNone = string.IsNullOrWhiteSpace(cargas.RoofType)
+                             || cargas.RoofType.Equals("None", StringComparison.OrdinalIgnoreCase);
+
+            if (techoNone)
+            {
+                cargas.RoofType = "None";
+                cargas.RoofDeadLoad = 0;
+                cargas.RoofSnowLoad = 0;
+                cargas.RoofLiveLoad = 0;
+                cargas.RoofCentroid = 0;
+                cargas.RoofProjectedArea = 0;
+                cargas.RoofAngle = "0°";
+                cargas.SnowLoad = 0;
+            }
+
             // Si no hay densidad en cargas, usa la del tanque
             if (cargas.DensidadLiquido <= 0 && tanque.DensidadLiquido > 0)
                 cargas.DensidadLiquido = tanque.DensidadLiquido;

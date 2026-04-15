@@ -33,24 +33,32 @@ namespace TankDesigner.Infrastructure.Services
 
             if (n == "AWWA")
             {
-                if (cargas.RoofDeadLoad <= 0) cargas.RoofDeadLoad = 0.30;
-                if (cargas.RoofSnowLoad <= 0) cargas.RoofSnowLoad = 0.75;
-                if (cargas.RoofLiveLoad <= 0) cargas.RoofLiveLoad = 0.57;
-                if (cargas.RoofCentroid <= 0) cargas.RoofCentroid = 0.00;
-                if (cargas.RoofProjectedArea <= 0) cargas.RoofProjectedArea = 0.00;
-                if (cargas.VelocidadViento <= 0) cargas.VelocidadViento = 25.00;
-                if (cargas.SnowLoad <= 0) cargas.SnowLoad = cargas.RoofSnowLoad > 0 ? cargas.RoofSnowLoad : 0.75;
-                if (cargas.Ss <= 0) cargas.Ss = 0.40;
-                if (cargas.S1 <= 0) cargas.S1 = 0.15;
-                if (cargas.TL <= 0) cargas.TL = 8.00;
-                if (cargas.DensidadLiquido <= 0) cargas.DensidadLiquido = 1.00;
-
                 if (string.IsNullOrWhiteSpace(cargas.RoofType)) cargas.RoofType = "None";
                 if (string.IsNullOrWhiteSpace(cargas.RoofAngle)) cargas.RoofAngle = "0°";
                 if (string.IsNullOrWhiteSpace(cargas.ClaseExposicion)) cargas.ClaseExposicion = "B";
                 if (string.IsNullOrWhiteSpace(cargas.SiteClass)) cargas.SiteClass = "D";
                 if (string.IsNullOrWhiteSpace(cargas.SeismicUseGroup)) cargas.SeismicUseGroup = "II";
                 if (string.IsNullOrWhiteSpace(cargas.Observaciones)) cargas.Observaciones = "Datos AWWA cargados desde el formulario de cargas.";
+
+                if (cargas.VelocidadViento <= 0) cargas.VelocidadViento = 25.00;
+                if (cargas.Ss <= 0) cargas.Ss = 0.40;
+                if (cargas.S1 <= 0) cargas.S1 = 0.15;
+                if (cargas.TL <= 0) cargas.TL = 8.00;
+                if (cargas.DensidadLiquido <= 0) cargas.DensidadLiquido = 1.00;
+
+                if (EsTechoNone(cargas.RoofType))
+                {
+                    AplicarCargasTechoNone(cargas);
+                }
+                else
+                {
+                    if (cargas.RoofDeadLoad <= 0) cargas.RoofDeadLoad = 0.30;
+                    if (cargas.RoofSnowLoad <= 0) cargas.RoofSnowLoad = 0.75;
+                    if (cargas.RoofLiveLoad <= 0) cargas.RoofLiveLoad = 0.57;
+                    if (cargas.RoofCentroid <= 0) cargas.RoofCentroid = 0.00;
+                    if (cargas.RoofProjectedArea <= 0) cargas.RoofProjectedArea = 0.00;
+                    if (cargas.SnowLoad <= 0) cargas.SnowLoad = cargas.RoofSnowLoad > 0 ? cargas.RoofSnowLoad : 0.75;
+                }
 
                 return cargas;
             }
@@ -101,6 +109,33 @@ namespace TankDesigner.Infrastructure.Services
             if (cargas.DensidadLiquido <= 0) cargas.DensidadLiquido = 1.00;
 
             return cargas;
+        }
+
+        public void AplicarReglasTecho(CargasModel cargas)
+        {
+            if (cargas == null)
+                return;
+
+            if (EsTechoNone(cargas.RoofType))
+                AplicarCargasTechoNone(cargas);
+        }
+
+        private static bool EsTechoNone(string? roofType)
+        {
+            return string.IsNullOrWhiteSpace(roofType)
+                   || roofType.Trim().Equals("None", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static void AplicarCargasTechoNone(CargasModel cargas)
+        {
+            cargas.RoofType = "None";
+            cargas.RoofDeadLoad = 0;
+            cargas.RoofSnowLoad = 0;
+            cargas.RoofLiveLoad = 0;
+            cargas.RoofCentroid = 0;
+            cargas.RoofProjectedArea = 0;
+            cargas.RoofAngle = "0°";
+            cargas.SnowLoad = 0;
         }
 
         public string ConstruirResumenVisual(string normativa)

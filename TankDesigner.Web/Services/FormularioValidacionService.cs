@@ -83,6 +83,20 @@ namespace TankDesigner.Web.Services
             if (cargas.RoofCentroid < 0 || cargas.RoofProjectedArea < 0)
                 errores.Add("Los valores geométricos de cubierta no pueden ser negativos.");
 
+            bool techoNone = string.IsNullOrWhiteSpace(cargas.RoofType)
+                             || cargas.RoofType.Equals("None", StringComparison.OrdinalIgnoreCase);
+
+            if (techoNone &&
+                (cargas.RoofDeadLoad != 0 ||
+                 cargas.RoofSnowLoad != 0 ||
+                 cargas.RoofLiveLoad != 0 ||
+                 cargas.RoofCentroid != 0 ||
+                 cargas.RoofProjectedArea != 0 ||
+                 cargas.SnowLoad != 0))
+            {
+                errores.Add("Si el techo está en None, todas las cargas y geometrías de cubierta deben ser 0.");
+            }
+
             if (cargas.Ss < 0 || cargas.S1 < 0 || cargas.TL < 0)
                 errores.Add("Los parámetros sísmicos no pueden ser negativos.");
 

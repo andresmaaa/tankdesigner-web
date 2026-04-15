@@ -36,7 +36,7 @@
                     </div>
                 </article>
 
-                @if (_normativaActiva == "AWWA")
+                @if (_normativaActiva == "AWWA D103-19")
                 {
                     <article class="td-panel">
                         <div class="td-panel__header">
@@ -47,8 +47,24 @@
 
                         <div class="form-grid">
                             <div class="field">
+                                <label>Tipo de techo</label>
+                                <InputSelect class="td-input td-select"
+                                             @bind-Value="EstadoProyecto.Cargas.RoofType"
+                                             @bind-Value:after="AplicarReglasTecho">
+                                    @foreach (var item in _roofTypes)
+                                    {
+                                        <option value="@item">@item</option>
+                                    }
+                                </InputSelect>
+                                <small>Si el techo es None, todas las cargas de cubierta se guardan a 0.</small>
+                            </div>
+
+                            <div class="field">
                                 <label>Ángulo de techo</label>
-                                <InputSelect class="td-input td-select" @bind-Value="EstadoProyecto.Cargas.RoofAngle">
+                                <InputSelect class="td-input td-select"
+                                             @bind-Value="EstadoProyecto.Cargas.RoofAngle"
+                                             @bind-Value:after="AplicarReglasTecho"
+                                             disabled="@EsTechoNoneSeleccionado()">
                                     @foreach (var item in _roofAngles)
                                     {
                                         <option value="@item">@item</option>
@@ -59,31 +75,46 @@
 
                             <div class="field">
                                 <label>Carga muerta de cubierta</label>
-                                <InputNumber class="td-input" @bind-Value="EstadoProyecto.Cargas.RoofDeadLoad" />
+                                <InputNumber class="td-input"
+                                             @bind-Value="EstadoProyecto.Cargas.RoofDeadLoad"
+                                             @bind-Value:after="AplicarReglasTecho"
+                                             disabled="@EsTechoNoneSeleccionado()" />
                                 <small>Carga permanente correspondiente al sistema de cubierta.</small>
                             </div>
 
                             <div class="field">
                                 <label>Carga de nieve</label>
-                                <InputNumber class="td-input" @bind-Value="EstadoProyecto.Cargas.RoofSnowLoad" />
+                                <InputNumber class="td-input"
+                                             @bind-Value="EstadoProyecto.Cargas.RoofSnowLoad"
+                                             @bind-Value:after="AplicarReglasTecho"
+                                             disabled="@EsTechoNoneSeleccionado()" />
                                 <small>Acción de nieve considerada sobre la cubierta.</small>
                             </div>
 
                             <div class="field">
                                 <label>Sobrecarga de uso</label>
-                                <InputNumber class="td-input" @bind-Value="EstadoProyecto.Cargas.RoofLiveLoad" />
+                                <InputNumber class="td-input"
+                                             @bind-Value="EstadoProyecto.Cargas.RoofLiveLoad"
+                                             @bind-Value:after="AplicarReglasTecho"
+                                             disabled="@EsTechoNoneSeleccionado()" />
                                 <small>Sobrecarga por mantenimiento, uso o acceso.</small>
                             </div>
 
                             <div class="field">
                                 <label>Centroide de cubierta</label>
-                                <InputNumber class="td-input" @bind-Value="EstadoProyecto.Cargas.RoofCentroid" />
+                                <InputNumber class="td-input"
+                                             @bind-Value="EstadoProyecto.Cargas.RoofCentroid"
+                                             @bind-Value:after="AplicarReglasTecho"
+                                             disabled="@EsTechoNoneSeleccionado()" />
                                 <small>Posición del centroide empleada en cálculos derivados.</small>
                             </div>
 
                             <div class="field field--full">
                                 <label>Área proyectada de cubierta</label>
-                                <InputNumber class="td-input" @bind-Value="EstadoProyecto.Cargas.RoofProjectedArea" />
+                                <InputNumber class="td-input"
+                                             @bind-Value="EstadoProyecto.Cargas.RoofProjectedArea"
+                                             @bind-Value:after="AplicarReglasTecho"
+                                             disabled="@EsTechoNoneSeleccionado()" />
                                 <small>Área proyectada utilizada en comprobaciones estructurales.</small>
                             </div>
                         </div>
@@ -201,6 +232,10 @@
                             <span class="summary-row__value">@ValorNumero(EstadoProyecto.Cargas.SnowLoad)</span>
                         </div>
                         <div class="summary-row">
+                            <span class="summary-row__label">Tipo de techo</span>
+                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Cargas.RoofType)</span>
+                        </div>
+                        <div class="summary-row">
                             <span class="summary-row__label">Ángulo de techo</span>
                             <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Cargas.RoofAngle)</span>
                         </div>
@@ -224,9 +259,10 @@
 </div>
 
 @code {
-    private string _normativaActiva = "AWWA";
+    private string _normativaActiva = "AWWA D103-19";
     private string _resumenNormativa = string.Empty;
 
+    private List<string> _roofTypes = new();
     private List<string> _roofAngles = new();
     private List<string> _clasesExposicion = new();
     private List<string> _siteClasses = new();
@@ -234,6 +270,7 @@
 
     protected override void OnInitialized()
     {
+        _roofTypes = Opciones.ObtenerRoofTypes();
         _roofAngles = Opciones.ObtenerRoofAngles();
         _clasesExposicion = Opciones.ObtenerClasesExposicion();
         _siteClasses = Opciones.ObtenerSiteClasses();
@@ -256,7 +293,20 @@
         if (EstadoProyecto.Tanque.DensidadLiquido > 0)
             EstadoProyecto.Cargas.DensidadLiquido = EstadoProyecto.Tanque.DensidadLiquido;
 
+        AplicarReglasTecho();
         _resumenNormativa = NormativaUi.ConstruirResumenVisual(_normativaActiva);
+    }
+
+    private void AplicarReglasTecho()
+    {
+        NormativaUi.AplicarReglasTecho(EstadoProyecto.Cargas);
+        StateHasChanged();
+    }
+
+    private bool EsTechoNoneSeleccionado()
+    {
+        return string.IsNullOrWhiteSpace(EstadoProyecto.Cargas.RoofType)
+               || EstadoProyecto.Cargas.RoofType.Equals("None", StringComparison.OrdinalIgnoreCase);
     }
 
     private string TextoSeguro(string? texto)
