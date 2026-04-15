@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using System.Net;
+using System.IO;
 using System.Text;
 using TankDesigner.Core.Models;
 using TankDesigner.Core.Models.Catalogos;
@@ -1640,6 +1641,8 @@ td{{padding:9px;border:1px solid #EAF0F4;}}
         // Cabecera visual superior del informe (branding, logo, código de documento).
         private string TopBar(string codigo, string modeloTanque)
         {
+            string logoSrc = ObtenerLogoSrc();
+
             var sb = new StringBuilder();
             sb.Append("<div class='topbar'>");
             sb.Append("<div class='brand-left'>");
@@ -1648,10 +1651,46 @@ td{{padding:9px;border:1px solid #EAF0F4;}}
             sb.Append("</div>");
             sb.Append($"<div class='muted'>TSD-2026 | {Html(codigo)} | {modeloTanque}</div>");
             sb.Append("<div class='brand-right'>");
-            sb.Append("<img src='/assets/images/logo.png' style='max-width:220px; max-height:70px;' alt='Logo' onerror=\"this.style.display='none';\" />");
+
+            if (!string.IsNullOrWhiteSpace(logoSrc))
+            {
+                sb.Append($"<img src='{logoSrc}' style='max-width:220px; max-height:70px;' alt='Logo' />");
+            }
+
             sb.Append("</div>");
             sb.Append("</div><hr/>");
             return sb.ToString();
+        }
+
+        private string ObtenerLogoSrc()
+        {
+            try
+            {
+                string basePath = AppContext.BaseDirectory;
+                string currentPath = Directory.GetCurrentDirectory();
+
+                string[] posiblesRutas =
+                {
+            Path.Combine(basePath, "wwwroot", "assets", "images", "logo.png"),
+            Path.Combine(basePath, "assets", "images", "logo.png"),
+            Path.Combine(currentPath, "wwwroot", "assets", "images", "logo.png"),
+            Path.Combine(currentPath, "assets", "images", "logo.png")
+        };
+
+                string? rutaLogo = posiblesRutas.FirstOrDefault(File.Exists);
+
+                if (string.IsNullOrWhiteSpace(rutaLogo))
+                    return string.Empty;
+
+                byte[] bytes = File.ReadAllBytes(rutaLogo);
+                string base64 = Convert.ToBase64String(bytes);
+
+                return $"data:image/png;base64,{base64}";
+            }
+            catch
+            {
+                return string.Empty;
+            }
         }
 
         // Cierre del documento HTML.
