@@ -230,15 +230,15 @@ namespace TankDesigner.Core.Services
             html.Append(GenerarTablaHtmlAxial(numeroAnillos, 1.00));
             html.Append("</div>");
             html.Append("<div class='table-block'>");
-            html.Append($"<div class='table-title'>{Html(Lang("Tensión axial por viento", "Wind axial stress"))}</div>");
+            html.Append($"<div class='table-title'>{Html(Lang("Tensión axial incluido viento", "Axial stress including wind"))}</div>");
             html.Append(GenerarTablaHtmlAxial(numeroAnillos, 1.18));
             html.Append("</div>");
             html.Append("<div class='table-block'>");
-            html.Append($"<div class='table-title'>{Html(Lang("Tensión axial por sismo", "Seismic axial stress"))}</div>");
+            html.Append($"<div class='table-title'>{Html(Lang("Tensión axial incluido sismo", "Axial stress including seismic"))}</div>");
             html.Append(GenerarTablaHtmlAxial(numeroAnillos, 1.42));
             html.Append("</div>");
             html.Append("<div class='table-block page-break'>");
-            html.Append($"<div class='table-title'>{Html(Lang("Tensión hidrodinámica", "Hydrodynamic stress"))}</div>");
+            html.Append($"<div class='table-title'>{Html(Lang("Tensiones por presión hidrostática + hidrodinámica", "Hydrostatic + hydrodynamic pressure stresses"))}</div>");
             html.Append(GenerarTablaHtmlHidrodinamica(numeroAnillos));
             html.Append("</div>");
             html.Append("<div class='table-block'>");
@@ -1317,7 +1317,7 @@ namespace TankDesigner.Core.Services
             var lista = GenerarTablaHidrostatica(numeroAnillos);
             var sb = new StringBuilder();
             sb.Append("<table><thead><tr>");
-            sb.Append($"<th>{LangHtml("Anillo", "Ring")}</th><th>{LangHtml("Profundidad (m)", "Depth (m)")}</th><th>{LangHtml("Carga fluido (kN/m)", "Fluid load (kN/m)")}</th><th>{LangHtml("Tensión tracción", "Tensile stress")}</th><th>{LangHtml("Tracción admisible", "Allowable tension")}</th><th>{LangHtml("Aplastamiento", "Bearing stress")}</th><th>{LangHtml("Aplastamiento admisible", "Allowable bearing")}</th><th>{LangHtml("Cortante tornillos", "Bolt shear stress")}</th><th>{LangHtml("Cortante admisible", "Allowable shear")}</th>");
+            sb.Append($"<th>{LangHtml("Anillo", "Ring")}</th><th>{LangHtml("Profundidad (m)", "Depth (m)")}</th><th>{LangHtml("Carga fluido (kN/m)", "Fluid load (kN/m)")}</th><th>{LangHtml("Tensión Tracción (N/mm²)", "Tensile Stress (N/mm²)")}</th><th>{LangHtml("Tensión Tracción Admisible (N/mm²)", "Allowable Tensile Stress (N/mm²)")}</th><th>{LangHtml("Tensión Agujeros (N/mm²)", "Hole Bearing Stress (N/mm²)")}</th><th>{LangHtml("Tensión Agujeros Admisible (N/mm²)", "Allowable Hole Bearing Stress (N/mm²)")}</th><th>{LangHtml("Tensión Cortante Tornillos (N/mm²)", "Bolt Shear Stress (N/mm²)")}</th><th>{LangHtml("Tensión Tornillos Admisible (N/mm²)", "Allowable Bolt Stress (N/mm²)")}</th>");
             sb.Append("</tr></thead><tbody>");
 
             foreach (var item in lista)
@@ -1339,7 +1339,7 @@ namespace TankDesigner.Core.Services
             var lista = GenerarTablaAxial(numeroAnillos, factor);
             var sb = new StringBuilder();
             sb.Append("<table><thead><tr>");
-            sb.Append($"<th>{LangHtml("Anillo", "Ring")}</th><th>{LangHtml("Carga axial (kN/m)", "Axial load (kN/m)")}</th><th>{LangHtml("Tensión axial", "Axial stress")}</th><th>{LangHtml("Axial admisible", "Allowable axial")}</th><th>{LangHtml("Aplastamiento", "Bearing stress")}</th><th>{LangHtml("Aplastamiento admisible", "Allowable bearing")}</th><th>{LangHtml("Cortante tornillos", "Bolt shear")}</th><th>{LangHtml("Cortante admisible", "Allowable shear")}</th>");
+            sb.Append($"<th>{LangHtml("Anillo", "Ring")}</th><th>{LangHtml("Carga axial (kN/m)", "Axial load (kN/m)")}</th><th>{LangHtml("Tensión Axial (N/mm²)", "Axial Stress (N/mm²)")}</th><th>{LangHtml("Tensión Axial Admisible (N/mm²)", "Allowable Axial Stress (N/mm²)")}</th><th>{LangHtml("Tensión Agujeros (N/mm²)", "Hole Bearing Stress (N/mm²)")}</th><th>{LangHtml("Tensión Agujeros Admisible (N/mm²)", "Allowable Hole Bearing Stress (N/mm²)")}</th><th>{LangHtml("Tensión Cortante Tornillos (N/mm²)", "Bolt Shear Stress (N/mm²)")}</th><th>{LangHtml("Tensión Tornillos Admisible (N/mm²)", "Allowable Bolt Stress (N/mm²)")}</th>");
             sb.Append("</tr></thead><tbody>");
 
             foreach (var item in lista)
@@ -1357,7 +1357,7 @@ namespace TankDesigner.Core.Services
             var lista = GenerarTablaHidrodinamica(numeroAnillos);
             var sb = new StringBuilder();
             sb.Append("<table><thead><tr>");
-            sb.Append($"<th>{LangHtml("Anillo", "Ring")}</th><th>{LangHtml("Carga total (kN/m)", "Total load (kN/m)")}</th><th>{LangHtml("Tensión tracción", "Tensile stress")}</th><th>{LangHtml("Tracción admisible", "Allowable tension")}</th><th>{LangHtml("Aplastamiento", "Bearing stress")}</th><th>{LangHtml("Aplastamiento admisible", "Allowable bearing")}</th><th>{LangHtml("Cortante tornillos", "Bolt shear")}</th><th>{LangHtml("Cortante admisible", "Allowable shear")}</th>");
+            sb.Append($"<th>{LangHtml("Anillo", "Ring")}</th><th>{LangHtml("Carga Total (kN/m)", "Total Load (kN/m)")}</th><th>{LangHtml("Tensión Tracción (N/mm²)", "Tensile Stress (N/mm²)")}</th><th>{LangHtml("Tensión Tracción Admisible (N/mm²)", "Allowable Tensile Stress (N/mm²)")}</th><th>{LangHtml("Tensión Agujeros (N/mm²)", "Hole Bearing Stress (N/mm²)")}</th><th>{LangHtml("Tensión Agujeros Admisible (N/mm²)", "Allowable Hole Bearing Stress (N/mm²)")}</th><th>{LangHtml("Tensión Cortante Tornillos (N/mm²)", "Bolt Shear Stress (N/mm²)")}</th><th>{LangHtml("Tensión Tornillos Admisible (N/mm²)", "Allowable Bolt Stress (N/mm²)")}</th>");
             sb.Append("</tr></thead><tbody>");
 
             foreach (var item in lista)
