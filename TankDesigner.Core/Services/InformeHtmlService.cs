@@ -565,14 +565,88 @@ namespace TankDesigner.Core.Services
             return 0;
         }
 
+        private string ObtenerConfiguracionResumenVisible(ResultadoAnilloModel? anillo)
+        {
+            if (anillo == null)
+                return "—";
+
+            string configuracion = TextoSeguroSinInventar(anillo.ConfiguracionAplicada);
+            if (!string.IsNullOrWhiteSpace(configuracion) && configuracion != "—")
+                return configuracion;
+
+            if (_resultado != null)
+            {
+                if (_resultado.TieneSeleccionRealCalculada && !string.IsNullOrWhiteSpace(_resultado.NombreConfiguracionCalculada))
+                    return _resultado.NombreConfiguracionCalculada.Trim();
+
+                if (!string.IsNullOrWhiteSpace(_resultado.NombreConfiguracion))
+                    return _resultado.NombreConfiguracion.Trim();
+            }
+
+            return "—";
+        }
+
+        private string ObtenerTipoAceroResumenVisible(ResultadoAnilloModel? anillo)
+        {
+            if (anillo == null)
+                return ObtenerMaterialPrincipalVisible();
+
+            var planchas = _jsonCatalogService.CargarPlanchas(TextoSeguroSinInventar(_proyecto?.Fabricante));
+            if (planchas != null && planchas.Count > 0)
+            {
+                double alturaPanel = anillo.AlturaSuperior > anillo.AlturaInferior
+                    ? anillo.AlturaSuperior - anillo.AlturaInferior
+                    : 0;
+
+                double espesor = anillo.EspesorSeleccionado > 0
+                    ? anillo.EspesorSeleccionado
+                    : anillo.EspesorRequerido;
+
+                PosiblePlanchaModel? coincidenciaExacta = planchas
+                    .Where(p => p != null)
+                    .Where(p => p.Espesor != null && p.Espesor.Count > 0)
+                    .FirstOrDefault(p =>
+                        CoincideConTolerancia(p.Fy, anillo.FyPlancha, 0.5)
+                        && CoincideConTolerancia(p.Fu, anillo.FuPlancha, 0.5)
+                        && p.Espesor.Any(e => CoincideConTolerancia(e, espesor, 0.01))
+                        && (alturaPanel <= 0 || CoincideConTolerancia(p.Altura, alturaPanel, 0.5)));
+
+                if (coincidenciaExacta != null && !string.IsNullOrWhiteSpace(coincidenciaExacta.Material))
+                    return coincidenciaExacta.Material.Trim();
+
+                PosiblePlanchaModel? coincidenciaPorResistencia = planchas
+                    .Where(p => p != null)
+                    .Where(p => p.Espesor != null && p.Espesor.Count > 0)
+                    .FirstOrDefault(p =>
+                        CoincideConTolerancia(p.Fy, anillo.FyPlancha, 0.5)
+                        && CoincideConTolerancia(p.Fu, anillo.FuPlancha, 0.5));
+
+                if (coincidenciaPorResistencia != null && !string.IsNullOrWhiteSpace(coincidenciaPorResistencia.Material))
+                    return coincidenciaPorResistencia.Material.Trim();
+            }
+
+            return ObtenerMaterialPrincipalVisible();
+        }
+
+        private string ObtenerMaterialPrincipalVisible()
+        {
+            string materialReal = !string.IsNullOrWhiteSpace(_resultado?.MaterialPrincipal)
+                ? _resultado!.MaterialPrincipal.Trim()
+                : TextoSeguroSinInventar(_proyecto?.MaterialPrincipal);
+
+            return string.IsNullOrWhiteSpace(materialReal) ? "—" : materialReal;
+        }
+
+        private static bool CoincideConTolerancia(double valor1, double valor2, double tolerancia)
+        {
+            return Math.Abs(valor1 - valor2) <= tolerancia;
+        }
+
         // Construye las filas del resumen del tanque anillo a anillo.
         // Aquí se decide qué espesor, configuración, tornillo y rigidizador se muestran por cada anillo.
         private List<ResumenTanqueRow> GenerarResumenTanque(int numeroAnillos, int chapasPorAnillo)
         {
             var lista = new List<ResumenTanqueRow>();
-            string materialReal = !string.IsNullOrWhiteSpace(_resultado?.MaterialPrincipal)
-                ? _resultado!.MaterialPrincipal.Trim()
-                : TextoSeguroSinInventar(_proyecto?.MaterialPrincipal);
 
             if (_resultado?.Anillos != null && _resultado.Anillos.Count > 0)
             {
@@ -599,8 +673,8 @@ namespace TankDesigner.Core.Services
                         Espesor = anillo.EspesorSeleccionado > 0 ? Formato(anillo.EspesorSeleccionado, "0.###") : "—",
                         PosicionRigidizadores = rigidizadores,
                         GradoTornillos = TextoSeguroSinInventar(anillo.TornilloAplicado),
-                        Configuracion = TextoSeguroSinInventar(anillo.ConfiguracionAplicada),
-                        TipoAcero = materialReal
+                        Configuracion = ObtenerConfiguracionResumenVisible(anillo),
+                        TipoAcero = ObtenerTipoAceroResumenVisible(anillo)
                     });
                 }
                 return lista;
@@ -616,7 +690,7 @@ namespace TankDesigner.Core.Services
                     PosicionRigidizadores = "—",
                     GradoTornillos = "—",
                     Configuracion = "—",
-                    TipoAcero = string.IsNullOrWhiteSpace(materialReal) ? "—" : materialReal
+                    TipoAcero = ObtenerMaterialPrincipalVisible()
                 });
             }
 
@@ -664,7 +738,8 @@ namespace TankDesigner.Core.Services
                             NumeroAnillo = anillo.NumeroAnillo,
                             Espesor = espesor,
                             Altura = altura,
-                            Configuracion = TextoSeguroSinInventar(anillo.ConfiguracionAplicada)
+                            Configuracion = ObtenerConfiguracionResumenVisible(anillo),
+                            TipoAcero = ObtenerTipoAceroResumenVisible(anillo)
                         };
                     })
                     .Where(x => x.Espesor > 0)
@@ -672,7 +747,8 @@ namespace TankDesigner.Core.Services
                     {
                         Espesor = Math.Round(x.Espesor, 3),
                         Altura = Math.Round(x.Altura, 3),
-                        Configuracion = x.Configuracion
+                        Configuracion = x.Configuracion,
+                        TipoAcero = x.TipoAcero
                     })
                     .OrderBy(g => g.Min(x => x.NumeroAnillo))
                     .ToList();
