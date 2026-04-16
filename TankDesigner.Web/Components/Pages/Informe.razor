@@ -18,6 +18,7 @@
 @inject ProyectoState EstadoProyecto
 @inject CalculoWebService CalculoWebService
 @inject FormularioValidacionService ValidacionService
+@inject CalculoGeometriaService CalculoGeometriaService
 @inject InformeHtmlService InformeHtmlService
 @inject PdfRenderService PdfRenderService
 @inject IJSRuntime JS
@@ -161,7 +162,7 @@
 
                     <div class="summary-row">
                         <span class="summary-row__label">Modelo</span>
-                        <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Proyecto?.ModeloCalculo)</span>
+                        <span class="summary-row__value">@ModeloVisibleInforme()</span>
                     </div>
 
                     <div class="summary-row">
@@ -318,7 +319,7 @@
         <textarea class="ia-question-box__textarea"
                   @bind="_preguntaIa"
                   placeholder="Ejemplo: ¿Qué incoherencias detectas entre las cargas y el resultado del cálculo?">
-        </textarea>
+            </textarea>
 
         <div class="ia-question-box__actions">
             <button type="button"
@@ -506,8 +507,7 @@
     {
         try
         {
-            if (HayResultadoUtilizable())
-                return;
+            SincronizarGeometriaActual();
 
             var errores = ValidacionService.ValidarTodo(
                 EstadoProyecto.Proyecto,
@@ -536,6 +536,62 @@
         }
     }
 
+
+    private void SincronizarGeometriaActual()
+    {
+        if (EstadoProyecto.Proyecto is null || EstadoProyecto.Tanque is null)
+            return;
+
+        EstadoProyecto.Tanque.AlturaPanelBase =
+            CalculoGeometriaService.ObtenerAlturaPanelBase(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);
+
+        EstadoProyecto.Tanque.AlturaTotal =
+            CalculoGeometriaService.ObtenerAlturaTotal(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);
+
+        EstadoProyecto.Tanque.Diametro =
+            CalculoGeometriaService.ObtenerDiametro(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);
+    }
+
+    private string ModeloVisibleInforme()
+    {
+        string modeloTecnico = TextoSeguro(EstadoProyecto.Tanque?.Modelo);
+
+        if (modeloTecnico != "—")
+            return modeloTecnico;
+
+        string fabricante = (EstadoProyecto.Proyecto?.Fabricante ?? string.Empty).Trim();
+        int chapasPorAnillo = EstadoProyecto.Tanque?.ChapasPorAnillo ?? 0;
+        double numeroAnillos = EstadoProyecto.Tanque?.NumeroAnillos ?? 0;
+        string tipoMedioAnillo = (EstadoProyecto.Instalacion?.TipoMedioAnillo ?? string.Empty).Trim();
+
+        if (string.Equals(tipoMedioAnillo, "1/2 anillo", StringComparison.OrdinalIgnoreCase))
+            numeroAnillos += 0.5;
+        else if (string.Equals(tipoMedioAnillo, "1/4 anillo", StringComparison.OrdinalIgnoreCase))
+            numeroAnillos += 0.25;
+
+        if (chapasPorAnillo <= 0 || numeroAnillos <= 0)
+            return TextoSeguro(EstadoProyecto.Proyecto?.ModeloCalculo);
+
+        string letraFabricante = "";
+        if (fabricante.Contains("BALMORAL", StringComparison.OrdinalIgnoreCase))
+            letraFabricante = "B";
+        else if (fabricante.Contains("PERMASTORE", StringComparison.OrdinalIgnoreCase))
+            letraFabricante = "P";
+        else if (fabricante.Contains("DL2", StringComparison.OrdinalIgnoreCase))
+            letraFabricante = "D";
+        else if (!string.IsNullOrWhiteSpace(fabricante))
+            letraFabricante = fabricante.Trim().Substring(0, 1).ToUpperInvariant();
+
+        if (string.IsNullOrWhiteSpace(letraFabricante))
+            return TextoSeguro(EstadoProyecto.Proyecto?.ModeloCalculo);
+
+        string anillosTexto = numeroAnillos % 1 == 0
+            ? ((int)numeroAnillos).ToString(System.Globalization.CultureInfo.InvariantCulture)
+            : numeroAnillos.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
+
+        return $"{letraFabricante}{chapasPorAnillo}/{anillosTexto}";
+    }
+
     private bool HayResultadoUtilizable()
     {
         var r = EstadoProyecto.Resultado;
@@ -558,6 +614,8 @@
 
     private bool RecalcularProyectoInterno()
     {
+        SincronizarGeometriaActual();
+
         var errores = ValidacionService.ValidarTodo(
             EstadoProyecto.Proyecto,
             EstadoProyecto.Tanque,
