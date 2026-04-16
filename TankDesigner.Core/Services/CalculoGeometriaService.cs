@@ -8,37 +8,50 @@ namespace TankDesigner.Core.Services
     public class CalculoGeometriaService
     {
         private readonly CalculoTanqueService _calculoTanqueService;
+        private const double AlturaPanelBasePreferidaMm = 1200.0;
 
         public CalculoGeometriaService()
         {
             _calculoTanqueService = new CalculoTanqueService();
         }
 
-        // Obtiene la primera plancha válida del catálogo.
-        // Se usa como referencia para calcular dimensiones.
-        private PosiblePlanchaModel? ObtenerPrimeraPlanchaFiltrada(ProyectoGeneralModel proyecto)
+        // Obtiene la plancha de referencia para la geometría base.
+        // Prioriza la altura estándar de 1200 mm cuando exista en el catálogo filtrado.
+        // Si no existe, usa la plancha válida de mayor altura como respaldo.
+        private PosiblePlanchaModel? ObtenerPlanchaBaseGeometrica(ProyectoGeneralModel proyecto)
         {
             if (proyecto == null)
                 return null;
 
-            var planchas = _calculoTanqueService.ObtenerPlanchasFiltradas(proyecto);
-
-            // Filtra planchas válidas y selecciona la más pequeña como referencia.
-            return planchas
+            var planchasValidas = _calculoTanqueService.ObtenerPlanchasFiltradas(proyecto)
                 .Where(p => p != null && p.Altura > 0 && p.Ancho > 0)
-                .OrderBy(p => p.Altura)
+                .ToList();
+
+            if (planchasValidas.Count == 0)
+                return null;
+
+            var planchaPreferida = planchasValidas
+                .Where(p => Math.Abs(p.Altura - AlturaPanelBasePreferidaMm) < 0.001)
+                .OrderBy(p => p.Ancho)
+                .FirstOrDefault();
+
+            if (planchaPreferida != null)
+                return planchaPreferida;
+
+            return planchasValidas
+                .OrderByDescending(p => p.Altura)
                 .ThenBy(p => p.Ancho)
                 .FirstOrDefault();
         }
 
         // Devuelve la altura del panel base.
-        // Se toma directamente de la plancha seleccionada.
+        // Se toma directamente de la plancha geométrica de referencia.
         public double ObtenerAlturaPanelBase(TankModel tanque, ProyectoGeneralModel proyecto)
         {
             if (tanque == null || proyecto == null)
                 return 0;
 
-            PosiblePlanchaModel? plancha = ObtenerPrimeraPlanchaFiltrada(proyecto);
+            PosiblePlanchaModel? plancha = ObtenerPlanchaBaseGeometrica(proyecto);
 
             if (plancha == null)
                 return 0;
@@ -62,13 +75,13 @@ namespace TankDesigner.Core.Services
         }
 
         // Calcula el diámetro del tanque.
-        // Usa el ancho de la plancha y el número de chapas por anillo.
+        // Usa el ancho de la plancha geométrica de referencia y el número de chapas por anillo.
         public double ObtenerDiametro(TankModel tanque, ProyectoGeneralModel proyecto)
         {
             if (tanque == null || proyecto == null)
                 return 0;
 
-            PosiblePlanchaModel? plancha = ObtenerPrimeraPlanchaFiltrada(proyecto);
+            PosiblePlanchaModel? plancha = ObtenerPlanchaBaseGeometrica(proyecto);
 
             if (plancha == null)
                 return 0;
