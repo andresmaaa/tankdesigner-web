@@ -566,17 +566,20 @@ namespace TankDesigner.Core.Services
         }
 
         // Construye las filas del resumen del tanque anillo a anillo.
-        // Aquí se decide qué espesor, configuración, tornillo y rigidizador se muestran por cada anillo.
+        // Aquí saco la configuración y el material real del anillo intentando
+        // casar primero con los JSON del fabricante y solo si no encuentro nada
+        // dejo el valor que venga ya guardado en el resultado.
         private List<ResumenTanqueRow> GenerarResumenTanque(int numeroAnillos, int chapasPorAnillo)
         {
             var lista = new List<ResumenTanqueRow>();
-            string materialReal = !string.IsNullOrWhiteSpace(_resultado?.MaterialPrincipal)
+            string materialFallback = !string.IsNullOrWhiteSpace(_resultado?.MaterialPrincipal)
                 ? _resultado!.MaterialPrincipal.Trim()
                 : TextoSeguroSinInventar(_proyecto?.MaterialPrincipal);
 
             if (_resultado?.Anillos != null && _resultado.Anillos.Count > 0)
             {
                 int ultimoAnillo = _resultado.Anillos.Max(a => a.NumeroAnillo);
+
                 foreach (var anillo in _resultado.Anillos.OrderBy(a => a.NumeroAnillo))
                 {
                     string rigidizadores = "—";
@@ -591,9 +594,12 @@ namespace TankDesigner.Core.Services
                         rigidizadores = $"Starter Ring {Formato(_resultado.AlturaStarterRing, "0.###")}";
                     }
 
-                    double alturaPanel = anillo.AlturaSuperior > anillo.AlturaInferior ? anillo.AlturaSuperior - anillo.AlturaInferior : 0;
-                    string configuracionReal = ObtenerConfiguracionResumenDesdeJson(anillo);
-                    string tipoAceroReal = ObtenerTipoAceroResumenDesdeJson(anillo, alturaPanel);
+                    double alturaPanel = anillo.AlturaSuperior > anillo.AlturaInferior
+                        ? anillo.AlturaSuperior - anillo.AlturaInferior
+                        : 0;
+
+                    string configuracionReal = ObtenerNombreConfiguracionResumen(anillo);
+                    string materialRealAnillo = ObtenerMaterialResumenAnillo(anillo);
 
                     lista.Add(new ResumenTanqueRow
                     {
@@ -602,10 +608,11 @@ namespace TankDesigner.Core.Services
                         Espesor = anillo.EspesorSeleccionado > 0 ? Formato(anillo.EspesorSeleccionado, "0.###") : "—",
                         PosicionRigidizadores = rigidizadores,
                         GradoTornillos = TextoSeguroSinInventar(anillo.TornilloAplicado),
-                        Configuracion = configuracionReal,
-                        TipoAcero = string.IsNullOrWhiteSpace(tipoAceroReal) ? materialReal : tipoAceroReal
+                        Configuracion = !string.IsNullOrWhiteSpace(configuracionReal) ? configuracionReal : "—",
+                        TipoAcero = !string.IsNullOrWhiteSpace(materialRealAnillo) ? materialRealAnillo : (string.IsNullOrWhiteSpace(materialFallback) ? "—" : materialFallback)
                     });
                 }
+
                 return lista;
             }
 
@@ -619,93 +626,96 @@ namespace TankDesigner.Core.Services
                     PosicionRigidizadores = "—",
                     GradoTornillos = "—",
                     Configuracion = "—",
-                    TipoAcero = string.IsNullOrWhiteSpace(materialReal) ? "—" : materialReal
+                    TipoAcero = string.IsNullOrWhiteSpace(materialFallback) ? "—" : materialFallback
                 });
             }
 
             return lista;
         }
 
-        private string ObtenerConfiguracionResumenDesdeJson(ResultadoAnilloModel anillo)
+        private string ObtenerNombreConfiguracionResumen(ResultadoAnilloModel? anillo)
         {
             if (anillo == null)
                 return "—";
 
-            string fabricante = TextoSeguroSinInventar(_proyecto?.Fabricante);
-            var configuraciones = _jsonCatalogService.CargarConfiguraciones(fabricante)
+            var configuraciones = _jsonCatalogService
+                .CargarConfiguraciones(_proyecto?.Fabricante ?? string.Empty)
                 .Where(c => c != null)
                 .ToList();
 
             if (configuraciones.Count == 0)
                 return TextoSeguroSinInventar(anillo.ConfiguracionAplicada);
 
-            PosibleConfiguracionModel? exacta = configuraciones.FirstOrDefault(c =>
-                CoincideEntero(c.NumeroTornillosUnionVertical, anillo.NumeroTornillosVerticales)
-                && CoincideEntero(c.NumeroTornillosUnionHorizontalCalculo, anillo.NumeroTornillosHorizontalesCalculo > 0 ? anillo.NumeroTornillosHorizontalesCalculo : anillo.NumeroTornillosHorizontales)
-                && CoincideDouble(c.DiametroAgujero, anillo.DiametroAgujero, 0.25));
+            PosibleConfiguracionModel? coincidenciaExacta = configuraciones.FirstOrDefault(c =>
+                c.NumeroTornillosUnionVertical == anillo.NumeroTornillosVerticales &&
+                c.NumeroTornillosUnionHorizontalCalculo == (anillo.NumeroTornillosHorizontalesCalculo > 0 ? anillo.NumeroTornillosHorizontalesCalculo : anillo.NumeroTornillosHorizontales) &&
+                Math.Abs(c.DiametroAgujero - anillo.DiametroAgujero) < 0.0001 &&
+                Math.Abs(c.S - anillo.PasoS) < 0.0001 &&
+                Math.Abs(c.R - anillo.RelacionR) < 0.0001);
 
-            if (exacta != null && !string.IsNullOrWhiteSpace(exacta.Nombre))
-                return exacta.Nombre.Trim();
+            if (coincidenciaExacta != null && !string.IsNullOrWhiteSpace(coincidenciaExacta.Nombre))
+                return coincidenciaExacta.Nombre.Trim();
 
-            PosibleConfiguracionModel? porGeometria = configuraciones.FirstOrDefault(c =>
-                CoincideDouble(c.S, anillo.PasoS, 0.25)
-                && CoincideDouble(c.R, anillo.RelacionR, 0.01)
-                && CoincideDouble(c.DiametroAgujero, anillo.DiametroAgujero, 0.25));
+            PosibleConfiguracionModel? coincidenciaPorGeometria = configuraciones.FirstOrDefault(c =>
+                Math.Abs(c.DiametroAgujero - anillo.DiametroAgujero) < 0.0001 &&
+                Math.Abs(c.S - anillo.PasoS) < 0.0001 &&
+                Math.Abs(c.R - anillo.RelacionR) < 0.0001);
 
-            if (porGeometria != null && !string.IsNullOrWhiteSpace(porGeometria.Nombre))
-                return porGeometria.Nombre.Trim();
+            if (coincidenciaPorGeometria != null && !string.IsNullOrWhiteSpace(coincidenciaPorGeometria.Nombre))
+                return coincidenciaPorGeometria.Nombre.Trim();
 
-            PosibleConfiguracionModel? porVerticales = configuraciones.FirstOrDefault(c =>
-                CoincideEntero(c.NumeroTornillosUnionVertical, anillo.NumeroTornillosVerticales));
+            PosibleConfiguracionModel? coincidenciaPorNombre = configuraciones.FirstOrDefault(c =>
+                !string.IsNullOrWhiteSpace(c.Nombre) &&
+                string.Equals(c.Nombre.Trim(), TextoSeguroSinInventar(anillo.ConfiguracionAplicada), StringComparison.OrdinalIgnoreCase));
 
-            if (porVerticales != null && !string.IsNullOrWhiteSpace(porVerticales.Nombre))
-                return porVerticales.Nombre.Trim();
+            if (coincidenciaPorNombre != null && !string.IsNullOrWhiteSpace(coincidenciaPorNombre.Nombre))
+                return coincidenciaPorNombre.Nombre.Trim();
 
             return TextoSeguroSinInventar(anillo.ConfiguracionAplicada);
         }
 
-        private string ObtenerTipoAceroResumenDesdeJson(ResultadoAnilloModel anillo, double alturaPanel)
+        private string ObtenerMaterialResumenAnillo(ResultadoAnilloModel? anillo)
         {
             if (anillo == null)
                 return "—";
 
-            string fabricante = TextoSeguroSinInventar(_proyecto?.Fabricante);
-            var planchas = _jsonCatalogService.CargarPlanchas(fabricante)
+            var planchas = _jsonCatalogService
+                .CargarPlanchas(_proyecto?.Fabricante ?? string.Empty)
                 .Where(p => p != null)
                 .ToList();
 
             if (planchas.Count == 0)
-                return "—";
+                return !string.IsNullOrWhiteSpace(_resultado?.MaterialPrincipal)
+                    ? _resultado!.MaterialPrincipal.Trim()
+                    : TextoSeguroSinInventar(_proyecto?.MaterialPrincipal);
 
-            double espesor = anillo.EspesorSeleccionado > 0 ? anillo.EspesorSeleccionado : anillo.EspesorRequerido;
+            double alturaAnillo = anillo.AlturaSuperior > anillo.AlturaInferior
+                ? anillo.AlturaSuperior - anillo.AlturaInferior
+                : AlturaPanelBaseMm();
 
-            PosiblePlanchaModel? exacta = planchas.FirstOrDefault(p =>
-                CoincideDouble(p.Fy, anillo.FyPlancha, 0.25)
-                && CoincideDouble(p.Fu, anillo.FuPlancha, 0.25)
-                && (alturaPanel <= 0 || CoincideDouble(p.Altura, alturaPanel, 0.25))
-                && (espesor <= 0 || p.Espesor.Any(e => CoincideDouble(e, espesor, 0.001))));
+            double espesor = anillo.EspesorSeleccionado > 0
+                ? anillo.EspesorSeleccionado
+                : anillo.EspesorRequerido;
 
-            if (exacta != null && !string.IsNullOrWhiteSpace(exacta.Material))
-                return exacta.Material.Trim();
+            PosiblePlanchaModel? coincidenciaExacta = planchas.FirstOrDefault(p =>
+                Math.Abs(p.Fy - anillo.FyPlancha) < 0.0001 &&
+                Math.Abs(p.Fu - anillo.FuPlancha) < 0.0001 &&
+                Math.Abs(p.Altura - alturaAnillo) < 0.0001 &&
+                p.Espesor != null && p.Espesor.Any(e => Math.Abs(e - espesor) < 0.0001));
 
-            PosiblePlanchaModel? porResistencia = planchas.FirstOrDefault(p =>
-                CoincideDouble(p.Fy, anillo.FyPlancha, 0.25)
-                && CoincideDouble(p.Fu, anillo.FuPlancha, 0.25));
+            if (coincidenciaExacta != null && !string.IsNullOrWhiteSpace(coincidenciaExacta.Material))
+                return coincidenciaExacta.Material.Trim();
 
-            if (porResistencia != null && !string.IsNullOrWhiteSpace(porResistencia.Material))
-                return porResistencia.Material.Trim();
+            PosiblePlanchaModel? coincidenciaPorResistencia = planchas.FirstOrDefault(p =>
+                Math.Abs(p.Fy - anillo.FyPlancha) < 0.0001 &&
+                Math.Abs(p.Fu - anillo.FuPlancha) < 0.0001);
 
-            return "—";
-        }
+            if (coincidenciaPorResistencia != null && !string.IsNullOrWhiteSpace(coincidenciaPorResistencia.Material))
+                return coincidenciaPorResistencia.Material.Trim();
 
-        private static bool CoincideDouble(double a, double b, double tolerancia)
-        {
-            return Math.Abs(a - b) <= tolerancia;
-        }
-
-        private static bool CoincideEntero(int a, int b)
-        {
-            return a == b;
+            return !string.IsNullOrWhiteSpace(_resultado?.MaterialPrincipal)
+                ? _resultado!.MaterialPrincipal.Trim()
+                : TextoSeguroSinInventar(_proyecto?.MaterialPrincipal);
         }
 
         // Método CLAVE del presupuesto de materiales.
