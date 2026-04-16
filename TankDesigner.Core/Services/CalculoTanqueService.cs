@@ -96,7 +96,9 @@ namespace TankDesigner.Core.Services
         {
             return ObtenerConfiguracionesDisponibles(proyecto)
                 .OrderBy(c => c.S)
-                .ThenBy(c => c.R)
+                .ThenByDescending(c => c.R)
+                .ThenBy(c => c.NumeroTornillosUnionVertical)
+                .ThenBy(c => c.NumeroTornillosUnionHorizontalCalculo)
                 .ThenBy(c => c.DiametroAgujero)
                 .ToList();
         }
