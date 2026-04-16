@@ -38,6 +38,17 @@
                             <InputNumber class="td-input" @bind-Value="EstadoProyecto.Instalacion.NumeroEscaleras" />
                             <small>Cantidad total de escaleras necesarias en la instalación.</small>
                         </div>
+
+                        <div class="field">
+                            <label>Tipo techo</label>
+                            <InputSelect class="td-input td-select" @bind-Value="EstadoProyecto.Instalacion.TipoTecho">
+                                @foreach (var item in _tiposTecho)
+                                {
+                                    <option value="@item">@item</option>
+                                }
+                            </InputSelect>
+                            <small>Tipología de cubierta prevista para el depósito.</small>
+                        </div>
                     </div>
                 </article>
 
@@ -153,6 +164,11 @@
                         </div>
 
                         <div class="summary-row">
+                            <span class="summary-row__label">Tipo techo</span>
+                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Instalacion.TipoTecho)</span>
+                        </div>
+
+                        <div class="summary-row">
                             <span class="summary-row__label">Lugar obra</span>
                             <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Instalacion.LugarObra)</span>
                         </div>
@@ -180,15 +196,20 @@
 
 @code {
     private List<string> _tiposEscalera = new();
+    private List<string> _tiposTecho = new();
     private List<string> _lugaresObra = new();
 
     protected override void OnInitialized()
     {
         _tiposEscalera = Opciones.ObtenerTiposEscalera();
+        _tiposTecho = Opciones.ObtenerTiposTechoInstalacion();
         _lugaresObra = Opciones.ObtenerLugaresObra();
 
         if (string.IsNullOrWhiteSpace(EstadoProyecto.Instalacion.TipoEscalera))
             EstadoProyecto.Instalacion.TipoEscalera = "Sin escalera";
+
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Instalacion.TipoTecho))
+            EstadoProyecto.Instalacion.TipoTecho = "Sin techo";
 
         if (string.IsNullOrWhiteSpace(EstadoProyecto.Instalacion.LugarObra))
             EstadoProyecto.Instalacion.LugarObra = "Nacional";
