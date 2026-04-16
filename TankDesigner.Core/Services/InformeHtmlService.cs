@@ -230,15 +230,15 @@ namespace TankDesigner.Core.Services
             html.Append(GenerarTablaHtmlAxial(numeroAnillos, 1.00));
             html.Append("</div>");
             html.Append("<div class='table-block'>");
-            html.Append($"<div class='table-title'>{Html(Lang("Tensión axial incluido viento", "Axial stress including wind"))}</div>");
+            html.Append($"<div class='table-title'>{Html(Lang("Tensión axial por viento", "Wind axial stress"))}</div>");
             html.Append(GenerarTablaHtmlAxial(numeroAnillos, 1.18));
             html.Append("</div>");
             html.Append("<div class='table-block'>");
-            html.Append($"<div class='table-title'>{Html(Lang("Tensión axial incluido sismo", "Axial stress including seismic"))}</div>");
+            html.Append($"<div class='table-title'>{Html(Lang("Tensión axial por sismo", "Seismic axial stress"))}</div>");
             html.Append(GenerarTablaHtmlAxial(numeroAnillos, 1.42));
             html.Append("</div>");
             html.Append("<div class='table-block page-break'>");
-            html.Append($"<div class='table-title'>{Html(Lang("Tensiones por presión hidrostática + hidrodinámica", "Hydrostatic + hydrodynamic pressure stresses"))}</div>");
+            html.Append($"<div class='table-title'>{Html(Lang("Tensión hidrodinámica", "Hydrodynamic stress"))}</div>");
             html.Append(GenerarTablaHtmlHidrodinamica(numeroAnillos));
             html.Append("</div>");
             html.Append("<div class='table-block'>");
@@ -565,88 +565,14 @@ namespace TankDesigner.Core.Services
             return 0;
         }
 
-        private string ObtenerConfiguracionResumenVisible(ResultadoAnilloModel? anillo)
-        {
-            if (anillo == null)
-                return "—";
-
-            string configuracion = TextoSeguroSinInventar(anillo.ConfiguracionAplicada);
-            if (!string.IsNullOrWhiteSpace(configuracion) && configuracion != "—")
-                return configuracion;
-
-            if (_resultado != null)
-            {
-                if (_resultado.TieneSeleccionRealCalculada && !string.IsNullOrWhiteSpace(_resultado.NombreConfiguracionCalculada))
-                    return _resultado.NombreConfiguracionCalculada.Trim();
-
-                if (!string.IsNullOrWhiteSpace(_resultado.NombreConfiguracion))
-                    return _resultado.NombreConfiguracion.Trim();
-            }
-
-            return "—";
-        }
-
-        private string ObtenerTipoAceroResumenVisible(ResultadoAnilloModel? anillo)
-        {
-            if (anillo == null)
-                return ObtenerMaterialPrincipalVisible();
-
-            var planchas = _jsonCatalogService.CargarPlanchas(TextoSeguroSinInventar(_proyecto?.Fabricante));
-            if (planchas != null && planchas.Count > 0)
-            {
-                double alturaPanel = anillo.AlturaSuperior > anillo.AlturaInferior
-                    ? anillo.AlturaSuperior - anillo.AlturaInferior
-                    : 0;
-
-                double espesor = anillo.EspesorSeleccionado > 0
-                    ? anillo.EspesorSeleccionado
-                    : anillo.EspesorRequerido;
-
-                PosiblePlanchaModel? coincidenciaExacta = planchas
-                    .Where(p => p != null)
-                    .Where(p => p.Espesor != null && p.Espesor.Count > 0)
-                    .FirstOrDefault(p =>
-                        CoincideConTolerancia(p.Fy, anillo.FyPlancha, 0.5)
-                        && CoincideConTolerancia(p.Fu, anillo.FuPlancha, 0.5)
-                        && p.Espesor.Any(e => CoincideConTolerancia(e, espesor, 0.01))
-                        && (alturaPanel <= 0 || CoincideConTolerancia(p.Altura, alturaPanel, 0.5)));
-
-                if (coincidenciaExacta != null && !string.IsNullOrWhiteSpace(coincidenciaExacta.Material))
-                    return coincidenciaExacta.Material.Trim();
-
-                PosiblePlanchaModel? coincidenciaPorResistencia = planchas
-                    .Where(p => p != null)
-                    .Where(p => p.Espesor != null && p.Espesor.Count > 0)
-                    .FirstOrDefault(p =>
-                        CoincideConTolerancia(p.Fy, anillo.FyPlancha, 0.5)
-                        && CoincideConTolerancia(p.Fu, anillo.FuPlancha, 0.5));
-
-                if (coincidenciaPorResistencia != null && !string.IsNullOrWhiteSpace(coincidenciaPorResistencia.Material))
-                    return coincidenciaPorResistencia.Material.Trim();
-            }
-
-            return ObtenerMaterialPrincipalVisible();
-        }
-
-        private string ObtenerMaterialPrincipalVisible()
-        {
-            string materialReal = !string.IsNullOrWhiteSpace(_resultado?.MaterialPrincipal)
-                ? _resultado!.MaterialPrincipal.Trim()
-                : TextoSeguroSinInventar(_proyecto?.MaterialPrincipal);
-
-            return string.IsNullOrWhiteSpace(materialReal) ? "—" : materialReal;
-        }
-
-        private static bool CoincideConTolerancia(double valor1, double valor2, double tolerancia)
-        {
-            return Math.Abs(valor1 - valor2) <= tolerancia;
-        }
-
         // Construye las filas del resumen del tanque anillo a anillo.
         // Aquí se decide qué espesor, configuración, tornillo y rigidizador se muestran por cada anillo.
         private List<ResumenTanqueRow> GenerarResumenTanque(int numeroAnillos, int chapasPorAnillo)
         {
             var lista = new List<ResumenTanqueRow>();
+            string materialReal = !string.IsNullOrWhiteSpace(_resultado?.MaterialPrincipal)
+                ? _resultado!.MaterialPrincipal.Trim()
+                : TextoSeguroSinInventar(_proyecto?.MaterialPrincipal);
 
             if (_resultado?.Anillos != null && _resultado.Anillos.Count > 0)
             {
@@ -666,6 +592,9 @@ namespace TankDesigner.Core.Services
                     }
 
                     double alturaPanel = anillo.AlturaSuperior > anillo.AlturaInferior ? anillo.AlturaSuperior - anillo.AlturaInferior : 0;
+                    string configuracionReal = ObtenerConfiguracionResumenDesdeJson(anillo);
+                    string tipoAceroReal = ObtenerTipoAceroResumenDesdeJson(anillo, alturaPanel);
+
                     lista.Add(new ResumenTanqueRow
                     {
                         Anillo = anillo.NumeroAnillo,
@@ -673,8 +602,8 @@ namespace TankDesigner.Core.Services
                         Espesor = anillo.EspesorSeleccionado > 0 ? Formato(anillo.EspesorSeleccionado, "0.###") : "—",
                         PosicionRigidizadores = rigidizadores,
                         GradoTornillos = TextoSeguroSinInventar(anillo.TornilloAplicado),
-                        Configuracion = ObtenerConfiguracionResumenVisible(anillo),
-                        TipoAcero = ObtenerTipoAceroResumenVisible(anillo)
+                        Configuracion = configuracionReal,
+                        TipoAcero = string.IsNullOrWhiteSpace(tipoAceroReal) ? materialReal : tipoAceroReal
                     });
                 }
                 return lista;
@@ -690,11 +619,93 @@ namespace TankDesigner.Core.Services
                     PosicionRigidizadores = "—",
                     GradoTornillos = "—",
                     Configuracion = "—",
-                    TipoAcero = ObtenerMaterialPrincipalVisible()
+                    TipoAcero = string.IsNullOrWhiteSpace(materialReal) ? "—" : materialReal
                 });
             }
 
             return lista;
+        }
+
+        private string ObtenerConfiguracionResumenDesdeJson(ResultadoAnilloModel anillo)
+        {
+            if (anillo == null)
+                return "—";
+
+            string fabricante = TextoSeguroSinInventar(_proyecto?.Fabricante);
+            var configuraciones = _jsonCatalogService.CargarConfiguraciones(fabricante)
+                .Where(c => c != null)
+                .ToList();
+
+            if (configuraciones.Count == 0)
+                return TextoSeguroSinInventar(anillo.ConfiguracionAplicada);
+
+            PosibleConfiguracionModel? exacta = configuraciones.FirstOrDefault(c =>
+                CoincideEntero(c.NumeroTornillosUnionVertical, anillo.NumeroTornillosVerticales)
+                && CoincideEntero(c.NumeroTornillosUnionHorizontalCalculo, anillo.NumeroTornillosHorizontalesCalculo > 0 ? anillo.NumeroTornillosHorizontalesCalculo : anillo.NumeroTornillosHorizontales)
+                && CoincideDouble(c.DiametroAgujero, anillo.DiametroAgujero, 0.25));
+
+            if (exacta != null && !string.IsNullOrWhiteSpace(exacta.Nombre))
+                return exacta.Nombre.Trim();
+
+            PosibleConfiguracionModel? porGeometria = configuraciones.FirstOrDefault(c =>
+                CoincideDouble(c.S, anillo.PasoS, 0.25)
+                && CoincideDouble(c.R, anillo.RelacionR, 0.01)
+                && CoincideDouble(c.DiametroAgujero, anillo.DiametroAgujero, 0.25));
+
+            if (porGeometria != null && !string.IsNullOrWhiteSpace(porGeometria.Nombre))
+                return porGeometria.Nombre.Trim();
+
+            PosibleConfiguracionModel? porVerticales = configuraciones.FirstOrDefault(c =>
+                CoincideEntero(c.NumeroTornillosUnionVertical, anillo.NumeroTornillosVerticales));
+
+            if (porVerticales != null && !string.IsNullOrWhiteSpace(porVerticales.Nombre))
+                return porVerticales.Nombre.Trim();
+
+            return TextoSeguroSinInventar(anillo.ConfiguracionAplicada);
+        }
+
+        private string ObtenerTipoAceroResumenDesdeJson(ResultadoAnilloModel anillo, double alturaPanel)
+        {
+            if (anillo == null)
+                return "—";
+
+            string fabricante = TextoSeguroSinInventar(_proyecto?.Fabricante);
+            var planchas = _jsonCatalogService.CargarPlanchas(fabricante)
+                .Where(p => p != null)
+                .ToList();
+
+            if (planchas.Count == 0)
+                return "—";
+
+            double espesor = anillo.EspesorSeleccionado > 0 ? anillo.EspesorSeleccionado : anillo.EspesorRequerido;
+
+            PosiblePlanchaModel? exacta = planchas.FirstOrDefault(p =>
+                CoincideDouble(p.Fy, anillo.FyPlancha, 0.25)
+                && CoincideDouble(p.Fu, anillo.FuPlancha, 0.25)
+                && (alturaPanel <= 0 || CoincideDouble(p.Altura, alturaPanel, 0.25))
+                && (espesor <= 0 || p.Espesor.Any(e => CoincideDouble(e, espesor, 0.001))));
+
+            if (exacta != null && !string.IsNullOrWhiteSpace(exacta.Material))
+                return exacta.Material.Trim();
+
+            PosiblePlanchaModel? porResistencia = planchas.FirstOrDefault(p =>
+                CoincideDouble(p.Fy, anillo.FyPlancha, 0.25)
+                && CoincideDouble(p.Fu, anillo.FuPlancha, 0.25));
+
+            if (porResistencia != null && !string.IsNullOrWhiteSpace(porResistencia.Material))
+                return porResistencia.Material.Trim();
+
+            return "—";
+        }
+
+        private static bool CoincideDouble(double a, double b, double tolerancia)
+        {
+            return Math.Abs(a - b) <= tolerancia;
+        }
+
+        private static bool CoincideEntero(int a, int b)
+        {
+            return a == b;
         }
 
         // Método CLAVE del presupuesto de materiales.
@@ -738,8 +749,7 @@ namespace TankDesigner.Core.Services
                             NumeroAnillo = anillo.NumeroAnillo,
                             Espesor = espesor,
                             Altura = altura,
-                            Configuracion = ObtenerConfiguracionResumenVisible(anillo),
-                            TipoAcero = ObtenerTipoAceroResumenVisible(anillo)
+                            Configuracion = TextoSeguroSinInventar(anillo.ConfiguracionAplicada)
                         };
                     })
                     .Where(x => x.Espesor > 0)
@@ -747,8 +757,7 @@ namespace TankDesigner.Core.Services
                     {
                         Espesor = Math.Round(x.Espesor, 3),
                         Altura = Math.Round(x.Altura, 3),
-                        Configuracion = x.Configuracion,
-                        TipoAcero = x.TipoAcero
+                        Configuracion = x.Configuracion
                     })
                     .OrderBy(g => g.Min(x => x.NumeroAnillo))
                     .ToList();
@@ -1393,7 +1402,7 @@ namespace TankDesigner.Core.Services
             var lista = GenerarTablaHidrostatica(numeroAnillos);
             var sb = new StringBuilder();
             sb.Append("<table><thead><tr>");
-            sb.Append($"<th>{LangHtml("Anillo", "Ring")}</th><th>{LangHtml("Profundidad (m)", "Depth (m)")}</th><th>{LangHtml("Carga fluido (kN/m)", "Fluid load (kN/m)")}</th><th>{LangHtml("Tensión Tracción (N/mm²)", "Tensile Stress (N/mm²)")}</th><th>{LangHtml("Tensión Tracción Admisible (N/mm²)", "Allowable Tensile Stress (N/mm²)")}</th><th>{LangHtml("Tensión Agujeros (N/mm²)", "Hole Bearing Stress (N/mm²)")}</th><th>{LangHtml("Tensión Agujeros Admisible (N/mm²)", "Allowable Hole Bearing Stress (N/mm²)")}</th><th>{LangHtml("Tensión Cortante Tornillos (N/mm²)", "Bolt Shear Stress (N/mm²)")}</th><th>{LangHtml("Tensión Tornillos Admisible (N/mm²)", "Allowable Bolt Stress (N/mm²)")}</th>");
+            sb.Append($"<th>{LangHtml("Anillo", "Ring")}</th><th>{LangHtml("Profundidad (m)", "Depth (m)")}</th><th>{LangHtml("Carga fluido (kN/m)", "Fluid load (kN/m)")}</th><th>{LangHtml("Tensión tracción", "Tensile stress")}</th><th>{LangHtml("Tracción admisible", "Allowable tension")}</th><th>{LangHtml("Aplastamiento", "Bearing stress")}</th><th>{LangHtml("Aplastamiento admisible", "Allowable bearing")}</th><th>{LangHtml("Cortante tornillos", "Bolt shear stress")}</th><th>{LangHtml("Cortante admisible", "Allowable shear")}</th>");
             sb.Append("</tr></thead><tbody>");
 
             foreach (var item in lista)
@@ -1415,7 +1424,7 @@ namespace TankDesigner.Core.Services
             var lista = GenerarTablaAxial(numeroAnillos, factor);
             var sb = new StringBuilder();
             sb.Append("<table><thead><tr>");
-            sb.Append($"<th>{LangHtml("Anillo", "Ring")}</th><th>{LangHtml("Carga axial (kN/m)", "Axial load (kN/m)")}</th><th>{LangHtml("Tensión Axial (N/mm²)", "Axial Stress (N/mm²)")}</th><th>{LangHtml("Tensión Axial Admisible (N/mm²)", "Allowable Axial Stress (N/mm²)")}</th><th>{LangHtml("Tensión Agujeros (N/mm²)", "Hole Bearing Stress (N/mm²)")}</th><th>{LangHtml("Tensión Agujeros Admisible (N/mm²)", "Allowable Hole Bearing Stress (N/mm²)")}</th><th>{LangHtml("Tensión Cortante Tornillos (N/mm²)", "Bolt Shear Stress (N/mm²)")}</th><th>{LangHtml("Tensión Tornillos Admisible (N/mm²)", "Allowable Bolt Stress (N/mm²)")}</th>");
+            sb.Append($"<th>{LangHtml("Anillo", "Ring")}</th><th>{LangHtml("Carga axial (kN/m)", "Axial load (kN/m)")}</th><th>{LangHtml("Tensión axial", "Axial stress")}</th><th>{LangHtml("Axial admisible", "Allowable axial")}</th><th>{LangHtml("Aplastamiento", "Bearing stress")}</th><th>{LangHtml("Aplastamiento admisible", "Allowable bearing")}</th><th>{LangHtml("Cortante tornillos", "Bolt shear")}</th><th>{LangHtml("Cortante admisible", "Allowable shear")}</th>");
             sb.Append("</tr></thead><tbody>");
 
             foreach (var item in lista)
@@ -1433,7 +1442,7 @@ namespace TankDesigner.Core.Services
             var lista = GenerarTablaHidrodinamica(numeroAnillos);
             var sb = new StringBuilder();
             sb.Append("<table><thead><tr>");
-            sb.Append($"<th>{LangHtml("Anillo", "Ring")}</th><th>{LangHtml("Carga Total (kN/m)", "Total Load (kN/m)")}</th><th>{LangHtml("Tensión Tracción (N/mm²)", "Tensile Stress (N/mm²)")}</th><th>{LangHtml("Tensión Tracción Admisible (N/mm²)", "Allowable Tensile Stress (N/mm²)")}</th><th>{LangHtml("Tensión Agujeros (N/mm²)", "Hole Bearing Stress (N/mm²)")}</th><th>{LangHtml("Tensión Agujeros Admisible (N/mm²)", "Allowable Hole Bearing Stress (N/mm²)")}</th><th>{LangHtml("Tensión Cortante Tornillos (N/mm²)", "Bolt Shear Stress (N/mm²)")}</th><th>{LangHtml("Tensión Tornillos Admisible (N/mm²)", "Allowable Bolt Stress (N/mm²)")}</th>");
+            sb.Append($"<th>{LangHtml("Anillo", "Ring")}</th><th>{LangHtml("Carga total (kN/m)", "Total load (kN/m)")}</th><th>{LangHtml("Tensión tracción", "Tensile stress")}</th><th>{LangHtml("Tracción admisible", "Allowable tension")}</th><th>{LangHtml("Aplastamiento", "Bearing stress")}</th><th>{LangHtml("Aplastamiento admisible", "Allowable bearing")}</th><th>{LangHtml("Cortante tornillos", "Bolt shear")}</th><th>{LangHtml("Cortante admisible", "Allowable shear")}</th>");
             sb.Append("</tr></thead><tbody>");
 
             foreach (var item in lista)
