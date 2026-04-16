@@ -182,7 +182,7 @@
             string.Equals(EstadoProyecto.Proyecto.Normativa.Trim(), "AWWA", StringComparison.OrdinalIgnoreCase))
             EstadoProyecto.Proyecto.Normativa = _normativas.FirstOrDefault() ?? "AWWA D103-19";
 
-        AplicarMigracionBaseRealSiProcede();
+       // AplicarMigracionBaseRealSiProcede();
 
         if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.Fabricante))
             EstadoProyecto.Proyecto.Fabricante = _fabricantes.FirstOrDefault() ?? "Permastore";
