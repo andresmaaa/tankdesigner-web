@@ -17,17 +17,23 @@ namespace TankDesigner.Web.Services
         public List<string> ObtenerNormativas()
             => new() { "AWWA D103-19", "ISO", "EC" };
 
+        // El orden prioriza los fabricantes reales que usa el programa base.
         public List<string> ObtenerFabricantes()
-            => new() { "DL2", "Permastore", "Balmoral" };
+            => new() { "Permastore", "Balmoral", "DL2" };
 
         public List<string> ObtenerMateriales()
             => new()
             {
-                "AISI 316",
+                "S235",
+                "S275",
+                "S355",
+                "HSLA4",
+                "HSLA5",
                 "AISI 304",
+                "AISI 316",
                 "Acero galvanizado",
-                "Acero epoxi",
-                "Acero vitrificado"
+                "Acero vitrificado",
+                "Acero epoxi"
             };
 
         public List<int> ObtenerChapasPorAnillo()
@@ -45,6 +51,8 @@ namespace TankDesigner.Web.Services
         public List<string> ObtenerRoofTypes()
             => new() { "None", "Conical", "Dome", "Flat" };
 
+        // En el programa base el ángulo de techo no se trata como un rango 0-100,
+        // sino como una lista cerrada de opciones técnicas.
         public List<string> ObtenerRoofAngles()
             => new() { "0°", "5°", "10°", "15°", "20°", "30°", "45°" };
 
@@ -58,7 +66,7 @@ namespace TankDesigner.Web.Services
             => new() { "I", "II", "III" };
 
         public List<string> ObtenerTiposMedioAnillo()
-        => new() { "Anillo entero", "1/2 anillo", "1/4 anillo" };
+            => new() { "Anillo entero", "1/2 anillo", "1/4 anillo" };
 
         public List<string> ObtenerOpcionesStarterRing()
             => new() { "Sí", "No" };

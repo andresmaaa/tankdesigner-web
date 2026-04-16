@@ -183,10 +183,10 @@
             EstadoProyecto.Proyecto.Normativa = _normativas.FirstOrDefault() ?? "AWWA D103-19";
 
         if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.Fabricante))
-            EstadoProyecto.Proyecto.Fabricante = _fabricantes.FirstOrDefault() ?? "DL2";
+            EstadoProyecto.Proyecto.Fabricante = _fabricantes.FirstOrDefault() ?? "Permastore";
 
         if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.MaterialPrincipal))
-            EstadoProyecto.Proyecto.MaterialPrincipal = _materiales.FirstOrDefault() ?? "AISI 316";
+            EstadoProyecto.Proyecto.MaterialPrincipal = _materiales.FirstOrDefault() ?? "S235";
 
         if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.IdiomaInforme))
             EstadoProyecto.Proyecto.IdiomaInforme = "ES";
