@@ -53,14 +53,26 @@ namespace TankDesigner.Core.Services
             double bordeLibre = BordeLibre();
             double densidad = Densidad();
 
-            bool techoNone = EsTechoNone(_cargas?.RoofType);
-            string roofType = Html(techoNone ? "None" : TextoSeguroSinInventar(_cargas?.RoofType));
-            double roofDeadLoad = techoNone ? 0 : (_cargas?.RoofDeadLoad ?? 0);
-            double roofSnowLoad = techoNone ? 0 : (_cargas?.RoofSnowLoad > 0 ? _cargas.RoofSnowLoad : (_cargas?.SnowLoad ?? 0));
-            double roofLiveLoad = techoNone ? 0 : (_cargas?.RoofLiveLoad ?? 0);
-            double roofCentroid = techoNone ? 0 : (_cargas?.RoofCentroid ?? 0);
-            double roofProjectedArea = techoNone ? 0 : (_cargas?.RoofProjectedArea ?? 0);
-            string roofAngle = Html(techoNone ? "0°" : TextoSeguroSinInventar(_cargas?.RoofAngle));
+            bool techoDefinidoEnCargas = !EsTechoNone(_cargas?.RoofType);
+            bool techoDefinidoEnInstalacion = !string.IsNullOrWhiteSpace(_instalacion?.TipoTecho)
+                                              && !_instalacion.TipoTecho.Equals("Sin techo", StringComparison.OrdinalIgnoreCase);
+
+            string roofType = Html(
+                techoDefinidoEnCargas
+                    ? TextoSeguroSinInventar(_cargas?.RoofType)
+                    : techoDefinidoEnInstalacion
+                        ? TextoSeguroSinInventar(_instalacion?.TipoTecho)
+                        : "None");
+
+            double roofDeadLoad = techoDefinidoEnCargas ? (_cargas?.RoofDeadLoad ?? 0) : 0;
+            double roofSnowLoad = techoDefinidoEnCargas
+                ? (_cargas?.RoofSnowLoad > 0 ? _cargas.RoofSnowLoad : (_cargas?.SnowLoad ?? 0))
+                : 0;
+            double roofLiveLoad = techoDefinidoEnCargas ? (_cargas?.RoofLiveLoad ?? 0) : 0;
+            double roofCentroid = techoDefinidoEnCargas ? (_cargas?.RoofCentroid ?? 0) : 0;
+            double roofProjectedArea = techoDefinidoEnCargas ? (_cargas?.RoofProjectedArea ?? 0) : 0;
+            string roofAngle = Html(techoDefinidoEnCargas ? TextoSeguroSinInventar(_cargas?.RoofAngle) : "—");
+            
             double velocidadViento = _cargas?.VelocidadViento ?? 0;
             string claseExposicion = Html(TextoSeguroSinInventar(_cargas?.ClaseExposicion));
             double ss = _cargas?.Ss ?? 0;
