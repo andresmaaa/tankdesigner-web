@@ -65,6 +65,7 @@
                                 <label>Ángulo superior</label>
                                 <InputSelect class="td-input td-select"
                                              @bind-Value="EstadoProyecto.Cargas.AnguloSuperior"
+                                             @bind-Value:after="OnAnguloSuperiorChanged"
                                              disabled="@EsTechoNoneSeleccionado()">
                                     <option value="">Seleccione...</option>
                                     @foreach (var item in _angulosSuperiores)
@@ -72,7 +73,7 @@
                                         <option value="@item">@item</option>
                                     }
                                 </InputSelect>
-                                <small>Rigidizador superior seleccionado según catálogo del fabricante.</small>
+                                <small>Ángulo superior editable en rango de 0 a 100.</small>
                             </div>
 
                             <div class="field">
@@ -287,8 +288,9 @@
 
     private void CargarAngulosSuperiores()
     {
-        var fabricante = EstadoProyecto.Proyecto.Fabricante;
-        _angulosSuperiores = Opciones.ObtenerAngulosSuperiores(fabricante);
+        _angulosSuperiores = Enumerable.Range(0, 101)
+            .Select(x => x.ToString())
+            .ToList();
     }
 
     private void SincronizarNormativa()
@@ -320,11 +322,12 @@
 
         CargarAngulosSuperiores();
 
-        if (!EsTechoNoneSeleccionado()
-            && string.IsNullOrWhiteSpace(EstadoProyecto.Cargas.AnguloSuperior)
-            && _angulosSuperiores.Any())
+        if (!EsTechoNoneSeleccionado())
         {
-            EstadoProyecto.Cargas.AnguloSuperior = _angulosSuperiores.First();
+            if (string.IsNullOrWhiteSpace(EstadoProyecto.Cargas.AnguloSuperior) || !_angulosSuperiores.Contains(EstadoProyecto.Cargas.AnguloSuperior))
+                EstadoProyecto.Cargas.AnguloSuperior = _angulosSuperiores.First();
+
+            EstadoProyecto.Cargas.RoofAngle = EstadoProyecto.Cargas.AnguloSuperior;
         }
 
         AplicarReglasTecho();
@@ -333,15 +336,35 @@
 
     private void OnRoofTypeChanged()
     {
-        if (!EsTechoNoneSeleccionado() && string.IsNullOrWhiteSpace(EstadoProyecto.Cargas.AnguloSuperior))
-        {
-            CargarAngulosSuperiores();
+        CargarAngulosSuperiores();
 
-            if (_angulosSuperiores.Any())
-                EstadoProyecto.Cargas.AnguloSuperior = _angulosSuperiores.First();
+        if (EsTechoNoneSeleccionado())
+        {
+            AplicarReglasTecho();
+            return;
         }
 
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Cargas.AnguloSuperior) || !_angulosSuperiores.Contains(EstadoProyecto.Cargas.AnguloSuperior))
+            EstadoProyecto.Cargas.AnguloSuperior = _angulosSuperiores.First();
+
+        EstadoProyecto.Cargas.RoofAngle = EstadoProyecto.Cargas.AnguloSuperior;
+
         AplicarReglasTecho();
+    }
+
+    private void OnAnguloSuperiorChanged()
+    {
+        if (EsTechoNoneSeleccionado())
+        {
+            EstadoProyecto.Cargas.AnguloSuperior = string.Empty;
+            EstadoProyecto.Cargas.RoofAngle = "0";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Cargas.AnguloSuperior))
+            EstadoProyecto.Cargas.AnguloSuperior = "0";
+
+        EstadoProyecto.Cargas.RoofAngle = EstadoProyecto.Cargas.AnguloSuperior;
     }
 
     private void AplicarReglasTecho()
@@ -353,8 +376,15 @@
             EstadoProyecto.Cargas.RoofLiveLoad = 0;
             EstadoProyecto.Cargas.RoofCentroid = 0;
             EstadoProyecto.Cargas.RoofProjectedArea = 0;
-            EstadoProyecto.Cargas.RoofAngle = "0°";
+            EstadoProyecto.Cargas.RoofAngle = "0";
             EstadoProyecto.Cargas.AnguloSuperior = string.Empty;
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(EstadoProyecto.Cargas.AnguloSuperior))
+                EstadoProyecto.Cargas.AnguloSuperior = "0";
+
+            EstadoProyecto.Cargas.RoofAngle = EstadoProyecto.Cargas.AnguloSuperior;
         }
 
         StateHasChanged();
