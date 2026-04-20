@@ -1,4 +1,6 @@
 ﻿@page "/cargas"
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
 @using TankDesigner.Web.Services
 @using TankDesigner.Infrastructure.Services
 @inject ProyectoState EstadoProyecto

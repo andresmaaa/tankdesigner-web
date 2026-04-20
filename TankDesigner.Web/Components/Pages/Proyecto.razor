@@ -1,4 +1,6 @@
 ﻿@page "/proyecto"
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
 @using TankDesigner.Web.Services
 @inject ProyectoState EstadoProyecto
 @inject OpcionesFormularioService Opciones

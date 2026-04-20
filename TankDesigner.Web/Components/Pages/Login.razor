@@ -1,4 +1,6 @@
 ﻿@page "/login"
+@using Microsoft.AspNetCore.Authorization
+@attribute [AllowAnonymous]
 @inject NavigationManager NavigationManager
 
 <PageTitle>Iniciar sesión</PageTitle>
@@ -10,7 +12,13 @@
             <p>Accede para descargar informes y trabajar con tus proyectos guardados.</p>
         </div>
 
-        @if (MostrarError())
+        @if (MostrarBloqueo())
+        {
+            <div class="auth-alert auth-alert--error">
+                Cuenta bloqueada temporalmente por demasiados intentos fallidos. Inténtalo de nuevo más tarde.
+            </div>
+        }
+        else if (MostrarError())
         {
             <div class="auth-alert auth-alert--error">
                 Correo o contraseña incorrectos.
@@ -31,12 +39,27 @@
 
                 <div class="auth-field">
                     <label for="email">Correo electrónico</label>
-                    <input id="email" name="email" class="auth-input" type="email" value="@ObtenerEmailInvitado()" required />
+                    <input id="email"
+                           name="email"
+                           class="auth-input"
+                           type="email"
+                           value="@ObtenerEmailInvitado()"
+                           inputmode="email"
+                           autocomplete="username"
+                           autocapitalize="off"
+                           spellcheck="false"
+                           readonly="@EmailBloqueadoPorInvitacion()"
+                           required />
                 </div>
 
                 <div class="auth-field">
                     <label for="password">Contraseña</label>
-                    <input id="password" name="password" class="auth-input" type="password" required />
+                    <input id="password"
+                           name="password"
+                           class="auth-input"
+                           type="password"
+                           autocomplete="current-password"
+                           required />
                 </div>
 
                 <div class="auth-field auth-field--checkbox">
@@ -65,6 +88,13 @@
         var uri = new Uri(NavigationManager.Uri);
         var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
         return query.ContainsKey("error");
+    }
+
+    private bool MostrarBloqueo()
+    {
+        var uri = new Uri(NavigationManager.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        return query.ContainsKey("locked");
     }
 
     private string ObtenerReturnUrl()
@@ -98,6 +128,12 @@
             return email.ToString();
 
         return string.Empty;
+    }
+
+    private bool EmailBloqueadoPorInvitacion()
+    {
+        return !string.IsNullOrWhiteSpace(ObtenerTokenInvitacion()) &&
+               !string.IsNullOrWhiteSpace(ObtenerEmailInvitado());
     }
 
     private string ObtenerRutaRegistro()

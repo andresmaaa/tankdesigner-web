@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Infrastructure;
 using System.IO;
+using System.Threading.RateLimiting;
 using TankDesigner.Core.Services;
 using TankDesigner.Infrastructure.Services;
 using TankDesigner.Web.Components;
@@ -25,7 +28,15 @@ builder.Services.AddCascadingAuthenticationState();
 // Permite acceder al HttpContext desde servicios
 builder.Services.AddHttpContextAccessor();
 
-// Obtiene la cadena de conexión desde configuración (Railway en tu caso)
+// Configuración para Railway / proxy inverso
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
+// Obtiene la cadena de conexión desde configuración
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("No se ha encontrado la cadena de conexión 'DefaultConnection'.");
 
@@ -42,17 +53,27 @@ builder.Services.AddDbContextFactory<ApplicationDbContext>(
 builder.Services
     .AddIdentity<ApplicationUser, IdentityRole>(options =>
     {
-        // Reglas de contraseña
+        // Reglas de contraseña más seguras
         options.Password.RequireDigit = true;
         options.Password.RequireLowercase = true;
-        options.Password.RequireUppercase = false;
-        options.Password.RequireNonAlphanumeric = false;
-        options.Password.RequiredLength = 6;
-    })
-    .AddEntityFrameworkStores<ApplicationDbContext>() // guarda en PostgreSQL
-    .AddDefaultTokenProviders(); // tokens (reset password, etc.)
+        options.Password.RequireUppercase = true;
+        options.Password.RequireNonAlphanumeric = true;
+        options.Password.RequiredLength = 10;
+        options.Password.RequiredUniqueChars = 4;
 
-// Ruta donde se guardan las claves de DataProtection (IMPORTANTE para sesiones)
+        // Bloqueo por intentos fallidos
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+        options.Lockout.MaxFailedAccessAttempts = 5;
+        options.Lockout.AllowedForNewUsers = true;
+
+        // Mantengo el flujo actual sin exigir confirmación de email
+        options.SignIn.RequireConfirmedEmail = false;
+        options.SignIn.RequireConfirmedAccount = false;
+    })
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddDefaultTokenProviders();
+
+// Ruta donde se guardan las claves de DataProtection
 var dataProtectionPath = Environment.GetEnvironmentVariable("DATA_PROTECTION_KEYS_PATH");
 
 // Si no hay variable de entorno, usa carpeta local
@@ -64,7 +85,7 @@ if (string.IsNullOrWhiteSpace(dataProtectionPath))
 // Asegura que la carpeta existe
 Directory.CreateDirectory(dataProtectionPath);
 
-// Configuración de DataProtection (clave para que NO se cierre sesión)
+// Configuración de DataProtection
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionPath))
     .SetApplicationName("TankDesigner");
@@ -79,22 +100,42 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.LogoutPath = "/login";
     options.AccessDeniedPath = "/login";
 
-    // Duración de la sesión (30 días si rememberMe)
+    // Duración de la sesión
     options.ExpireTimeSpan = TimeSpan.FromDays(30);
 
-    // Renovación automática mientras navegas
+    // Renovación automática mientras navega
     options.SlidingExpiration = true;
 
     // Seguridad de la cookie
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
     options.Cookie.SameSite = SameSiteMode.Lax;
-
-    // IMPORTANTE: en Railway puede afectar si no es HTTPS
-    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
 });
 
-// Autorización (roles, políticas)
+// Rate limiting
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddFixedWindowLimiter("login", limiterOptions =>
+    {
+        limiterOptions.PermitLimit = 5;
+        limiterOptions.Window = TimeSpan.FromMinutes(1);
+        limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        limiterOptions.QueueLimit = 0;
+    });
+
+    options.AddFixedWindowLimiter("logout", limiterOptions =>
+    {
+        limiterOptions.PermitLimit = 10;
+        limiterOptions.Window = TimeSpan.FromMinutes(1);
+        limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        limiterOptions.QueueLimit = 0;
+    });
+});
+
+// Autorización
 builder.Services.AddAuthorizationCore();
 builder.Services.AddAuthorization();
 
@@ -122,12 +163,15 @@ QuestPDF.Settings.License = LicenseType.Community;
 
 var app = builder.Build();
 
-// Railway usa puerto dinámico, esto lo adapta automáticamente
+// Railway usa puerto dinámico
 var port = Environment.GetEnvironmentVariable("PORT");
 if (!string.IsNullOrWhiteSpace(port))
 {
     app.Urls.Add($"http://0.0.0.0:{port}");
 }
+
+// Procesa encabezados reenviados del proxy
+app.UseForwardedHeaders();
 
 // Configuración de errores en producción
 if (!app.Environment.IsDevelopment())
@@ -136,13 +180,39 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-// Middleware básicos
+// Redirección a HTTPS
 app.UseHttpsRedirection();
-app.UseAuthentication(); // MUY IMPORTANTE para login
+
+// Cabeceras de seguridad básicas
+app.Use(async (context, next) =>
+{
+    context.Response.Headers["X-Frame-Options"] = "DENY";
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    context.Response.Headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()";
+    context.Response.Headers["Content-Security-Policy"] =
+        "default-src 'self'; " +
+        "img-src 'self' data: https:; " +
+        "style-src 'self' 'unsafe-inline'; " +
+        "script-src 'self' 'unsafe-inline'; " +
+        "font-src 'self' data:; " +
+        "connect-src 'self' https: wss:; " +
+        "frame-ancestors 'none'; " +
+        "base-uri 'self'; " +
+        "form-action 'self';";
+
+    await next();
+});
+
+// Rate limiting
+app.UseRateLimiter();
+
+// Middleware de autenticación / autorización
+app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
 
-// Endpoint POST para login manual (formulario)
+// Endpoint POST para login manual
 app.MapPost("/auth/login", async (
     HttpContext httpContext,
     SignInManager<ApplicationUser> signInManager,
@@ -165,7 +235,7 @@ app.MapPost("/auth/login", async (
                      || rememberRaw.Equals("on", StringComparison.OrdinalIgnoreCase);
     }
 
-    // URL de redirección por defecto
+    // URL por defecto
     if (string.IsNullOrWhiteSpace(returnUrl))
         returnUrl = "/mis-proyectos";
 
@@ -177,12 +247,12 @@ app.MapPost("/auth/login", async (
     var result = await signInManager.PasswordSignInAsync(
         email,
         password,
-        isPersistent: rememberMe, // esto activa cookie persistente
-        lockoutOnFailure: false);
+        isPersistent: rememberMe,
+        lockoutOnFailure: true);
 
     if (result.Succeeded)
     {
-        // Aplica invitaciones pendientes (ej: convertir en admin)
+        // Aplica invitaciones pendientes
         var usuario = await userManager.FindByEmailAsync(email);
         if (usuario is not null)
             await invitacionesService.AplicarInvitacionPendienteAsync(usuario);
@@ -190,17 +260,21 @@ app.MapPost("/auth/login", async (
         return Results.Redirect(returnUrl);
     }
 
+    if (result.IsLockedOut)
+    {
+        return Results.Redirect($"/login?locked=1&returnUrl={Uri.EscapeDataString(returnUrl)}");
+    }
+
     // Si falla, vuelve al login con error
     return Results.Redirect($"/login?error=1&returnUrl={Uri.EscapeDataString(returnUrl)}");
-});
+}).RequireRateLimiting("login");
 
 // Endpoint POST para logout
-app.MapPost("/auth/logout", async (
-    SignInManager<ApplicationUser> signInManager) =>
+app.MapPost("/auth/logout", async (SignInManager<ApplicationUser> signInManager) =>
 {
     await signInManager.SignOutAsync();
     return Results.Redirect("/login");
-});
+}).RequireRateLimiting("logout");
 
 // Archivos estáticos
 app.MapStaticAssets();
@@ -208,12 +282,15 @@ app.MapStaticAssets();
 // Configuración de Blazor
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+// Aplica migraciones al arrancar
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     db.Database.Migrate();
 }
-// Seed de roles y SuperAdmin al arrancar
+
+// Seed de roles y SuperAdmin
 await IdentitySeedData.InicializarAsync(app.Services, app.Configuration);
 
 // Arranque de la aplicación
