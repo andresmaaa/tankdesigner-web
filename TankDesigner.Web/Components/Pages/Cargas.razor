@@ -36,7 +36,7 @@
                     </div>
                 </article>
 
-                @if (_normativaActiva == "AWWA D103-19")
+                @if (EsNormativaAwwa())
                 {
                     <article class="td-panel">
                         <div class="td-panel__header">
@@ -229,7 +229,7 @@
                         </div>
                         <div class="summary-row">
                             <span class="summary-row__label">Carga de nieve</span>
-                            <span class="summary-row__value">@ValorNumero(EstadoProyecto.Cargas.SnowLoad)</span>
+                            <span class="summary-row__value">@ValorNumero(ObtenerCargaNieveVisible())</span>
                         </div>
                         <div class="summary-row">
                             <span class="summary-row__label">Tipo de techo</span>
@@ -259,7 +259,7 @@
 </div>
 
 @code {
-    private string _normativaActiva = "AWWA D103-19";
+    private string _normativaActiva = "AWWA";
     private string _resumenNormativa = string.Empty;
 
     private List<string> _roofTypes = new();
@@ -287,11 +287,32 @@
     private void SincronizarNormativa()
     {
         _normativaActiva = NormativaUi.NormalizarNormativa(EstadoProyecto.Proyecto.Normativa);
-        EstadoProyecto.Cargas = NormativaUi.CrearCargasProvisionales(_normativaActiva, EstadoProyecto.Cargas);
         EstadoProyecto.Cargas.NormativaAplicada = _normativaActiva;
 
         if (EstadoProyecto.Tanque.DensidadLiquido > 0)
             EstadoProyecto.Cargas.DensidadLiquido = EstadoProyecto.Tanque.DensidadLiquido;
+
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Cargas.RoofType)
+            && !string.IsNullOrWhiteSpace(EstadoProyecto.Instalacion.TipoTecho)
+            && !EstadoProyecto.Instalacion.TipoTecho.Equals("Sin techo", StringComparison.OrdinalIgnoreCase))
+        {
+            EstadoProyecto.Cargas.RoofType = EstadoProyecto.Instalacion.TipoTecho;
+        }
+
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Cargas.RoofType))
+            EstadoProyecto.Cargas.RoofType = "None";
+
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Cargas.RoofAngle))
+            EstadoProyecto.Cargas.RoofAngle = "0°";
+
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Cargas.ClaseExposicion) && _clasesExposicion.Any())
+            EstadoProyecto.Cargas.ClaseExposicion = _clasesExposicion.First();
+
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Cargas.SiteClass) && _siteClasses.Any())
+            EstadoProyecto.Cargas.SiteClass = _siteClasses.First();
+
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Cargas.SeismicUseGroup) && _seismicUseGroups.Any())
+            EstadoProyecto.Cargas.SeismicUseGroup = _seismicUseGroups.First();
 
         AplicarReglasTecho();
         _resumenNormativa = NormativaUi.ConstruirResumenVisual(_normativaActiva);
@@ -299,14 +320,37 @@
 
     private void AplicarReglasTecho()
     {
-        NormativaUi.AplicarReglasTecho(EstadoProyecto.Cargas);
+        if (EsTechoNoneSeleccionado())
+        {
+            EstadoProyecto.Cargas.RoofDeadLoad = 0;
+            EstadoProyecto.Cargas.RoofSnowLoad = 0;
+            EstadoProyecto.Cargas.RoofLiveLoad = 0;
+            EstadoProyecto.Cargas.RoofCentroid = 0;
+            EstadoProyecto.Cargas.RoofProjectedArea = 0;
+            EstadoProyecto.Cargas.RoofAngle = "0°";
+        }
+
         StateHasChanged();
+    }
+
+    private bool EsNormativaAwwa()
+    {
+        return string.Equals(_normativaActiva, "AWWA", StringComparison.OrdinalIgnoreCase)
+               || string.Equals(_normativaActiva, "AWWA D103-19", StringComparison.OrdinalIgnoreCase);
     }
 
     private bool EsTechoNoneSeleccionado()
     {
         return string.IsNullOrWhiteSpace(EstadoProyecto.Cargas.RoofType)
-               || EstadoProyecto.Cargas.RoofType.Equals("None", StringComparison.OrdinalIgnoreCase);
+               || EstadoProyecto.Cargas.RoofType.Equals("None", StringComparison.OrdinalIgnoreCase)
+               || EstadoProyecto.Cargas.RoofType.Equals("Sin techo", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private double ObtenerCargaNieveVisible()
+    {
+        return EstadoProyecto.Cargas.RoofSnowLoad > 0
+            ? EstadoProyecto.Cargas.RoofSnowLoad
+            : EstadoProyecto.Cargas.SnowLoad;
     }
 
     private string TextoSeguro(string? texto)
