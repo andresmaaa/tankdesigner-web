@@ -1272,7 +1272,10 @@
         if (!_esAdmin)
             return;
 
-        var ok = await AdminService.EliminarProyectoAsync(id);
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var usuarioActual = authState.User;
+
+        var ok = await AdminService.EliminarProyectoAsync(id, usuarioActual);
 
         if (!ok)
         {

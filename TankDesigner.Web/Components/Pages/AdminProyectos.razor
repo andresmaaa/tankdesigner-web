@@ -1,11 +1,11 @@
 ﻿@page "/admin/proyectos"
 @attribute [Authorize(Roles = "Admin,SuperAdmin")]
-@attribute [Authorize(Roles = RolesAplicacion.Admin)]
 @using Microsoft.AspNetCore.Authorization
 @using TankDesigner.Web.Data
 @using TankDesigner.Web.Services
 @inject AdminService AdminService
-
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthenticationStateProvider
 <PageTitle>Administración - Proyectos</PageTitle>
 
 <div class="informes-page">
@@ -94,7 +94,10 @@
 
     private async Task EliminarProyecto(int proyectoId)
     {
-        var ok = await AdminService.EliminarProyectoAsync(proyectoId);
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var usuarioActual = authState.User;
+
+        var ok = await AdminService.EliminarProyectoAsync(proyectoId, usuarioActual);
         _mensaje = ok ? "Proyecto eliminado correctamente." : "No se pudo eliminar el proyecto.";
         await CargarProyectos();
     }
