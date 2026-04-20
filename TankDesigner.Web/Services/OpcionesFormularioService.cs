@@ -1,4 +1,5 @@
-﻿using TankDesigner.Infrastructure.Services;
+﻿using TankDesigner.Core.Services;
+using TankDesigner.Infrastructure.Services;
 
 namespace TankDesigner.Web.Services
 {
@@ -55,7 +56,15 @@ namespace TankDesigner.Web.Services
         // sino como una lista cerrada de opciones técnicas.
         public List<string> ObtenerRoofAngles()
             => new() { "0°", "5°", "10°", "15°", "20°", "30°", "45°" };
-
+        public List<string> ObtenerAngulosSuperiores(string fabricante)
+        {
+            return _catalogoJsonService
+                .ObtenerRigidizadoresSuperiores(fabricante)
+                .Select(x => x.Tipo)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct()
+                .ToList();
+        }
         public List<string> ObtenerClasesExposicion()
             => new() { "A", "B", "C", "D" };
 

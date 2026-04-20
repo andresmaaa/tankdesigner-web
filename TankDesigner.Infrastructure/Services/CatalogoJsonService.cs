@@ -13,7 +13,14 @@ namespace TankDesigner.Infrastructure.Services
                 "TankStructuralDesignerFiles",
                 "RutaJson");
         }
+        public List<PosibleRigidizadorModel> ObtenerRigidizadoresSuperiores(string fabricante)
+        {
+            string ruta = Path.Combine(
+                ObtenerRutaFabricante(fabricante),
+                "ListaPosiblesRigidizadoresSuperiores.json");
 
+            return CargarListaDesdeJson<PosibleRigidizadorModel>(ruta);
+        }
         private string NormalizarFabricante(string fabricante)
         {
             if (string.IsNullOrWhiteSpace(fabricante))

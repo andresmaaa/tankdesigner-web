@@ -19,6 +19,12 @@ namespace TankDesigner.Core.Services
             );
         }
 
+        public List<PosibleRigidizadorModel> ObtenerRigidizadoresSuperiores(string fabricante)
+        {
+            string ruta = ObtenerRutaConFallback(fabricante, "ListaPosiblesRigidizadoresSuperiores.json");
+            return CargarListaDesdeJson<PosibleRigidizadorModel>(ruta);
+        }
+    
         private static string NormalizarFabricante(string fabricante)
         {
             if (string.IsNullOrWhiteSpace(fabricante))

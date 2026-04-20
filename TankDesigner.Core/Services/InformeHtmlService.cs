@@ -52,7 +52,6 @@ namespace TankDesigner.Core.Services
             int anilloArranque = AnilloArranque();
             double bordeLibre = BordeLibre();
             double densidad = Densidad();
-
             bool techoDefinidoEnCargas = !EsTechoNone(_cargas?.RoofType);
             bool techoDefinidoEnInstalacion = !string.IsNullOrWhiteSpace(_instalacion?.TipoTecho)
                                               && !_instalacion.TipoTecho.Equals("Sin techo", StringComparison.OrdinalIgnoreCase);
@@ -71,8 +70,13 @@ namespace TankDesigner.Core.Services
             double roofLiveLoad = techoDefinidoEnCargas ? (_cargas?.RoofLiveLoad ?? 0) : 0;
             double roofCentroid = techoDefinidoEnCargas ? (_cargas?.RoofCentroid ?? 0) : 0;
             double roofProjectedArea = techoDefinidoEnCargas ? (_cargas?.RoofProjectedArea ?? 0) : 0;
-            string roofAngle = Html(techoDefinidoEnCargas ? TextoSeguroSinInventar(_cargas?.RoofAngle) : "—");
-            
+
+            string topAngle = Html(
+                techoDefinidoEnCargas
+                    ? (!string.IsNullOrWhiteSpace(_cargas?.AnguloSuperior)
+                        ? TextoSeguroSinInventar(_cargas?.AnguloSuperior)
+                        : TextoSeguroSinInventar(_cargas?.RoofAngle))
+                    : "—");
             double velocidadViento = _cargas?.VelocidadViento ?? 0;
             string claseExposicion = Html(TextoSeguroSinInventar(_cargas?.ClaseExposicion));
             double ss = _cargas?.Ss ?? 0;
@@ -175,7 +179,7 @@ namespace TankDesigner.Core.Services
             html.Append(LabelValue(Lang("Sobrecarga / live load", "Live load / surcharge"), ValorKnM2(roofLiveLoad)));
             html.Append(LabelValue(Lang("Centroide cubierta", "Roof centroid"), roofCentroid > 0 ? Formato(roofCentroid, "0.##") + " m" : "—"));
             html.Append(LabelValue(Lang("Área proyectada", "Projected area"), roofProjectedArea > 0 ? Formato(roofProjectedArea, "0.##") + " m²" : "—"));
-            html.Append(LabelValue(Lang("Ángulo superior", "Top angle"), roofAngle));
+            html.Append(LabelValue(Lang("Ángulo superior", "Top angle"), topAngle));
             html.Append("</div></div>");
 
             html.Append("<div class='grid3'>");

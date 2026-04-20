@@ -11,13 +11,15 @@
         public string NormativaAplicada { get; set; }
 
         // AWWA - Techo
+        public string RoofAngle { get; set; } = "0°";
+
         public string RoofType { get; set; }
         public double RoofDeadLoad { get; set; }
         public double RoofSnowLoad { get; set; }
         public double RoofLiveLoad { get; set; }
         public double RoofCentroid { get; set; }
         public double RoofProjectedArea { get; set; }
-        public string RoofAngle { get; set; }
+        public string AnguloSuperior { get; set; } = "";
 
         // AWWA - Viento
         public string ClaseExposicion { get; set; }

@@ -50,7 +50,7 @@
                                 <label>Tipo de techo</label>
                                 <InputSelect class="td-input td-select"
                                              @bind-Value="EstadoProyecto.Cargas.RoofType"
-                                             @bind-Value:after="AplicarReglasTecho">
+                                             @bind-Value:after="OnRoofTypeChanged">
                                     @foreach (var item in _roofTypes)
                                     {
                                         <option value="@item">@item</option>
@@ -60,17 +60,17 @@
                             </div>
 
                             <div class="field">
-                                <label>Ángulo de techo</label>
+                                <label>Ángulo superior</label>
                                 <InputSelect class="td-input td-select"
-                                             @bind-Value="EstadoProyecto.Cargas.RoofAngle"
-                                             @bind-Value:after="AplicarReglasTecho"
+                                             @bind-Value="EstadoProyecto.Cargas.AnguloSuperior"
                                              disabled="@EsTechoNoneSeleccionado()">
-                                    @foreach (var item in _roofAngles)
+                                    <option value="">Seleccione...</option>
+                                    @foreach (var item in _angulosSuperiores)
                                     {
                                         <option value="@item">@item</option>
                                     }
                                 </InputSelect>
-                                <small>Ángulo asociado a la geometría superior del depósito.</small>
+                                <small>Rigidizador superior seleccionado según catálogo del fabricante.</small>
                             </div>
 
                             <div class="field">
@@ -236,8 +236,8 @@
                             <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Cargas.RoofType)</span>
                         </div>
                         <div class="summary-row">
-                            <span class="summary-row__label">Ángulo de techo</span>
-                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Cargas.RoofAngle)</span>
+                            <span class="summary-row__label">Ángulo superior</span>
+                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Cargas.AnguloSuperior)</span>
                         </div>
                         <div class="summary-row">
                             <span class="summary-row__label">Exposición</span>
@@ -261,9 +261,8 @@
 @code {
     private string _normativaActiva = "AWWA";
     private string _resumenNormativa = string.Empty;
-
+    private List<string> _angulosSuperiores = new();
     private List<string> _roofTypes = new();
-    private List<string> _roofAngles = new();
     private List<string> _clasesExposicion = new();
     private List<string> _siteClasses = new();
     private List<string> _seismicUseGroups = new();
@@ -271,17 +270,23 @@
     protected override void OnInitialized()
     {
         _roofTypes = Opciones.ObtenerRoofTypes();
-        _roofAngles = Opciones.ObtenerRoofAngles();
         _clasesExposicion = Opciones.ObtenerClasesExposicion();
         _siteClasses = Opciones.ObtenerSiteClasses();
         _seismicUseGroups = Opciones.ObtenerSeismicUseGroups();
 
+        CargarAngulosSuperiores();
         SincronizarNormativa();
     }
 
     protected override void OnParametersSet()
     {
         SincronizarNormativa();
+    }
+
+    private void CargarAngulosSuperiores()
+    {
+        var fabricante = EstadoProyecto.Proyecto.Fabricante;
+        _angulosSuperiores = Opciones.ObtenerAngulosSuperiores(fabricante);
     }
 
     private void SincronizarNormativa()
@@ -302,9 +307,6 @@
         if (string.IsNullOrWhiteSpace(EstadoProyecto.Cargas.RoofType))
             EstadoProyecto.Cargas.RoofType = "None";
 
-        if (string.IsNullOrWhiteSpace(EstadoProyecto.Cargas.RoofAngle))
-            EstadoProyecto.Cargas.RoofAngle = "0°";
-
         if (string.IsNullOrWhiteSpace(EstadoProyecto.Cargas.ClaseExposicion) && _clasesExposicion.Any())
             EstadoProyecto.Cargas.ClaseExposicion = _clasesExposicion.First();
 
@@ -314,8 +316,30 @@
         if (string.IsNullOrWhiteSpace(EstadoProyecto.Cargas.SeismicUseGroup) && _seismicUseGroups.Any())
             EstadoProyecto.Cargas.SeismicUseGroup = _seismicUseGroups.First();
 
+        CargarAngulosSuperiores();
+
+        if (!EsTechoNoneSeleccionado()
+            && string.IsNullOrWhiteSpace(EstadoProyecto.Cargas.AnguloSuperior)
+            && _angulosSuperiores.Any())
+        {
+            EstadoProyecto.Cargas.AnguloSuperior = _angulosSuperiores.First();
+        }
+
         AplicarReglasTecho();
         _resumenNormativa = NormativaUi.ConstruirResumenVisual(_normativaActiva);
+    }
+
+    private void OnRoofTypeChanged()
+    {
+        if (!EsTechoNoneSeleccionado() && string.IsNullOrWhiteSpace(EstadoProyecto.Cargas.AnguloSuperior))
+        {
+            CargarAngulosSuperiores();
+
+            if (_angulosSuperiores.Any())
+                EstadoProyecto.Cargas.AnguloSuperior = _angulosSuperiores.First();
+        }
+
+        AplicarReglasTecho();
     }
 
     private void AplicarReglasTecho()
@@ -328,6 +352,7 @@
             EstadoProyecto.Cargas.RoofCentroid = 0;
             EstadoProyecto.Cargas.RoofProjectedArea = 0;
             EstadoProyecto.Cargas.RoofAngle = "0°";
+            EstadoProyecto.Cargas.AnguloSuperior = string.Empty;
         }
 
         StateHasChanged();
