@@ -231,6 +231,16 @@
         if (string.IsNullOrWhiteSpace(EstadoProyecto.Instalacion.TipoTecho))
             EstadoProyecto.Instalacion.TipoTecho = "Sin techo";
 
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Instalacion.TipoTecho) ||
+            EstadoProyecto.Instalacion.TipoTecho.Equals("Sin techo", StringComparison.OrdinalIgnoreCase))
+        {
+            EstadoProyecto.Cargas.RoofType = "None";
+        }
+        else if (string.IsNullOrWhiteSpace(EstadoProyecto.Cargas.RoofType) ||
+                 EstadoProyecto.Cargas.RoofType.Equals("None", StringComparison.OrdinalIgnoreCase))
+        {
+            EstadoProyecto.Cargas.RoofType = EstadoProyecto.Instalacion.TipoTecho;
+        }
         RecalcularYValidar();
     }
 
@@ -296,6 +306,23 @@
     private void OnTipoTechoChange(ChangeEventArgs e)
     {
         EstadoProyecto.Instalacion.TipoTecho = e.Value?.ToString() ?? "Sin techo";
+
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Instalacion.TipoTecho) ||
+            EstadoProyecto.Instalacion.TipoTecho.Equals("Sin techo", StringComparison.OrdinalIgnoreCase))
+        {
+            EstadoProyecto.Cargas.RoofType = "None";
+            EstadoProyecto.Cargas.RoofDeadLoad = 0;
+            EstadoProyecto.Cargas.RoofSnowLoad = 0;
+            EstadoProyecto.Cargas.RoofLiveLoad = 0;
+            EstadoProyecto.Cargas.RoofCentroid = 0;
+            EstadoProyecto.Cargas.RoofProjectedArea = 0;
+            EstadoProyecto.Cargas.RoofAngle = "0°";
+        }
+        else
+        {
+            EstadoProyecto.Cargas.RoofType = EstadoProyecto.Instalacion.TipoTecho;
+        }
+
         RecalcularYValidar();
     }
 
