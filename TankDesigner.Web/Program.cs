@@ -67,8 +67,8 @@ builder.Services
         options.Lockout.AllowedForNewUsers = true;
 
         // Mantengo el flujo actual sin exigir confirmación de email
-        options.SignIn.RequireConfirmedEmail = false;
-        options.SignIn.RequireConfirmedAccount = false;
+        options.SignIn.RequireConfirmedEmail = true;
+        options.SignIn.RequireConfirmedAccount = true;
     })
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
@@ -278,7 +278,7 @@ app.MapPost("/auth/logout", async (SignInManager<ApplicationUser> signInManager)
 
 // Archivos estáticos
 app.MapStaticAssets();
-
+app.UseAntiforgery();
 // Configuración de Blazor
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

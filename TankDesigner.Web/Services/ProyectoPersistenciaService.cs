@@ -127,6 +127,10 @@ namespace TankDesigner.Web.Services
             // Se deserializan todos los JSON al estado en memoria
             estado.Proyecto = JsonConvert.DeserializeObject<ProyectoGeneralModel>(entidad.ProyectoJson) ?? new();
             estado.Tanque = JsonConvert.DeserializeObject<TankModel>(entidad.TanqueJson) ?? new();
+            if (estado.Tanque.AlturaPanelBase < 1000)
+            {
+                estado.Tanque.AlturaPanelBase = 1200;
+            }
             estado.Cargas = JsonConvert.DeserializeObject<CargasModel>(entidad.CargasJson) ?? new();
             estado.Instalacion = JsonConvert.DeserializeObject<InstalacionModel>(entidad.InstalacionJson) ?? new();
             estado.Resultado = JsonConvert.DeserializeObject<ResultadoCalculoModel>(entidad.ResultadoJson) ?? new();

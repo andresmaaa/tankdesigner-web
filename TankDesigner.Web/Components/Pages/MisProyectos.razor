@@ -1381,7 +1381,7 @@
 
         try
         {
-            await JS.InvokeVoidAsync("eval", $"navigator.clipboard.writeText('{_enlaceInvitacionGenerado.Replace("'", "\\'")}')");
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", _enlaceInvitacionGenerado);
             _mensaje = "Enlace copiado al portapapeles.";
         }
         catch

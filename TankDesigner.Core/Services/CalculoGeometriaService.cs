@@ -58,9 +58,9 @@ namespace TankDesigner.Core.Services
             if (tanque == null || proyecto == null)
                 return 0;
 
-            PosiblePlanchaModel? plancha = ObtenerPlanchaReferencia(proyecto);
-            return plancha?.Altura ?? 0;
+            return 1200;
         }
+        
 
         // Calcula la altura total del tanque usando la altura base seleccionada.
         public double ObtenerAlturaTotal(TankModel tanque, ProyectoGeneralModel proyecto)

@@ -199,14 +199,11 @@ namespace TankDesigner.Core.Services
             html.Append("</div></div>");
 
             html.Append("<div class='grid2'>");
-            html.Append($"<div class='block'><div class='table-title'>{Html(Lang("Configuración y uniones", "Configuration and joints"))}</div><div class='multiline'>");
-            html.Append($"{Html(Lang("Configuración aplicada", "Applied configuration"))}: {Html(nombreConfiguracionMostrar)}<br/>");
-            html.Append($"{Html(Lang("Tornillos verticales", "Vertical bolts"))}: {ValorEntero(_resultado?.NumeroTornillosVerticales ?? 0)}<br/>");
-            html.Append($"{Html(Lang("Tornillos horizontales", "Horizontal bolts"))}: {ValorEntero(_resultado?.NumeroTornillosHorizontales ?? 0)}<br/>");
-            html.Append($"{Html(Lang("Tornillos horizontales cálculo", "Horizontal bolts for calculation"))}: {ValorEntero(_resultado?.NumeroTornillosHorizontalesCalculo ?? 0)}<br/>");
-            html.Append($"{Html(Lang("Diámetro agujero", "Hole diameter"))}: {(diametroAgujeroMostrar > 0 ? Formato(diametroAgujeroMostrar, "0.###") + " mm" : "—")}<br/>");
-            html.Append($"{Html(Lang("Tornillo aplicado", "Applied bolt"))}: {Html(nombreTornilloMostrar)}<br/>");
-            html.Append($"{Html(Lang("Diámetro tornillo", "Bolt diameter"))}: {(diametroTornilloMostrar > 0 ? Formato(diametroTornilloMostrar, "0.###") + " mm" : "—")}");
+            html.Append($"<div class='block'><div class='table-title'>{Html(Lang("Configuración y uniones", "Configuration and joints"))}</div><div class='multiline'>")
+            html.Append($"{Html(Lang("Configuraciones aplicadas", "Applied configurations"))}: {Html(ObtenerConfiguracionesAplicadasTexto())}<br/>")
+            html.Append($"{Html(Lang("Diámetro agujero", "Hole diameter"))}: {(diametroAgujeroMostrar > 0 ? Formato(diametroAgujeroMostrar, "0.###") + " mm" : "—")}<br/>")
+            html.Append($"{Html(Lang("Tornillo aplicado", "Applied bolt"))}: {Html(nombreTornilloMostrar)}<br/>")
+            html.Append($"{Html(Lang("Diámetro tornillo", "Bolt diameter"))}: {(diametroTornilloMostrar > 0 ? Formato(diametroTornilloMostrar, "0.###") + " mm" : "—")}")
             html.Append("</div></div>");
 
             html.Append($"<div class='block'><div class='table-title'>{Html(Lang("Rigidizador y starter ring", "Stiffener and starter ring"))}</div><div class='multiline'>");
@@ -2046,6 +2043,31 @@ td{{padding:9px;border:1px solid #EAF0F4;}}
             public string Posicion { get; set; } = "—";
             public string ModuloRequerido { get; set; } = "—";
             public string ModuloProvisto { get; set; } = "—";
+        }
+
+        private string ObtenerConfiguracionesAplicadasTexto()
+        {
+            if (_resultado == null)
+                return "—";
+
+            var nombres = _resultado.Anillos?
+                .Where(a => a != null && !string.IsNullOrWhiteSpace(a.ConfiguracionAplicada))
+                .Select(a => a.ConfiguracionAplicada!.Trim())
+                .Where(n => !string.IsNullOrWhiteSpace(n))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(n => n)
+                .ToList();
+
+            if (nombres != null && nombres.Count > 0)
+                return string.Join(", ", nombres);
+
+            if (_resultado.TieneSeleccionRealCalculada && !string.IsNullOrWhiteSpace(_resultado.NombreConfiguracionCalculada))
+                return _resultado.NombreConfiguracionCalculada.Trim();
+
+            if (!string.IsNullOrWhiteSpace(_resultado.NombreConfiguracion))
+                return _resultado.NombreConfiguracion.Trim();
+
+            return "—";
         }
 
     }

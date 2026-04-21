@@ -73,6 +73,8 @@
                     Entrar
                 </button>
             </div>
+
+            <input type="hidden" name="__RequestVerificationToken" value="@_token" />
         </form>
 
         <div class="auth-footer">
@@ -83,6 +85,17 @@
 </div>
 
 @code {
+
+    [Inject] private IAntiforgery Antiforgery { get; set; }
+    [Inject] private IHttpContextAccessor HttpContextAccessor { get; set; }
+
+    private string _token = "";
+
+    protected override void OnInitialized()
+    {
+        var tokens = Antiforgery.GetAndStoreTokens(HttpContextAccessor.HttpContext);
+        _token = tokens.RequestToken;
+    }
     private bool MostrarError()
     {
         var uri = new Uri(NavigationManager.Uri);

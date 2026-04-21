@@ -10,7 +10,7 @@
         public string Modelo { get; set; } = string.Empty;
         public double Diametro { get; set; }
         public double AlturaTotal { get; set; }
-        public double AlturaPanelBase { get; set; }
+        public double AlturaPanelBase { get; set; } = 1200;
         public int NumeroTotalChapas => ChapasPorAnillo * NumeroAnillos;
     }
 }
