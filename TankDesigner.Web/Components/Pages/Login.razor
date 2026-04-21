@@ -1,7 +1,11 @@
 ﻿@page "/login"
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Antiforgery
+@using Microsoft.AspNetCore.Http
 @attribute [AllowAnonymous]
 @inject NavigationManager NavigationManager
+@inject IAntiforgery Antiforgery
+@inject IHttpContextAccessor HttpContextAccessor
 
 <PageTitle>Iniciar sesión</PageTitle>
 
@@ -33,10 +37,11 @@
         }
 
         <form method="post" action="/auth/login">
-            <div class="auth-form">
-                <input type="hidden" name="returnUrl" value="@ObtenerReturnUrl()" />
-                <input type="hidden" name="token" value="@ObtenerTokenInvitacion()" />
+            <input type="hidden" name="__RequestVerificationToken" value="@_token" />
+            <input type="hidden" name="returnUrl" value="@ObtenerReturnUrl()" />
+            <input type="hidden" name="token" value="@ObtenerTokenInvitacion()" />
 
+            <div class="auth-form">
                 <div class="auth-field">
                     <label for="email">Correo electrónico</label>
                     <input id="email"
@@ -73,8 +78,6 @@
                     Entrar
                 </button>
             </div>
-
-            <input type="hidden" name="__RequestVerificationToken" value="@_token" />
         </form>
 
         <div class="auth-footer">
@@ -85,17 +88,18 @@
 </div>
 
 @code {
-
-    [Inject] private IAntiforgery Antiforgery { get; set; }
-    [Inject] private IHttpContextAccessor HttpContextAccessor { get; set; }
-
-    private string _token = "";
+    private string _token = string.Empty;
 
     protected override void OnInitialized()
     {
-        var tokens = Antiforgery.GetAndStoreTokens(HttpContextAccessor.HttpContext);
-        _token = tokens.RequestToken;
+        var httpContext = HttpContextAccessor.HttpContext;
+        if (httpContext is not null)
+        {
+            var tokens = Antiforgery.GetAndStoreTokens(httpContext);
+            _token = tokens.RequestToken ?? string.Empty;
+        }
     }
+
     private bool MostrarError()
     {
         var uri = new Uri(NavigationManager.Uri);

@@ -199,11 +199,11 @@ namespace TankDesigner.Core.Services
             html.Append("</div></div>");
 
             html.Append("<div class='grid2'>");
-            html.Append($"<div class='block'><div class='table-title'>{Html(Lang("Configuración y uniones", "Configuration and joints"))}</div><div class='multiline'>")
-            html.Append($"{Html(Lang("Configuraciones aplicadas", "Applied configurations"))}: {Html(ObtenerConfiguracionesAplicadasTexto())}<br/>")
-            html.Append($"{Html(Lang("Diámetro agujero", "Hole diameter"))}: {(diametroAgujeroMostrar > 0 ? Formato(diametroAgujeroMostrar, "0.###") + " mm" : "—")}<br/>")
-            html.Append($"{Html(Lang("Tornillo aplicado", "Applied bolt"))}: {Html(nombreTornilloMostrar)}<br/>")
-            html.Append($"{Html(Lang("Diámetro tornillo", "Bolt diameter"))}: {(diametroTornilloMostrar > 0 ? Formato(diametroTornilloMostrar, "0.###") + " mm" : "—")}")
+            html.Append($"<div class='block'><div class='table-title'>{Html(Lang("Configuración y uniones", "Configuration and joints"))}</div><div class='multiline'>");
+            html.Append($"{Html(Lang("Configuraciones aplicadas", "Applied configurations"))}: {Html(ObtenerConfiguracionesAplicadasTexto())}<br/>");
+            html.Append($"{Html(Lang("Diámetro agujero", "Hole diameter"))}: {(diametroAgujeroMostrar > 0 ? Formato(diametroAgujeroMostrar, "0.###") + " mm" : "—")}<br/>");
+            html.Append($"{Html(Lang("Tornillo aplicado", "Applied bolt"))}: {Html(nombreTornilloMostrar)}<br/>");
+            html.Append($"{Html(Lang("Diámetro tornillo", "Bolt diameter"))}: {(diametroTornilloMostrar > 0 ? Formato(diametroTornilloMostrar, "0.###") + " mm" : "—")}");
             html.Append("</div></div>");
 
             html.Append($"<div class='block'><div class='table-title'>{Html(Lang("Rigidizador y starter ring", "Stiffener and starter ring"))}</div><div class='multiline'>");
