@@ -1,6 +1,6 @@
 [
   {
-    "Fabricante": "BALMORAL",
+    "Fabricante": "PERMASTORE",
     "CalidadTornillo": "8.8",
     "FyTornillos": 640.0,
     "FuTornillos": 827.2,
@@ -18,7 +18,7 @@
     "Peso": [ 0.3 ]
   },
   {
-    "Fabricante": "BALMORAL",
+    "Fabricante": "PERMASTORE",
     "CalidadTornillo": "10.9",
     "FyTornillos": 900.0,
     "FuTornillos": 1000.0,
@@ -34,7 +34,7 @@
     "Peso": [ 0.2, 0.21, 0.23, 0.3, 0.31, 0.35, 0.31, 0.35, 0.35 ]
   },
   {
-    "Fabricante": "BALMORAL",
+    "Fabricante": "PERMASTORE",
     "CalidadTornillo": "12.9",
     "FyTornillos": 1080.0,
     "FuTornillos": 1200.0,
