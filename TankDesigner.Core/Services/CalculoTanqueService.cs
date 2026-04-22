@@ -29,32 +29,42 @@ namespace TankDesigner.Core.Services
         // Si no encuentra coincidencias, devuelve todas.
         public List<PosiblePlanchaModel> ObtenerPlanchasFiltradas(ProyectoGeneralModel proyecto)
         {
-            if (proyecto == null)
-                return new List<PosiblePlanchaModel>();
-
-            var planchas = ObtenerPlanchasDisponibles(proyecto);
-
-            if (planchas == null || planchas.Count == 0)
+            var todas = ObtenerPlanchasDisponibles(proyecto);
+            if (todas == null || !todas.Any())
                 return new List<PosiblePlanchaModel>();
 
             string materialBuscado = (proyecto.MaterialPrincipal ?? string.Empty)
                 .Trim()
                 .ToUpperInvariant();
 
-            if (string.IsNullOrWhiteSpace(materialBuscado))
-                return planchas;
-
-            var filtradas = planchas
+            // 🔹 1. Intentamos filtrar por material (como ahora)
+            var filtradas = todas
                 .Where(p =>
+                    (!string.IsNullOrWhiteSpace(p.Material) &&
+                     p.Material.ToUpperInvariant() == materialBuscado)
+                    ||
                     (!string.IsNullOrWhiteSpace(p.Acabado) &&
                      p.Acabado.ToUpperInvariant() == materialBuscado)
-                    ||
-                    (!string.IsNullOrWhiteSpace(p.Material) &&
-                     p.Material.ToUpperInvariant() == materialBuscado))
+                )
                 .ToList();
 
-            // Si no hay coincidencias, devuelve todas para no bloquear el cálculo.
-            return filtradas.Count > 0 ? filtradas : planchas;
+            // 🔹 2. Si no hay suficientes → usamos TODAS (fallback clave)
+            if (filtradas.Count == 0)
+            {
+                return todas
+                    .Where(p => p.Altura > 0 && p.Ancho > 0)
+                    .ToList();
+            }
+
+            // 🔹 3. Si hay pero son muy pocas → también fallback
+            if (filtradas.Count < 3)
+            {
+                return todas
+                    .Where(p => p.Altura > 0 && p.Ancho > 0)
+                    .ToList();
+            }
+
+            return filtradas;
         }
 
         // Devuelve las planchas que coinciden con una altura concreta de panel.
