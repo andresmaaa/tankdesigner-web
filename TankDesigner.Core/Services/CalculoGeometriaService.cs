@@ -31,32 +31,24 @@ namespace TankDesigner.Core.Services
         // Si no existe para el catálogo activo, usa una plancha válida de respaldo.
         private PosiblePlanchaModel? ObtenerPlanchaReferencia(ProyectoGeneralModel proyecto)
         {
-            List<PosiblePlanchaModel> planchas = _jsonCatalogService.ObtenerPlanchas(proyecto);
+            var planchas = ObtenerPlanchasValidas(proyecto);
 
-            if (planchas == null || planchas.Count == 0)
+            if (planchas.Count == 0)
                 return null;
 
-            // Prioridad 1: la clásica de Balmoral
             PosiblePlanchaModel? plancha1200 = planchas
-                .Where(p => p != null)
-                .FirstOrDefault(p => Math.Abs(p.Altura - 1200) < 0.01);
+                .Where(p => Math.Abs(p.Altura - AlturaPanelEstandarMm) < 0.001)
+                .OrderBy(p => p.Ancho)
+                .ThenBy(p => p.Fy)
+                .ThenBy(p => p.Fu)
+                .FirstOrDefault();
 
             if (plancha1200 != null)
                 return plancha1200;
 
-            // Prioridad 2: la altura completa más grande del catálogo
-            PosiblePlanchaModel? planchaBase = planchas
-                .Where(p => p != null && p.Altura > 700)
-                .OrderByDescending(p => p.Altura)
-                .FirstOrDefault();
-
-            if (planchaBase != null)
-                return planchaBase;
-
-            // Último recurso: la mayor altura disponible
             return planchas
-                .Where(p => p != null)
                 .OrderByDescending(p => p.Altura)
+                .ThenBy(p => p.Ancho)
                 .FirstOrDefault();
         }
 
@@ -73,7 +65,6 @@ namespace TankDesigner.Core.Services
 
             return plancha.Altura;
         }
-
 
         // Calcula la altura total del tanque usando la altura base seleccionada.
         public double ObtenerAlturaTotal(TankModel tanque, ProyectoGeneralModel proyecto)
