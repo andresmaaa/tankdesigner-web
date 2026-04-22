@@ -1,6 +1,6 @@
 [
   {
-    "Fabricante": "BALMORAL",
+    "Fabricante": "PERMASTORE",
     "Nombre": "S",
     "S": 75.202,
     "R": 1.0,
@@ -10,7 +10,7 @@
     "DiametroAgujero": 13.8
   },
   {
-    "Fabricante": "BALMORAL",
+    "Fabricante": "PERMASTORE",
     "Nombre": "D",
     "S": 37.551,
     "R": 1,
@@ -20,7 +20,7 @@
     "DiametroAgujero": 13.8
   },
   {
-    "Fabricante": "BALMORAL",
+    "Fabricante": "PERMASTORE",
     "Nombre": "TR",
     "S": 112.81,
     "R": 0.25,
@@ -30,7 +30,7 @@
     "DiametroAgujero": 14.0
   },
   {
-    "Fabricante": "BALMORAL",
+    "Fabricante": "PERMASTORE",
     "Nombre": "QR",
     "S": 112.81,
     "R": 0.2,
@@ -40,7 +40,7 @@
     "DiametroAgujero": 14.0
   },
   {
-    "Fabricante": "BALMORAL",
+    "Fabricante": "PERMASTORE",
     "Nombre": "FR",
     "S": 112.81,
     "R": 0.15,
@@ -50,7 +50,7 @@
     "DiametroAgujero": 14.0
   },
   {
-    "Fabricante": "BALMORAL",
+    "Fabricante": "PERMASTORE",
     "Nombre": "6R",
     "S": 112.81,
     "R": 0.1,
@@ -60,7 +60,7 @@
     "DiametroAgujero": 14.0
   },
   {
-    "Fabricante": "BALMORAL",
+    "Fabricante": "PERMASTORE",
     "Nombre": "7R",
     "S": 112.81,
     "R": 0.08,

@@ -1,6 +1,6 @@
 [
   {
-    "Fabricante": "BALMORAL",
+    "Fabricante": "PERMASTORE",
     "Material": "S235",
     "ModuloResistente": 3050.0,
     "Nombre": "50x50x5",
@@ -20,7 +20,7 @@
     "DistanciaTanque": 20.0
   },
   {
-    "Fabricante": "BALMORAL",
+    "Fabricante": "PERMASTORE",
     "Material": "S235",
     "ModuloResistente": 5290.0,
     "Nombre": "60x60x6",
@@ -40,7 +40,7 @@
     "DistanciaTanque": 30
   },
   {
-    "Fabricante": "BALMORAL",
+    "Fabricante": "PERMASTORE",
     "Material": "S235",
     "ModuloResistente": 8410.0,
     "Nombre": "70x70x7",
@@ -60,7 +60,7 @@
     "DistanciaTanque": 40
   },
   {
-    "Fabricante": "BALMORAL",
+    "Fabricante": "PERMASTORE",
     "Material": "S235",
     "ModuloResistente": 12600.0,
     "Nombre": "80x80x8",
@@ -80,7 +80,7 @@
     "DistanciaTanque": 50
   },
   {
-    "Fabricante": "BALMORAL",
+    "Fabricante": "PERMASTORE",
     "Material": "S235",
     "ModuloResistente": 16100.0,
     "Nombre": "90x90x9",
@@ -100,7 +100,7 @@
     "DistanciaTanque": 60
   },
   {
-    "Fabricante": "BALMORAL",
+    "Fabricante": "PERMASTORE",
     "Material": "S235",
     "ModuloResistente": 19770.0,
     "Nombre": "90x90x10",
@@ -120,7 +120,7 @@
     "DistanciaTanque": 60
   },
   {
-    "Fabricante": "BALMORAL",
+    "Fabricante": "PERMASTORE",
     "Material": "S235",
     "ModuloResistente": 24600.0,
     "Nombre": "100x100x10",

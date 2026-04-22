@@ -1,1 +1,2 @@
-[{ "Fabricante": "BALMORAL", "Altura": 577.0, "DistanciaF": 58.25 , "ShearKeysPerLine": 21, "F": [ 1.0, 2.0, 3.0, 4.0 ], "MaxShearKeysPerSheet": [ 84.0, 63.0, 42.0, 21.0 ] }, { "Fabricante": "BALMORAL",  "Altura": 577.0, "DistanciaF": 58.25 , "ShearKeysPerLine": 21,  "F": [ 1.0, 2.0, 3.0, 4.0 ], "MaxShearKeysPerSheet": [ 126.0, 105.0, 84.0, 63.0 ] }]
+[{ "Fabricante": "PERMASTORE", "Altura": 577.0, "DistanciaF": 58.25 , "ShearKeysPerLine": 21, "F": [ 1.0, 2.0, 3.0, 4.0 ], "MaxShearKeysPerSheet": [ 84.0, 63.0, 42.0, 21.0 ] }, 
+{ "Fabricante": "PERMASTORE",  "Altura": 577.0, "DistanciaF": 58.25 , "ShearKeysPerLine": 21,  "F": [ 1.0, 2.0, 3.0, 4.0 ], "MaxShearKeysPerSheet": [ 126.0, 105.0, 84.0, 63.0 ] }]
