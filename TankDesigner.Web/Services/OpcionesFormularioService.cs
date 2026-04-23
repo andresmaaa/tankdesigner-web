@@ -49,6 +49,9 @@ namespace TankDesigner.Web.Services
         public List<string> ObtenerModelosPorFabricante(string fabricante)
             => _catalogoJsonService.ObtenerModelosDisponibles(fabricante);
 
+        public List<string> ObtenerConfiguracionesPorFabricante(string fabricante)
+            => _catalogoJsonService.ObtenerModelosDisponibles(fabricante);
+
         public List<string> ObtenerRoofTypes()
             => new() { "None", "Conical", "Dome", "Flat" };
 

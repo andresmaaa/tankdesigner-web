@@ -40,7 +40,7 @@ namespace TankDesigner.Web.Services
 
             // Normaliza todos los datos de entrada
             NormalizarProyecto(proyecto);
-            NormalizarTanque(tanque);
+            NormalizarTanque(tanque, proyecto);
             NormalizarCargas(proyecto, tanque, cargas);
 
             // Recalcula geometría antes de calcular
@@ -129,7 +129,7 @@ namespace TankDesigner.Web.Services
         }
 
         // Normaliza datos del tanque y aplica valores por defecto
-        private static void NormalizarTanque(TankModel tanque)
+        private static void NormalizarTanque(TankModel tanque, ProyectoGeneralModel proyecto)
         {
             if (tanque.ChapasPorAnillo <= 0)
                 tanque.ChapasPorAnillo = 16;
@@ -154,6 +154,43 @@ namespace TankDesigner.Web.Services
                 tanque.DensidadLiquido = 1;
 
             tanque.Modelo = (tanque.Modelo ?? string.Empty).Trim();
+
+            tanque.AlturasAnillos ??= new List<double>();
+            tanque.MaterialesAnillos ??= new List<string>();
+            tanque.ConfiguracionesAnillos ??= new List<string>();
+
+            string materialDefault = !string.IsNullOrWhiteSpace(proyecto?.MaterialPrincipal)
+                ? proyecto.MaterialPrincipal.Trim()
+                : "S235";
+
+            while (tanque.AlturasAnillos.Count < tanque.NumeroAnillos)
+                tanque.AlturasAnillos.Add(tanque.AlturaPanelBase > 0 ? tanque.AlturaPanelBase : 1200);
+
+            while (tanque.MaterialesAnillos.Count < tanque.NumeroAnillos)
+                tanque.MaterialesAnillos.Add(materialDefault);
+
+            while (tanque.ConfiguracionesAnillos.Count < tanque.NumeroAnillos)
+                tanque.ConfiguracionesAnillos.Add(string.Empty);
+
+            if (tanque.AlturasAnillos.Count > tanque.NumeroAnillos)
+                tanque.AlturasAnillos = tanque.AlturasAnillos.Take(tanque.NumeroAnillos).ToList();
+
+            if (tanque.MaterialesAnillos.Count > tanque.NumeroAnillos)
+                tanque.MaterialesAnillos = tanque.MaterialesAnillos.Take(tanque.NumeroAnillos).ToList();
+
+            if (tanque.ConfiguracionesAnillos.Count > tanque.NumeroAnillos)
+                tanque.ConfiguracionesAnillos = tanque.ConfiguracionesAnillos.Take(tanque.NumeroAnillos).ToList();
+
+            for (int i = 0; i < tanque.NumeroAnillos; i++)
+            {
+                if (tanque.AlturasAnillos[i] <= 0)
+                    tanque.AlturasAnillos[i] = tanque.AlturaPanelBase > 0 ? tanque.AlturaPanelBase : 1200;
+
+                if (string.IsNullOrWhiteSpace(tanque.MaterialesAnillos[i]))
+                    tanque.MaterialesAnillos[i] = materialDefault;
+
+                tanque.ConfiguracionesAnillos[i] = (tanque.ConfiguracionesAnillos[i] ?? string.Empty).Trim();
+            }
         }
 
         // Normaliza cargas y sincroniza con el tanque si hace falta
