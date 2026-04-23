@@ -53,22 +53,22 @@ builder.Services.AddDbContextFactory<ApplicationDbContext>(
 builder.Services
     .AddIdentity<ApplicationUser, IdentityRole>(options =>
     {
-        // Reglas de contraseña más seguras
-        options.Password.RequireDigit = true;
-        options.Password.RequireLowercase = true;
-        options.Password.RequireUppercase = true;
-        options.Password.RequireNonAlphanumeric = true;
-        options.Password.RequiredLength = 10;
-        options.Password.RequiredUniqueChars = 4;
+        // Reglas simples para entorno de pruebas
+        options.Password.RequireDigit = false;
+        options.Password.RequireLowercase = false;
+        options.Password.RequireUppercase = false;
+        options.Password.RequireNonAlphanumeric = false;
+        options.Password.RequiredLength = 6;
+        options.Password.RequiredUniqueChars = 0;
 
         // Bloqueo por intentos fallidos
         options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
         options.Lockout.MaxFailedAccessAttempts = 5;
         options.Lockout.AllowedForNewUsers = true;
 
-        // Mantengo el flujo actual sin exigir confirmación de email
-        options.SignIn.RequireConfirmedEmail = true;
-        options.SignIn.RequireConfirmedAccount = true;
+        // En pruebas no exijo confirmación
+        options.SignIn.RequireConfirmedEmail = false;
+        options.SignIn.RequireConfirmedAccount = false;
     })
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
