@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Infrastructure;
+using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Threading.RateLimiting;
 using TankDesigner.Core.Services;
@@ -53,7 +54,7 @@ builder.Services.AddDbContextFactory<ApplicationDbContext>(
 builder.Services
     .AddIdentity<ApplicationUser, IdentityRole>(options =>
     {
-        // Reglas simples para entorno de pruebas
+        // Reglas simples y coherentes para pruebas y staging
         options.Password.RequireDigit = false;
         options.Password.RequireLowercase = false;
         options.Password.RequireUppercase = false;
@@ -66,7 +67,7 @@ builder.Services
         options.Lockout.MaxFailedAccessAttempts = 5;
         options.Lockout.AllowedForNewUsers = true;
 
-        // En pruebas no exijo confirmación
+        // No exijo confirmación de email en este flujo
         options.SignIn.RequireConfirmedEmail = false;
         options.SignIn.RequireConfirmedAccount = false;
     })
@@ -119,6 +120,14 @@ builder.Services.AddRateLimiter(options =>
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
     options.AddFixedWindowLimiter("login", limiterOptions =>
+    {
+        limiterOptions.PermitLimit = 5;
+        limiterOptions.Window = TimeSpan.FromMinutes(1);
+        limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        limiterOptions.QueueLimit = 0;
+    });
+
+    options.AddFixedWindowLimiter("register", limiterOptions =>
     {
         limiterOptions.PermitLimit = 5;
         limiterOptions.Window = TimeSpan.FromMinutes(1);
@@ -212,6 +221,135 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
 
+// Endpoint POST para registro manual
+app.MapPost("/auth/register", async (
+    HttpContext httpContext,
+    UserManager<ApplicationUser> userManager,
+    SignInManager<ApplicationUser> signInManager,
+    InvitacionesService invitacionesService) =>
+{
+    var form = await httpContext.Request.ReadFormAsync();
+
+    string nombreCompleto = (form["nombreCompleto"].ToString() ?? string.Empty).Trim();
+    string email = (form["email"].ToString() ?? string.Empty).Trim().ToLowerInvariant();
+    string password = form["password"].ToString() ?? string.Empty;
+    string confirmPassword = form["confirmPassword"].ToString() ?? string.Empty;
+    string token = (form["token"].ToString() ?? string.Empty).Trim();
+    string returnUrl = (form["returnUrl"].ToString() ?? string.Empty).Trim();
+
+    if (string.IsNullOrWhiteSpace(returnUrl) || !Uri.IsWellFormedUriString(returnUrl, UriKind.Relative))
+        returnUrl = "/mis-proyectos";
+
+    string BuildRegisterRedirect(string error)
+    {
+        string url = $"/register?error={Uri.EscapeDataString(error)}";
+
+        if (!string.IsNullOrWhiteSpace(token))
+            url += $"&token={Uri.EscapeDataString(token)}";
+
+        if (!string.IsNullOrWhiteSpace(email))
+            url += $"&email={Uri.EscapeDataString(email)}";
+
+        return url;
+    }
+
+    if (string.IsNullOrWhiteSpace(nombreCompleto))
+        return Results.Redirect(BuildRegisterRedirect("Debes indicar un nombre completo válido."));
+
+    if (string.IsNullOrWhiteSpace(email))
+        return Results.Redirect(BuildRegisterRedirect("Debes indicar un correo electrónico válido."));
+
+    if (!new EmailAddressAttribute().IsValid(email))
+        return Results.Redirect(BuildRegisterRedirect("El correo electrónico no es válido."));
+
+    if (string.IsNullOrWhiteSpace(password) || password.Length < 6)
+        return Results.Redirect(BuildRegisterRedirect("La contraseña debe tener al menos 6 caracteres."));
+
+    if (!string.Equals(password, confirmPassword, StringComparison.Ordinal))
+        return Results.Redirect(BuildRegisterRedirect("Las contraseñas no coinciden."));
+
+    var usuarioExistente = await userManager.FindByEmailAsync(email);
+
+    if (usuarioExistente != null)
+    {
+        bool tienePassword = await userManager.HasPasswordAsync(usuarioExistente);
+
+        if (tienePassword)
+            return Results.Redirect(BuildRegisterRedirect("Ya existe una cuenta registrada con ese correo electrónico."));
+
+        usuarioExistente.UserName = email;
+        usuarioExistente.Email = email;
+        usuarioExistente.NombreCompleto = nombreCompleto;
+        usuarioExistente.TelefonoContacto ??= string.Empty;
+        usuarioExistente.Cargo ??= string.Empty;
+        usuarioExistente.EmpresaNombre ??= string.Empty;
+        usuarioExistente.EmpresaDireccion ??= string.Empty;
+        usuarioExistente.EmpresaCiudad ??= string.Empty;
+        usuarioExistente.EmpresaProvincia ??= string.Empty;
+        usuarioExistente.EmpresaCodigoPostal ??= string.Empty;
+        usuarioExistente.EmpresaPais ??= string.Empty;
+        usuarioExistente.EmpresaWeb ??= string.Empty;
+        usuarioExistente.EmpresaIdentificacionFiscal ??= string.Empty;
+
+        var resultadoUpdate = await userManager.UpdateAsync(usuarioExistente);
+        if (!resultadoUpdate.Succeeded)
+            return Results.Redirect(BuildRegisterRedirect(string.Join(" ", resultadoUpdate.Errors.Select(e => e.Description))));
+
+        var resultadoPassword = await userManager.AddPasswordAsync(usuarioExistente, password);
+        if (!resultadoPassword.Succeeded)
+            return Results.Redirect(BuildRegisterRedirect(string.Join(" ", resultadoPassword.Errors.Select(e => e.Description))));
+
+        var rolesActuales = await userManager.GetRolesAsync(usuarioExistente);
+        if (!rolesActuales.Contains(RolesAplicacion.Usuario))
+        {
+            var resultadoRolExistente = await userManager.AddToRoleAsync(usuarioExistente, RolesAplicacion.Usuario);
+            if (!resultadoRolExistente.Succeeded)
+                return Results.Redirect(BuildRegisterRedirect("La cuenta existe, pero no se pudo asignar el rol Usuario."));
+        }
+
+        if (!string.IsNullOrWhiteSpace(token))
+            await invitacionesService.AplicarInvitacionPorTokenAsync(usuarioExistente, token);
+        else
+            await invitacionesService.AplicarInvitacionPendienteAsync(usuarioExistente);
+
+        await signInManager.SignInAsync(usuarioExistente, isPersistent: true);
+        return Results.Redirect(returnUrl);
+    }
+
+    var usuario = new ApplicationUser
+    {
+        UserName = email,
+        Email = email,
+        NombreCompleto = nombreCompleto,
+        TelefonoContacto = string.Empty,
+        Cargo = string.Empty,
+        EmpresaNombre = string.Empty,
+        EmpresaDireccion = string.Empty,
+        EmpresaCiudad = string.Empty,
+        EmpresaProvincia = string.Empty,
+        EmpresaCodigoPostal = string.Empty,
+        EmpresaPais = string.Empty,
+        EmpresaWeb = string.Empty,
+        EmpresaIdentificacionFiscal = string.Empty
+    };
+
+    var resultado = await userManager.CreateAsync(usuario, password);
+    if (!resultado.Succeeded)
+        return Results.Redirect(BuildRegisterRedirect(string.Join(" ", resultado.Errors.Select(e => e.Description))));
+
+    var resultadoRol = await userManager.AddToRoleAsync(usuario, RolesAplicacion.Usuario);
+    if (!resultadoRol.Succeeded)
+        return Results.Redirect(BuildRegisterRedirect("La cuenta se creó, pero no se pudo asignar el rol Usuario."));
+
+    if (!string.IsNullOrWhiteSpace(token))
+        await invitacionesService.AplicarInvitacionPorTokenAsync(usuario, token);
+    else
+        await invitacionesService.AplicarInvitacionPendienteAsync(usuario);
+
+    await signInManager.SignInAsync(usuario, isPersistent: true);
+    return Results.Redirect(returnUrl);
+}).RequireRateLimiting("register");
+
 // Endpoint POST para login manual
 app.MapPost("/auth/login", async (
     HttpContext httpContext,
@@ -222,9 +360,10 @@ app.MapPost("/auth/login", async (
     var form = await httpContext.Request.ReadFormAsync();
 
     // Datos del formulario
-    var email = form["email"].ToString().Trim();
-    var password = form["password"].ToString();
-    var returnUrl = form["returnUrl"].ToString();
+    string email = (form["email"].ToString() ?? string.Empty).Trim().ToLowerInvariant();
+    string password = form["password"].ToString() ?? string.Empty;
+    string returnUrl = form["returnUrl"].ToString() ?? string.Empty;
+    string token = (form["token"].ToString() ?? string.Empty).Trim();
 
     // Detecta si se marcó "recordarme"
     bool rememberMe = false;
@@ -252,10 +391,14 @@ app.MapPost("/auth/login", async (
 
     if (result.Succeeded)
     {
-        // Aplica invitaciones pendientes
         var usuario = await userManager.FindByEmailAsync(email);
         if (usuario is not null)
-            await invitacionesService.AplicarInvitacionPendienteAsync(usuario);
+        {
+            if (!string.IsNullOrWhiteSpace(token))
+                await invitacionesService.AplicarInvitacionPorTokenAsync(usuario, token);
+            else
+                await invitacionesService.AplicarInvitacionPendienteAsync(usuario);
+        }
 
         return Results.Redirect(returnUrl);
     }
@@ -265,7 +408,6 @@ app.MapPost("/auth/login", async (
         return Results.Redirect($"/login?locked=1&returnUrl={Uri.EscapeDataString(returnUrl)}");
     }
 
-    // Si falla, vuelve al login con error
     return Results.Redirect($"/login?error=1&returnUrl={Uri.EscapeDataString(returnUrl)}");
 }).RequireRateLimiting("login");
 
@@ -278,7 +420,7 @@ app.MapPost("/auth/logout", async (SignInManager<ApplicationUser> signInManager)
 
 // Archivos estáticos
 app.MapStaticAssets();
-app.UseAntiforgery();
+
 // Configuración de Blazor
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

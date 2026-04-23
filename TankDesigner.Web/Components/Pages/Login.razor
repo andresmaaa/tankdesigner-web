@@ -2,7 +2,9 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Antiforgery
 @using Microsoft.AspNetCore.Http
+
 @attribute [AllowAnonymous]
+
 @inject NavigationManager NavigationManager
 @inject IAntiforgery Antiforgery
 @inject IHttpContextAccessor HttpContextAccessor
@@ -13,7 +15,7 @@
     <div class="auth-card">
         <div class="auth-card__header">
             <h1>Iniciar sesión</h1>
-            <p>Accede para descargar informes y trabajar con tus proyectos guardados.</p>
+            <p>Accede para trabajar con tus proyectos guardados.</p>
         </div>
 
         @if (MostrarBloqueo())
@@ -69,7 +71,7 @@
 
                 <div class="auth-field auth-field--checkbox">
                     <label class="auth-checkbox">
-                        <input type="checkbox" name="rememberMe" value="true" />
+                        <input type="checkbox" name="rememberMe" value="true" checked />
                         <span>Mantener sesión iniciada</span>
                     </label>
                 </div>
