@@ -189,37 +189,65 @@ namespace TankDesigner.Core.Services
             if (resultado == null || resultado.Anillos == null || resultado.Anillos.Count == 0)
                 return;
 
-            var anilloValido = resultado.Anillos.FirstOrDefault(a => a != null && a.EsValido)
-                              ?? resultado.Anillos.FirstOrDefault(a => a != null);
-
-            if (anilloValido == null)
+            var anillosValidos = resultado.Anillos.Where(a => a != null).ToList();
+            if (anillosValidos.Count == 0)
                 return;
 
-            resultado.NombreConfiguracionCalculada = anilloValido.ConfiguracionAplicada ?? string.Empty;
-            resultado.NombreTornilloCalculado = anilloValido.TornilloAplicado ?? string.Empty;
-            resultado.DiametroTornilloCalculado = anilloValido.DiametroTornilloAplicado;
-            resultado.DiametroAgujeroCalculado = anilloValido.DiametroAgujero;
+            var configuraciones = anillosValidos
+                .Select(a => (a.ConfiguracionAplicada ?? string.Empty).Trim())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var tornillos = anillosValidos
+                .Select(a => (a.TornilloAplicado ?? string.Empty).Trim())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            resultado.NombreConfiguracionCalculada = configuraciones.Count == 1
+                ? configuraciones[0]
+                : (configuraciones.Count > 1 ? "Mixta por anillo" : string.Empty);
+
+            resultado.NombreTornilloCalculado = tornillos.Count == 1
+                ? tornillos[0]
+                : (tornillos.Count > 1 ? "Mixto por anillo" : string.Empty);
+
+            resultado.DiametroTornilloCalculado = anillosValidos
+                .Where(a => a.DiametroTornilloAplicado > 0)
+                .Select(a => a.DiametroTornilloAplicado)
+                .DefaultIfEmpty(0)
+                .Max();
+
+            resultado.DiametroAgujeroCalculado = anillosValidos
+                .Where(a => a.DiametroAgujero > 0)
+                .Select(a => a.DiametroAgujero)
+                .DefaultIfEmpty(0)
+                .Max();
+
             resultado.TieneSeleccionRealCalculada =
                 !string.IsNullOrWhiteSpace(resultado.NombreConfiguracionCalculada) ||
                 !string.IsNullOrWhiteSpace(resultado.NombreTornilloCalculado);
 
-            if (!string.IsNullOrWhiteSpace(anilloValido.ConfiguracionAplicada))
+            if (configuraciones.Count == 1)
             {
                 resultado.TieneConfiguracion = true;
-                resultado.NombreConfiguracion = anilloValido.ConfiguracionAplicada;
+                resultado.NombreConfiguracion = configuraciones[0];
             }
 
-            if (!string.IsNullOrWhiteSpace(anilloValido.TornilloAplicado))
+            if (tornillos.Count == 1)
             {
                 resultado.TieneTornilloBase = true;
-                resultado.NombreTornilloBase = anilloValido.TornilloAplicado;
-                resultado.DiametroTornilloBase = anilloValido.DiametroTornilloAplicado;
+                resultado.NombreTornilloBase = tornillos[0];
+                resultado.DiametroTornilloBase = anillosValidos
+                    .Where(a => a.DiametroTornilloAplicado > 0)
+                    .Select(a => a.DiametroTornilloAplicado)
+                    .DefaultIfEmpty(0)
+                    .Max();
             }
 
-            if (anilloValido.DiametroAgujero > 0)
-            {
-                resultado.DiametroAgujero = anilloValido.DiametroAgujero;
-            }
+            if (resultado.DiametroAgujeroCalculado > 0)
+                resultado.DiametroAgujero = resultado.DiametroAgujeroCalculado;
         }
 
         private void AplicarTornilleria(

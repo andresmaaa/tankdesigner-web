@@ -16,11 +16,9 @@ namespace TankDesigner.Core.Services
         // Construye el input básico del cálculo usando proyecto y tanque.
         public CalculoTanqueInputModel? Construir(ProyectoGeneralModel proyecto, TankModel tanque)
         {
-            // Si falta información básica, no se puede construir.
             if (proyecto == null || tanque == null)
                 return null;
 
-            // Si el valor ya existe en el tanque se usa, si no se calcula.
             double alturaPanelBase = tanque.AlturaPanelBase > 0
                 ? tanque.AlturaPanelBase
                 : _calculoGeometriaService.ObtenerAlturaPanelBase(tanque, proyecto);
@@ -33,7 +31,16 @@ namespace TankDesigner.Core.Services
                 ? tanque.Diametro
                 : _calculoGeometriaService.ObtenerDiametro(tanque, proyecto);
 
-            // Crea el modelo de entrada con los datos principales.
+            List<double> alturasAnillos = NormalizarAlturasAnillos(tanque, alturaPanelBase);
+            List<string> materialesAnillos = NormalizarTextosAnillos(
+                tanque.MaterialesAnillos,
+                tanque.NumeroAnillos,
+                (proyecto.MaterialPrincipal ?? string.Empty).Trim());
+            List<string> configuracionesAnillos = NormalizarTextosAnillos(
+                tanque.ConfiguracionesAnillos,
+                tanque.NumeroAnillos,
+                string.Empty);
+
             return new CalculoTanqueInputModel
             {
                 Fabricante = (proyecto.Fabricante ?? string.Empty).Trim(),
@@ -51,7 +58,11 @@ namespace TankDesigner.Core.Services
                 AlturaTotal = alturaTotal,
                 AlturaPanelBase = alturaPanelBase,
 
-                Modelo = (tanque.Modelo ?? string.Empty).Trim()
+                Modelo = (tanque.Modelo ?? string.Empty).Trim(),
+                AlturasAnillos = alturasAnillos,
+                MaterialesAnillos = materialesAnillos,
+                ConfiguracionesAnillos = configuracionesAnillos,
+                Anillos = CrearAnillosEntrada(alturasAnillos, materialesAnillos, configuracionesAnillos)
             };
         }
 
@@ -61,17 +72,14 @@ namespace TankDesigner.Core.Services
             TankModel tanque,
             CargasModel cargas)
         {
-            // Parte del input base.
             var inputBase = Construir(proyecto, tanque);
 
             if (inputBase == null)
                 return null;
 
-            // Si no hay cargas, devuelve solo el input base.
             if (cargas == null)
                 return inputBase;
 
-            // Añade datos de cargas al input.
             inputBase.NormativaAplicadaCargas = (cargas.NormativaAplicada ?? string.Empty).Trim();
 
             bool techoNone = string.IsNullOrWhiteSpace(cargas.RoofType)
@@ -98,11 +106,64 @@ namespace TankDesigner.Core.Services
 
             inputBase.ObservacionesCargas = (cargas.Observaciones ?? string.Empty).Trim();
 
-            // Si la densidad no viene en tanque pero sí en cargas, la usa.
             if (inputBase.DensidadLiquido <= 0 && cargas.DensidadLiquido > 0)
                 inputBase.DensidadLiquido = cargas.DensidadLiquido;
 
             return inputBase;
+        }
+
+        private static List<double> NormalizarAlturasAnillos(TankModel tanque, double alturaPanelBase)
+        {
+            var lista = new List<double>();
+
+            if (tanque?.AlturasAnillos != null)
+                lista.AddRange(tanque.AlturasAnillos.Where(a => a > 0));
+
+            while (lista.Count < Math.Max(0, tanque?.NumeroAnillos ?? 0))
+                lista.Add(alturaPanelBase);
+
+            if ((tanque?.NumeroAnillos ?? 0) > 0 && lista.Count > tanque!.NumeroAnillos)
+                lista = lista.Take(tanque.NumeroAnillos).ToList();
+
+            return lista;
+        }
+
+        private static List<string> NormalizarTextosAnillos(List<string>? listaOriginal, int numeroAnillos, string fallback)
+        {
+            var lista = new List<string>();
+
+            if (listaOriginal != null)
+                lista.AddRange(listaOriginal.Select(x => (x ?? string.Empty).Trim()));
+
+            while (lista.Count < Math.Max(0, numeroAnillos))
+                lista.Add(fallback);
+
+            if (numeroAnillos > 0 && lista.Count > numeroAnillos)
+                lista = lista.Take(numeroAnillos).ToList();
+
+            return lista;
+        }
+
+        private static List<AnilloCalculoModel> CrearAnillosEntrada(
+            List<double> alturasAnillos,
+            List<string> materialesAnillos,
+            List<string> configuracionesAnillos)
+        {
+            var lista = new List<AnilloCalculoModel>();
+            int total = new[] { alturasAnillos?.Count ?? 0, materialesAnillos?.Count ?? 0, configuracionesAnillos?.Count ?? 0 }.Max();
+
+            for (int i = 0; i < total; i++)
+            {
+                lista.Add(new AnilloCalculoModel
+                {
+                    NumeroAnillo = i + 1,
+                    AlturaMm = alturasAnillos != null && i < alturasAnillos.Count ? alturasAnillos[i] : 0,
+                    Material = materialesAnillos != null && i < materialesAnillos.Count ? materialesAnillos[i] : string.Empty,
+                    Configuracion = configuracionesAnillos != null && i < configuracionesAnillos.Count ? configuracionesAnillos[i] : string.Empty
+                });
+            }
+
+            return lista;
         }
     }
 }

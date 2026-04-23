@@ -14,7 +14,6 @@ namespace TankDesigner.Core.Services
             _jsonCatalogService = new JsonCatalogService();
         }
 
-        // Devuelve todas las planchas disponibles del fabricante.
         public List<PosiblePlanchaModel> ObtenerPlanchasDisponibles(ProyectoGeneralModel proyecto)
         {
             if (proyecto == null || string.IsNullOrWhiteSpace(proyecto.Fabricante))
@@ -25,8 +24,6 @@ namespace TankDesigner.Core.Services
                 .ToList();
         }
 
-        // Filtra las planchas según el material seleccionado en el proyecto.
-        // Si no encuentra coincidencias, devuelve todas.
         public List<PosiblePlanchaModel> ObtenerPlanchasFiltradas(ProyectoGeneralModel proyecto)
         {
             var todas = ObtenerPlanchasDisponibles(proyecto);
@@ -37,27 +34,13 @@ namespace TankDesigner.Core.Services
                 .Trim()
                 .ToUpperInvariant();
 
-            // 🔹 1. Intentamos filtrar por material (como ahora)
             var filtradas = todas
                 .Where(p =>
-                    (!string.IsNullOrWhiteSpace(p.Material) &&
-                     p.Material.ToUpperInvariant() == materialBuscado)
-                    ||
-                    (!string.IsNullOrWhiteSpace(p.Acabado) &&
-                     p.Acabado.ToUpperInvariant() == materialBuscado)
-                )
+                    (!string.IsNullOrWhiteSpace(p.Material) && p.Material.ToUpperInvariant() == materialBuscado)
+                    || (!string.IsNullOrWhiteSpace(p.Acabado) && p.Acabado.ToUpperInvariant() == materialBuscado))
                 .ToList();
 
-            // 🔹 2. Si no hay suficientes → usamos TODAS (fallback clave)
-            if (filtradas.Count == 0)
-            {
-                return todas
-                    .Where(p => p.Altura > 0 && p.Ancho > 0)
-                    .ToList();
-            }
-
-            // 🔹 3. Si hay pero son muy pocas → también fallback
-            if (filtradas.Count < 3)
+            if (filtradas.Count == 0 || filtradas.Count < 3)
             {
                 return todas
                     .Where(p => p.Altura > 0 && p.Ancho > 0)
@@ -67,21 +50,14 @@ namespace TankDesigner.Core.Services
             return filtradas;
         }
 
-        // Devuelve las planchas que coinciden con una altura concreta de panel.
-        public List<PosiblePlanchaModel> ObtenerPlanchasPorAltura(
-            ProyectoGeneralModel proyecto,
-            double alturaPanel)
+        public List<PosiblePlanchaModel> ObtenerPlanchasPorAltura(ProyectoGeneralModel proyecto, double alturaPanel)
         {
             return ObtenerPlanchasFiltradas(proyecto)
                 .Where(p => p != null && p.Altura == alturaPanel)
                 .ToList();
         }
 
-        // Ordena las planchas por resistencia (Fy y Fu).
-        // Se usa para elegir primero las opciones más adecuadas.
-        public List<PosiblePlanchaModel> ObtenerPlanchasOrdenadasPorResistencia(
-            ProyectoGeneralModel proyecto,
-            double alturaPanel)
+        public List<PosiblePlanchaModel> ObtenerPlanchasOrdenadasPorResistencia(ProyectoGeneralModel proyecto, double alturaPanel)
         {
             return ObtenerPlanchasPorAltura(proyecto, alturaPanel)
                 .Where(p => p != null && p.Espesor != null && p.Espesor.Count > 0)
@@ -90,7 +66,6 @@ namespace TankDesigner.Core.Services
                 .ToList();
         }
 
-        // Devuelve todas las configuraciones disponibles del fabricante.
         public List<PosibleConfiguracionModel> ObtenerConfiguracionesDisponibles(ProyectoGeneralModel proyecto)
         {
             if (proyecto == null || string.IsNullOrWhiteSpace(proyecto.Fabricante))
@@ -101,7 +76,6 @@ namespace TankDesigner.Core.Services
                 .ToList();
         }
 
-        // Ordena las configuraciones según sus parámetros técnicos.
         public List<PosibleConfiguracionModel> ObtenerConfiguracionesOrdenadas(ProyectoGeneralModel proyecto)
         {
             return ObtenerConfiguracionesDisponibles(proyecto)
@@ -113,7 +87,6 @@ namespace TankDesigner.Core.Services
                 .ToList();
         }
 
-        // Devuelve todos los tornillos disponibles del fabricante.
         public List<PosibleTornilloModel> ObtenerTornillosDisponibles(ProyectoGeneralModel proyecto)
         {
             if (proyecto == null || string.IsNullOrWhiteSpace(proyecto.Fabricante))
@@ -124,7 +97,6 @@ namespace TankDesigner.Core.Services
                 .ToList();
         }
 
-        // Ordena los tornillos por diámetro y propiedades mecánicas.
         public List<PosibleTornilloModel> ObtenerTornillosOrdenados(ProyectoGeneralModel proyecto)
         {
             return ObtenerTornillosDisponibles(proyecto)
@@ -134,17 +106,70 @@ namespace TankDesigner.Core.Services
                 .ToList();
         }
 
-        // Devuelve planchas candidatas ordenadas para el cálculo.
-        // Se tienen en cuenta resistencia y espesores disponibles.
-        public List<PosiblePlanchaModel> ObtenerPlanchasCandidatasOrdenadas(
-            ProyectoGeneralModel proyecto,
-            double alturaPanel)
+        public List<PosiblePlanchaModel> ObtenerPlanchasCandidatasOrdenadas(ProyectoGeneralModel proyecto, double alturaPanel)
         {
             return ObtenerPlanchasPorAltura(proyecto, alturaPanel)
                 .Where(p => p != null && p.Espesor != null && p.Espesor.Count > 0)
                 .OrderBy(p => p.Fy)
                 .ThenBy(p => p.Fu)
                 .ThenBy(p => p.Espesor.Min())
+                .ToList();
+        }
+
+        // Devuelve planchas candidatas ajustadas al material y altura reales de un anillo.
+        public List<PosiblePlanchaModel> ObtenerPlanchasCandidatasOrdenadasPorAnillo(
+            ProyectoGeneralModel proyecto,
+            double alturaPanel,
+            string materialAnillo)
+        {
+            if (proyecto == null)
+                return new List<PosiblePlanchaModel>();
+
+            var proyectoAnillo = new ProyectoGeneralModel
+            {
+                Fabricante = proyecto.Fabricante,
+                MaterialPrincipal = string.IsNullOrWhiteSpace(materialAnillo)
+                    ? proyecto.MaterialPrincipal
+                    : materialAnillo
+            };
+
+            var exactas = ObtenerPlanchasPorAltura(proyectoAnillo, alturaPanel)
+                .Where(p => p != null && p.Espesor != null && p.Espesor.Count > 0)
+                .OrderBy(p => p.Fy)
+                .ThenBy(p => p.Fu)
+                .ThenBy(p => p.Espesor.Min())
+                .ToList();
+
+            if (exactas.Count > 0)
+                return exactas;
+
+            return ObtenerPlanchasFiltradas(proyectoAnillo)
+                .Where(p => p != null && p.Altura > 0 && p.Espesor != null && p.Espesor.Count > 0)
+                .OrderBy(p => Math.Abs(p.Altura - alturaPanel))
+                .ThenBy(p => p.Fy)
+                .ThenBy(p => p.Fu)
+                .ThenBy(p => p.Espesor.Min())
+                .ToList();
+        }
+
+        public List<PosibleConfiguracionModel> ObtenerConfiguracionesOrdenadasPorAnillo(
+            ProyectoGeneralModel proyecto,
+            string configuracionPreferida)
+        {
+            var configuraciones = ObtenerConfiguracionesOrdenadas(proyecto);
+
+            if (string.IsNullOrWhiteSpace(configuracionPreferida))
+                return configuraciones;
+
+            string nombre = configuracionPreferida.Trim();
+
+            return configuraciones
+                .OrderBy(c => !string.IsNullOrWhiteSpace(c.Nombre) && c.Nombre.Trim().Equals(nombre, StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+                .ThenBy(c => c.S)
+                .ThenByDescending(c => c.R)
+                .ThenBy(c => c.NumeroTornillosUnionVertical)
+                .ThenBy(c => c.NumeroTornillosUnionHorizontalCalculo)
+                .ThenBy(c => c.DiametroAgujero)
                 .ToList();
         }
     }

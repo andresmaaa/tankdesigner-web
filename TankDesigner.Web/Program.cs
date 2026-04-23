@@ -67,14 +67,12 @@ builder.Services
         options.Lockout.MaxFailedAccessAttempts = 5;
         options.Lockout.AllowedForNewUsers = true;
 
-        // De momento sin confirmación de email obligatoria
-        // hasta que el sistema de correo esté totalmente cerrado
+        // Sin confirmación de email obligatoria de momento
         options.SignIn.RequireConfirmedEmail = false;
         options.SignIn.RequireConfirmedAccount = false;
     })
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
-    
 
 // Ruta donde se guardan las claves de DataProtection
 var dataProtectionPath = Environment.GetEnvironmentVariable("DATA_PROTECTION_KEYS_PATH");
@@ -264,8 +262,11 @@ app.MapPost("/auth/register", async (
     if (!new EmailAddressAttribute().IsValid(email))
         return Results.Redirect(BuildRegisterRedirect("El correo electrónico no es válido."));
 
-    if (string.IsNullOrWhiteSpace(password) || password.Length < 6)
-        return Results.Redirect(BuildRegisterRedirect("La contraseña debe tener al menos 6 caracteres."));
+    if (string.IsNullOrWhiteSpace(password))
+        return Results.Redirect(BuildRegisterRedirect("Debes indicar una contraseña válida."));
+
+    if (password.Length < 8)
+        return Results.Redirect(BuildRegisterRedirect("La contraseña debe tener al menos 8 caracteres."));
 
     if (!string.Equals(password, confirmPassword, StringComparison.Ordinal))
         return Results.Redirect(BuildRegisterRedirect("Las contraseñas no coinciden."));
@@ -361,13 +362,11 @@ app.MapPost("/auth/login", async (
 {
     var form = await httpContext.Request.ReadFormAsync();
 
-    // Datos del formulario
     string email = (form["email"].ToString() ?? string.Empty).Trim().ToLowerInvariant();
     string password = form["password"].ToString() ?? string.Empty;
     string returnUrl = form["returnUrl"].ToString() ?? string.Empty;
     string token = (form["token"].ToString() ?? string.Empty).Trim();
 
-    // Detecta si se marcó "recordarme"
     bool rememberMe = false;
     var rememberRaw = form["rememberMe"].ToString();
     if (!string.IsNullOrWhiteSpace(rememberRaw))
@@ -376,15 +375,12 @@ app.MapPost("/auth/login", async (
                      || rememberRaw.Equals("on", StringComparison.OrdinalIgnoreCase);
     }
 
-    // URL por defecto
     if (string.IsNullOrWhiteSpace(returnUrl))
         returnUrl = "/mis-proyectos";
 
-    // Seguridad: evita redirecciones externas
     if (!Uri.IsWellFormedUriString(returnUrl, UriKind.Relative))
         returnUrl = "/mis-proyectos";
 
-    // Login con Identity
     var result = await signInManager.PasswordSignInAsync(
         email,
         password,
@@ -406,9 +402,7 @@ app.MapPost("/auth/login", async (
     }
 
     if (result.IsLockedOut)
-    {
         return Results.Redirect($"/login?locked=1&returnUrl={Uri.EscapeDataString(returnUrl)}");
-    }
 
     return Results.Redirect($"/login?error=1&returnUrl={Uri.EscapeDataString(returnUrl)}");
 }).RequireRateLimiting("login");

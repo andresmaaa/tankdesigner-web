@@ -35,77 +35,90 @@ namespace TankDesigner.Core.Services
         {
             var resultados = new List<ResultadoAnilloModel>();
 
-            // Si faltan datos básicos, devolvemos lista vacía.
             if (input == null)
                 return resultados;
 
-            if (input.NumeroAnillos <= 0 || input.AlturaPanelBase <= 0 || input.Diametro <= 0)
+            if (input.NumeroAnillos <= 0 || input.Diametro <= 0)
                 return resultados;
 
-            // Creamos un proyecto simple para filtrar los catálogos.
-            ProyectoGeneralModel proyecto = new ProyectoGeneralModel
+            List<double> alturasAnillos = ObtenerAlturasAnillos(input);
+            double alturaTotalMm = alturasAnillos.Where(a => a > 0).Sum();
+            if (alturaTotalMm <= 0)
+                alturaTotalMm = input.AlturaTotal;
+
+            if (alturaTotalMm <= 0)
+                return resultados;
+
+            ProyectoGeneralModel proyectoBase = new ProyectoGeneralModel
             {
                 Fabricante = input.Fabricante,
                 MaterialPrincipal = input.MaterialPrincipal
             };
 
-            // Obtenemos las planchas candidatas para la altura indicada.
-            List<PosiblePlanchaModel> planchasCandidatas = _calculoTanqueService
-                .ObtenerPlanchasCandidatasOrdenadas(proyecto, input.AlturaPanelBase);
-
-            if (planchasCandidatas == null || planchasCandidatas.Count == 0)
-                return resultados;
-
-            // Obtenemos las configuraciones disponibles.
-            List<PosibleConfiguracionModel> configuraciones = _calculoTanqueService
-                .ObtenerConfiguracionesOrdenadas(proyecto)
+            List<PosibleConfiguracionModel> configuracionesBase = _calculoTanqueService
+                .ObtenerConfiguracionesOrdenadas(proyectoBase)
                 .Where(c => c != null)
                 .ToList();
 
-            if (configuraciones.Count == 0)
+            if (configuracionesBase.Count == 0)
                 return resultados;
 
-            double alturaPanelMm = input.AlturaPanelBase;
-            double alturaTotalMm = input.AlturaTotal;
             double diametroMm = input.Diametro;
             double diametroM = diametroMm / 1000.0;
             double radioMm = diametroMm / 2.0;
+            double cotaInferiorAcumulada = 0;
 
-            // Recorremos todos los anillos del tanque.
             for (int i = 0; i < input.NumeroAnillos; i++)
             {
-                double alturaInferiorMm = i * alturaPanelMm;
-                double alturaSuperiorMm = (i + 1) * alturaPanelMm;
+                double alturaAnilloMm = ObtenerAlturaAnillo(input, i, alturasAnillos);
+                double alturaInferiorMm = cotaInferiorAcumulada;
+                double alturaSuperiorMm = alturaInferiorMm + alturaAnilloMm;
                 double alturaCentroMm = (alturaInferiorMm + alturaSuperiorMm) / 2.0;
+                cotaInferiorAcumulada = alturaSuperiorMm;
 
-                // Calculamos la altura de líquido sobre el centro del anillo.
                 double alturaLiquidoSobreCentroMm = alturaTotalMm - alturaCentroMm;
                 if (alturaLiquidoSobreCentroMm < 0)
                     alturaLiquidoSobreCentroMm = 0;
 
                 double headM = alturaLiquidoSobreCentroMm / 1000.0;
+                double presionKPa = _formulaPresionService.CalcularPresionEnAltura(input.DensidadLiquido, alturaLiquidoSobreCentroMm);
 
-                // Calculamos la presión en esa altura.
-                double presionKPa = _formulaPresionService.CalcularPresionEnAltura(
-                    input.DensidadLiquido,
-                    alturaLiquidoSobreCentroMm);
+                string materialAnillo = ObtenerMaterialAnillo(input, i);
+                string configuracionPreferida = ObtenerConfiguracionAnillo(input, i);
 
-                // Buscamos la mejor combinación posible para el anillo.
-                ResultadoAnilloModel mejorResultado = ResolverAnilloConPrioridadAwwa(
-                    input,
-                    normativa,
-                    configuraciones,
-                    planchasCandidatas,
-                    i + 1,
-                    alturaInferiorMm,
-                    alturaSuperiorMm,
-                    alturaCentroMm,
-                    headM,
-                    presionKPa,
-                    diametroM,
-                    radioMm);
+                var proyectoAnillo = new ProyectoGeneralModel
+                {
+                    Fabricante = input.Fabricante,
+                    MaterialPrincipal = materialAnillo
+                };
 
-                // Si no se pudo resolver, guardamos un resultado inválido.
+                List<PosiblePlanchaModel> planchasCandidatas = _calculoTanqueService
+                    .ObtenerPlanchasCandidatasOrdenadasPorAnillo(proyectoAnillo, alturaAnilloMm, materialAnillo);
+
+                List<PosibleConfiguracionModel> configuraciones = _calculoTanqueService
+                    .ObtenerConfiguracionesOrdenadasPorAnillo(proyectoBase, configuracionPreferida)
+                    .Where(c => c != null)
+                    .ToList();
+
+                ResultadoAnilloModel mejorResultado = null;
+
+                if (planchasCandidatas.Count > 0 && configuraciones.Count > 0)
+                {
+                    mejorResultado = ResolverAnilloConPrioridadAwwa(
+                        input,
+                        normativa,
+                        configuraciones,
+                        planchasCandidatas,
+                        i + 1,
+                        alturaInferiorMm,
+                        alturaSuperiorMm,
+                        alturaCentroMm,
+                        headM,
+                        presionKPa,
+                        diametroM,
+                        radioMm);
+                }
+
                 if (mejorResultado == null)
                 {
                     mejorResultado = new ResultadoAnilloModel
@@ -119,24 +132,20 @@ namespace TankDesigner.Core.Services
                         EspesorSeleccionado = 0,
                         EsValido = false,
                         Mensaje = "No se pudo calcular el anillo",
-                        TipoFallo = "DESCONOCIDO"
+                        TipoFallo = "DESCONOCIDO",
+                        ConfiguracionAplicada = configuracionPreferida,
+                        MaterialAplicado = materialAnillo
                     };
+                }
+                else
+                {
+                    mejorResultado.MaterialAplicado = materialAnillo;
                 }
 
                 resultados.Add(mejorResultado);
             }
 
-            // Una vez calculados todos, se aplica la regla de monotonicidad.
-            AplicarReglaMonotonia(
-                input,
-                normativa,
-                configuraciones,
-                planchasCandidatas,
-                resultados,
-                diametroM,
-                radioMm,
-                alturaPanelMm,
-                alturaTotalMm);
+            AplicarReglaMonotonia(input, normativa, configuracionesBase, resultados, diametroM, radioMm, alturaTotalMm);
 
             return resultados;
         }
@@ -596,12 +605,10 @@ namespace TankDesigner.Core.Services
         private void AplicarReglaMonotonia(
             CalculoTanqueInputModel input,
             string normativa,
-            List<PosibleConfiguracionModel> configuraciones,
-            List<PosiblePlanchaModel> planchasCandidatas,
+            List<PosibleConfiguracionModel> configuracionesBase,
             List<ResultadoAnilloModel> resultados,
             double diametroM,
             double radioMm,
-            double alturaPanelMm,
             double alturaTotalMm)
         {
             // La monotonicidad obliga a que un anillo inferior no sea "peor"
@@ -639,15 +646,13 @@ namespace TankDesigner.Core.Services
                     ResultadoAnilloModel recalculado = RecalcularAnilloPorMonotonia(
                         input,
                         normativa,
-                        configuraciones,
-                        planchasCandidatas,
+                        configuracionesBase,
                         anilloInferior,
                         i,
                         anilloSuperior.EspesorSeleccionado,
                         anilloSuperior.FyPlancha,
                         diametroM,
                         radioMm,
-                        alturaPanelMm,
                         alturaTotalMm);
 
                     if (recalculado != null &&
@@ -709,20 +714,19 @@ namespace TankDesigner.Core.Services
         private ResultadoAnilloModel RecalcularAnilloPorMonotonia(
             CalculoTanqueInputModel input,
             string normativa,
-            List<PosibleConfiguracionModel> configuraciones,
-            List<PosiblePlanchaModel> planchasCandidatas,
+            List<PosibleConfiguracionModel> configuracionesBase,
             ResultadoAnilloModel resultadoOriginal,
             int indiceAnillo,
             double espesorMinimoMonotonia,
             double fyMinimoMonotonia,
             double diametroM,
             double radioMm,
-            double alturaPanelMm,
             double alturaTotalMm)
         {
-            // Recalcula el anillo usando mínimos exigidos por monotonicidad.
-            double alturaInferiorMm = indiceAnillo * alturaPanelMm;
-            double alturaSuperiorMm = (indiceAnillo + 1) * alturaPanelMm;
+            List<double> alturasAnillos = ObtenerAlturasAnillos(input);
+            double alturaAnilloMm = ObtenerAlturaAnillo(input, indiceAnillo, alturasAnillos);
+            double alturaInferiorMm = alturasAnillos.Take(indiceAnillo).Where(a => a > 0).Sum();
+            double alturaSuperiorMm = alturaInferiorMm + alturaAnilloMm;
             double alturaCentroMm = (alturaInferiorMm + alturaSuperiorMm) / 2.0;
 
             double alturaLiquidoSobreCentroMm = alturaTotalMm - alturaCentroMm;
@@ -731,11 +735,27 @@ namespace TankDesigner.Core.Services
 
             double headM = alturaLiquidoSobreCentroMm / 1000.0;
 
-            double presionKPa = _formulaPresionService.CalcularPresionEnAltura(
-                input.DensidadLiquido,
-                alturaLiquidoSobreCentroMm);
+            double presionKPa = _formulaPresionService.CalcularPresionEnAltura(input.DensidadLiquido, alturaLiquidoSobreCentroMm);
 
-            // Primero intentamos respetar la configuración original.
+            string materialAnillo = ObtenerMaterialAnillo(input, indiceAnillo);
+            string configuracionPreferidaTexto = ObtenerConfiguracionAnillo(input, indiceAnillo);
+
+            var proyectoAnillo = new ProyectoGeneralModel
+            {
+                Fabricante = input.Fabricante,
+                MaterialPrincipal = materialAnillo
+            };
+
+            List<PosiblePlanchaModel> planchasCandidatas = _calculoTanqueService
+                .ObtenerPlanchasCandidatasOrdenadasPorAnillo(proyectoAnillo, alturaAnilloMm, materialAnillo);
+
+            List<PosibleConfiguracionModel> configuraciones = _calculoTanqueService
+                .ObtenerConfiguracionesOrdenadasPorAnillo(
+                    new ProyectoGeneralModel { Fabricante = input.Fabricante, MaterialPrincipal = input.MaterialPrincipal },
+                    !string.IsNullOrWhiteSpace(configuracionPreferidaTexto) ? configuracionPreferidaTexto : resultadoOriginal?.ConfiguracionAplicada ?? string.Empty)
+                .Where(c => c != null)
+                .ToList();
+
             ResultadoAnilloModel recalculoPreferente = ResolverAnilloConConfiguracionPreferida(
                 input,
                 normativa,
@@ -1229,6 +1249,78 @@ namespace TankDesigner.Core.Services
                 return 1.2;
 
             return 1.0;
+        }
+
+
+        private List<double> ObtenerAlturasAnillos(CalculoTanqueInputModel input)
+        {
+            var lista = new List<double>();
+
+            if (input?.AlturasAnillos != null)
+                lista.AddRange(input.AlturasAnillos.Where(a => a > 0));
+
+            if (input?.Anillos != null && input.Anillos.Count > 0)
+            {
+                foreach (var anillo in input.Anillos.OrderBy(a => a.NumeroAnillo))
+                {
+                    if (anillo != null && anillo.AlturaMm > 0 && lista.Count < input.NumeroAnillos)
+                        lista.Add(anillo.AlturaMm);
+                }
+            }
+
+            while (lista.Count < Math.Max(0, input?.NumeroAnillos ?? 0))
+                lista.Add(input?.AlturaPanelBase ?? 0);
+
+            if ((input?.NumeroAnillos ?? 0) > 0 && lista.Count > input!.NumeroAnillos)
+                lista = lista.Take(input.NumeroAnillos).ToList();
+
+            return lista;
+        }
+
+        private double ObtenerAlturaAnillo(CalculoTanqueInputModel input, int indice, List<double> alturasAnillos)
+        {
+            if (alturasAnillos != null && indice >= 0 && indice < alturasAnillos.Count && alturasAnillos[indice] > 0)
+                return alturasAnillos[indice];
+
+            return input?.AlturaPanelBase ?? 0;
+        }
+
+        private string ObtenerMaterialAnillo(CalculoTanqueInputModel input, int indice)
+        {
+            if (input?.MaterialesAnillos != null && indice >= 0 && indice < input.MaterialesAnillos.Count)
+            {
+                string valor = (input.MaterialesAnillos[indice] ?? string.Empty).Trim();
+                if (!string.IsNullOrWhiteSpace(valor))
+                    return valor;
+            }
+
+            if (input?.Anillos != null && indice >= 0 && indice < input.Anillos.Count)
+            {
+                string valor = (input.Anillos[indice]?.Material ?? string.Empty).Trim();
+                if (!string.IsNullOrWhiteSpace(valor))
+                    return valor;
+            }
+
+            return input?.MaterialPrincipal ?? string.Empty;
+        }
+
+        private string ObtenerConfiguracionAnillo(CalculoTanqueInputModel input, int indice)
+        {
+            if (input?.ConfiguracionesAnillos != null && indice >= 0 && indice < input.ConfiguracionesAnillos.Count)
+            {
+                string valor = (input.ConfiguracionesAnillos[indice] ?? string.Empty).Trim();
+                if (!string.IsNullOrWhiteSpace(valor))
+                    return valor;
+            }
+
+            if (input?.Anillos != null && indice >= 0 && indice < input.Anillos.Count)
+            {
+                string valor = (input.Anillos[indice]?.Configuracion ?? string.Empty).Trim();
+                if (!string.IsNullOrWhiteSpace(valor))
+                    return valor;
+            }
+
+            return string.Empty;
         }
 
         private double ObtenerFuTornillo(PosibleTornilloModel tornillo)

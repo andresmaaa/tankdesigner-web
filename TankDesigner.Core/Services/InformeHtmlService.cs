@@ -692,6 +692,9 @@ namespace TankDesigner.Core.Services
             if (anillo == null)
                 return "—";
 
+            if (!string.IsNullOrWhiteSpace(anillo.MaterialAplicado))
+                return anillo.MaterialAplicado.Trim();
+
             var planchas = _jsonCatalogService
                 .CargarPlanchas(_proyecto?.Fabricante ?? string.Empty)
                 .Where(p => p != null)

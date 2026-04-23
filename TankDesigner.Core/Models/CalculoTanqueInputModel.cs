@@ -21,6 +21,13 @@
 
         public string Modelo { get; set; } = string.Empty;
 
+        // Modelo real por anillo.
+        // Estas listas deben quedar alineadas con NumeroAnillos.
+        public List<double> AlturasAnillos { get; set; } = new List<double>();
+        public List<string> MaterialesAnillos { get; set; } = new List<string>();
+        public List<string> ConfiguracionesAnillos { get; set; } = new List<string>();
+        public List<AnilloCalculoModel> Anillos { get; set; } = new List<AnilloCalculoModel>();
+
         // Datos de cargas comunes
         public string NormativaAplicadaCargas { get; set; } = string.Empty;
 

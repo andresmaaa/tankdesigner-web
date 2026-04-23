@@ -247,3 +247,11 @@ h1:focus {
     color: #1d4ed8;
     border-color: #bfd3ff;
 }
+
+.auth-help {
+    display: block;
+    margin-top: 6px;
+    font-size: 0.9rem;
+    color: #5b6b84;
+    line-height: 1.35;
+}

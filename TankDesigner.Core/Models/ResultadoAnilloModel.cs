@@ -43,6 +43,7 @@
         public double DiametroTornilloAplicado { get; set; }
 
         public string ConfiguracionAplicada { get; set; } = string.Empty;
+        public string MaterialAplicado { get; set; } = string.Empty;
         public int NumeroTornillosVerticales { get; set; }
         public int NumeroTornillosHorizontales { get; set; }
         public int NumeroTornillosHorizontalesCalculo { get; set; }

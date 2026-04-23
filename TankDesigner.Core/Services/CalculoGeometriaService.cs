@@ -58,6 +58,13 @@ namespace TankDesigner.Core.Services
             if (tanque == null || proyecto == null)
                 return 0;
 
+            if (tanque.AlturasAnillos != null && tanque.AlturasAnillos.Count > 0)
+            {
+                double alturaPrimerAnillo = tanque.AlturasAnillos.FirstOrDefault(a => a > 0);
+                if (alturaPrimerAnillo > 0)
+                    return alturaPrimerAnillo;
+            }
+
             PosiblePlanchaModel? plancha = ObtenerPlanchaReferencia(proyecto);
 
             if (plancha == null || plancha.Altura <= 0)
@@ -71,6 +78,13 @@ namespace TankDesigner.Core.Services
         {
             if (tanque == null || proyecto == null)
                 return 0;
+
+            if (tanque.AlturasAnillos != null && tanque.AlturasAnillos.Count > 0)
+            {
+                double sumaAlturas = tanque.AlturasAnillos.Where(a => a > 0).Sum();
+                if (sumaAlturas > 0)
+                    return sumaAlturas;
+            }
 
             double alturaPanel = ObtenerAlturaPanelBase(tanque, proyecto);
 
