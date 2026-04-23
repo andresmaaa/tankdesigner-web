@@ -54,25 +54,27 @@ builder.Services.AddDbContextFactory<ApplicationDbContext>(
 builder.Services
     .AddIdentity<ApplicationUser, IdentityRole>(options =>
     {
-        // Reglas simples y coherentes para pruebas y staging
-        options.Password.RequireDigit = false;
-        options.Password.RequireLowercase = false;
-        options.Password.RequireUppercase = false;
-        options.Password.RequireNonAlphanumeric = false;
-        options.Password.RequiredLength = 6;
-        options.Password.RequiredUniqueChars = 0;
+        // Política de contraseña segura y profesional
+        options.Password.RequireDigit = true;
+        options.Password.RequireLowercase = true;
+        options.Password.RequireUppercase = true;
+        options.Password.RequireNonAlphanumeric = true;
+        options.Password.RequiredLength = 8;
+        options.Password.RequiredUniqueChars = 1;
 
         // Bloqueo por intentos fallidos
         options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
         options.Lockout.MaxFailedAccessAttempts = 5;
         options.Lockout.AllowedForNewUsers = true;
 
-        // No exijo confirmación de email en este flujo
+        // De momento sin confirmación de email obligatoria
+        // hasta que el sistema de correo esté totalmente cerrado
         options.SignIn.RequireConfirmedEmail = false;
         options.SignIn.RequireConfirmedAccount = false;
     })
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
+    
 
 // Ruta donde se guardan las claves de DataProtection
 var dataProtectionPath = Environment.GetEnvironmentVariable("DATA_PROTECTION_KEYS_PATH");
