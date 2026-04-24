@@ -251,13 +251,13 @@
         _tiposTecho = Opciones.ObtenerTiposTechoInstalacion();
 
         AplicarValoresPorDefecto();
-        LimpiarDatosAutomaticosPorAnillo();
+        InicializarColeccionesSiFaltan();
         RecalcularYValidar();
     }
 
     protected override void OnParametersSet()
     {
-        LimpiarDatosAutomaticosPorAnillo();
+        InicializarColeccionesSiFaltan();
         RecalcularYValidar();
     }
 
@@ -298,20 +298,11 @@
             EstadoProyecto.Proyecto.MaterialPrincipal = "S235";
     }
 
-    private void LimpiarDatosAutomaticosPorAnillo()
+    private void InicializarColeccionesSiFaltan()
     {
         EstadoProyecto.Tanque.AlturasAnillos ??= new List<double>();
         EstadoProyecto.Tanque.MaterialesAnillos ??= new List<string>();
         EstadoProyecto.Tanque.ConfiguracionesAnillos ??= new List<string>();
-
-        if (EstadoProyecto.Tanque.AlturasAnillos.Count > 0)
-            EstadoProyecto.Tanque.AlturasAnillos.Clear();
-
-        if (EstadoProyecto.Tanque.MaterialesAnillos.Count > 0)
-            EstadoProyecto.Tanque.MaterialesAnillos.Clear();
-
-        if (EstadoProyecto.Tanque.ConfiguracionesAnillos.Count > 0)
-            EstadoProyecto.Tanque.ConfiguracionesAnillos.Clear();
     }
 
     private void OnChapasPorAnilloInput(ChangeEventArgs e)
