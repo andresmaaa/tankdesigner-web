@@ -164,7 +164,7 @@ builder.Services.AddScoped<CalculoGeometriaService>();
 builder.Services.AddScoped<InformeHtmlService>();
 builder.Services.AddScoped<PdfRenderService>();
 builder.Services.AddScoped<InformeResumenProyectosService>();
-
+builder.Services.AddScoped<EmailService>();
 // Configuraci�n del servicio de IA (Gemini)
 builder.Services.Configure<AiOptions>(builder.Configuration.GetSection("Gemini"));
 builder.Services.AddHttpClient<AiEngineeringService>();

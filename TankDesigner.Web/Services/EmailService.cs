@@ -3,69 +3,41 @@ using System.Net.Mail;
 
 namespace TankDesigner.Web.Services
 {
-    // Servicio encargado de enviar emails usando SMTP
     public class EmailService
     {
-        // Se usa IConfiguration para leer datos del appsettings o variables de entorno (Railway)
-        private readonly IConfiguration _configuration;
+        private readonly IConfiguration _config;
 
-        public EmailService(IConfiguration configuration)
+        public EmailService(IConfiguration config)
         {
-            _configuration = configuration;
+            _config = config;
         }
 
-        // Método principal para enviar un email
-        public async Task EnviarEmailAsync(string destino, string asunto, string cuerpoHtml)
+        public async Task EnviarEmailAsync(string toEmail, string subject, string body)
         {
-            // Se obtienen los datos de configuración SMTP
-            var host = _configuration["Email:SmtpHost"];
-            var portTexto = _configuration["Email:SmtpPort"];
-            var user = _configuration["Email:User"];
-            var password = _configuration["Email:Password"];
-            var fromName = _configuration["Email:FromName"] ?? "Tank Structural Designer";
+            var smtpHost = _config["Email:SmtpHost"];
+            var smtpPort = int.Parse(_config["Email:SmtpPort"] ?? "587");
+            var user = _config["Email:User"];
+            var password = _config["Email:Password"];
+            var fromEmail = _config["Email:FromEmail"];
+            var fromName = _config["Email:FromName"];
 
-            // Validación: si falta algo, se lanza error
-            if (string.IsNullOrWhiteSpace(host) ||
-                string.IsNullOrWhiteSpace(portTexto) ||
-                string.IsNullOrWhiteSpace(user) ||
-                string.IsNullOrWhiteSpace(password))
+            var client = new SmtpClient(smtpHost, smtpPort)
             {
-                throw new InvalidOperationException("La configuración SMTP no está completa.");
-            }
-
-            // Convierte el puerto a número
-            if (!int.TryParse(portTexto, out var port))
-                throw new InvalidOperationException("El puerto SMTP no es válido.");
-
-            // Se construye el mensaje de correo
-            using var message = new MailMessage
-            {
-                // Remitente (correo + nombre visible)
-                From = new MailAddress(user, fromName),
-
-                // Asunto del email
-                Subject = asunto,
-
-                // Cuerpo del email en HTML
-                Body = cuerpoHtml,
-                IsBodyHtml = true
-            };
-
-            // Se añade el destinatario
-            message.To.Add(destino);
-
-            // Configuración del cliente SMTP
-            using var client = new SmtpClient(host, port)
-            {
-                // Credenciales del correo
                 Credentials = new NetworkCredential(user, password),
-
-                // Se usa SSL (requerido en la mayoría de proveedores)
                 EnableSsl = true
             };
 
-            // Envío del email
-            await client.SendMailAsync(message);
+            var mail = new MailMessage
+            {
+                From = new MailAddress(fromEmail, fromName),
+                Subject = subject,
+                Body = body,
+                IsBodyHtml = true
+            };
+
+            mail.To.Add(toEmail);
+
+            await client.SendMailAsync(mail);
         }
     }
 }
