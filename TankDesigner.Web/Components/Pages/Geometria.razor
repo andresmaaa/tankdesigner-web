@@ -43,23 +43,13 @@
                     <div class="form-grid">
                         <div class="field">
                             <label>Número de chapas por anillo</label>
-                            <input class="td-input"
-                                   type="number"
-                                   min="1"
-                                   step="1"
-                                   value="@EstadoProyecto.Tanque.ChapasPorAnillo"
-                                   @oninput="OnChapasPorAnilloInput" />
+                            <input class="td-input" type="number" min="1" step="1" value="@EstadoProyecto.Tanque.ChapasPorAnillo" @oninput="OnChapasPorAnilloInput" />
                             <small>Cantidad de planchas que forman cada anillo.</small>
                         </div>
 
                         <div class="field">
                             <label>Número de anillos</label>
-                            <input class="td-input"
-                                   type="number"
-                                   min="1"
-                                   step="1"
-                                   value="@EstadoProyecto.Tanque.NumeroAnillos"
-                                   @oninput="OnNumeroAnillosInput" />
+                            <input class="td-input" type="number" min="1" step="1" value="@EstadoProyecto.Tanque.NumeroAnillos" @oninput="OnNumeroAnillosInput" />
                             <small>Número total de anillos del tanque.</small>
                         </div>
 
@@ -76,23 +66,13 @@
 
                         <div class="field">
                             <label>Borde libre (mm)</label>
-                            <input class="td-input"
-                                   type="number"
-                                   min="0"
-                                   step="1"
-                                   value="@FormatearNumero(EstadoProyecto.Tanque.BordeLibre)"
-                                   @oninput="OnBordeLibreInput" />
+                            <input class="td-input" type="number" min="0" step="1" value="@FormatearNumero(EstadoProyecto.Tanque.BordeLibre)" @oninput="OnBordeLibreInput" />
                             <small>Separación libre prevista en la parte superior.</small>
                         </div>
 
                         <div class="field">
                             <label>Densidad del líquido</label>
-                            <input class="td-input"
-                                   type="number"
-                                   min="0"
-                                   step="0.1"
-                                   value="@FormatearNumero(EstadoProyecto.Tanque.DensidadLiquido)"
-                                   @oninput="OnDensidadLiquidoInput" />
+                            <input class="td-input" type="number" min="0" step="0.1" value="@FormatearNumero(EstadoProyecto.Tanque.DensidadLiquido)" @oninput="OnDensidadLiquidoInput" />
                             <small>Densidad relativa del fluido contenido.</small>
                         </div>
 
@@ -128,26 +108,10 @@
                     </div>
 
                     <div class="summary-list">
-                        <div class="summary-row">
-                            <span class="summary-row__label">Material base del proyecto</span>
-                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Proyecto.MaterialPrincipal)</span>
-                        </div>
-                        <div class="summary-row">
-                            <span class="summary-row__label">Fabricante</span>
-                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Proyecto.Fabricante)</span>
-                        </div>
-                        <div class="summary-row">
-                            <span class="summary-row__label">Normativa</span>
-                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Proyecto.Normativa)</span>
-                        </div>
-                        <div class="summary-row">
-                            <span class="summary-row__label">Resolución por anillo</span>
-                            <span class="summary-row__value">Automática desde cálculo y catálogo</span>
-                        </div>
-                        <div class="summary-row">
-                            <span class="summary-row__label">Entrada manual por anillo</span>
-                            <span class="summary-row__value">No editable en esta pantalla</span>
-                        </div>
+                        <div class="summary-row"><span class="summary-row__label">Material base del proyecto</span><span class="summary-row__value">@TextoSeguro(EstadoProyecto.Proyecto.MaterialPrincipal)</span></div>
+                        <div class="summary-row"><span class="summary-row__label">Fabricante</span><span class="summary-row__value">@TextoSeguro(EstadoProyecto.Proyecto.Fabricante)</span></div>
+                        <div class="summary-row"><span class="summary-row__label">Normativa</span><span class="summary-row__value">@TextoSeguro(EstadoProyecto.Proyecto.Normativa)</span></div>
+                        <div class="summary-row"><span class="summary-row__label">Resolución por anillo</span><span class="summary-row__value">Automática desde cálculo y catálogo</span></div>
                     </div>
                 </article>
 
@@ -159,29 +123,10 @@
                     </div>
 
                     <div class="results-grid">
-                        <div class="result-card">
-                            <span class="result-card__label">Diámetro calculado</span>
-                            <strong class="result-card__value">@ValorSeguro(EstadoProyecto.Tanque.Diametro)</strong>
-                            <small>mm</small>
-                        </div>
-
-                        <div class="result-card">
-                            <span class="result-card__label">Altura total calculada</span>
-                            <strong class="result-card__value">@ValorSeguro(EstadoProyecto.Tanque.AlturaTotal)</strong>
-                            <small>mm</small>
-                        </div>
-
-                        <div class="result-card">
-                            <span class="result-card__label">Altura panel base</span>
-                            <strong class="result-card__value">@ValorSeguro(EstadoProyecto.Tanque.AlturaPanelBase)</strong>
-                            <small>mm</small>
-                        </div>
-
-                        <div class="result-card">
-                            <span class="result-card__label">Número total de chapas</span>
-                            <strong class="result-card__value">@EstadoProyecto.Tanque.NumeroTotalChapas</strong>
-                            <small>uds</small>
-                        </div>
+                        <div class="result-card"><span class="result-card__label">Diámetro calculado</span><strong class="result-card__value">@ValorSeguro(EstadoProyecto.Tanque.Diametro)</strong><small>mm</small></div>
+                        <div class="result-card"><span class="result-card__label">Altura total calculada</span><strong class="result-card__value">@ValorSeguro(EstadoProyecto.Tanque.AlturaTotal)</strong><small>mm</small></div>
+                        <div class="result-card"><span class="result-card__label">Altura panel base</span><strong class="result-card__value">@ValorSeguro(EstadoProyecto.Tanque.AlturaPanelBase)</strong><small>mm</small></div>
+                        <div class="result-card"><span class="result-card__label">Número total de chapas</span><strong class="result-card__value">@EstadoProyecto.Tanque.NumeroTotalChapas</strong><small>uds</small></div>
                     </div>
                 </article>
             </section>
@@ -195,42 +140,15 @@
                     </div>
 
                     <div class="summary-list">
-                        <div class="summary-row">
-                            <span class="summary-row__label">Modelo geométrico</span>
-                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Tanque.Modelo)</span>
-                        </div>
-                        <div class="summary-row">
-                            <span class="summary-row__label">Tipo de techo</span>
-                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Instalacion.TipoTecho)</span>
-                        </div>
-                        <div class="summary-row">
-                            <span class="summary-row__label">Tipo anillo</span>
-                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Instalacion.TipoMedioAnillo)</span>
-                        </div>
-                        <div class="summary-row">
-                            <span class="summary-row__label">Material base</span>
-                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Proyecto.MaterialPrincipal)</span>
-                        </div>
-                        <div class="summary-row">
-                            <span class="summary-row__label">Resolución de anillos</span>
-                            <span class="summary-row__value">Automática</span>
-                        </div>
-                        <div class="summary-row">
-                            <span class="summary-row__label">Diámetro calculado</span>
-                            <span class="summary-row__value">@ValorSeguro(EstadoProyecto.Tanque.Diametro)</span>
-                        </div>
-                        <div class="summary-row">
-                            <span class="summary-row__label">Altura total calculada</span>
-                            <span class="summary-row__value">@ValorSeguro(EstadoProyecto.Tanque.AlturaTotal)</span>
-                        </div>
-                        <div class="summary-row">
-                            <span class="summary-row__label">Altura panel base</span>
-                            <span class="summary-row__value">@ValorSeguro(EstadoProyecto.Tanque.AlturaPanelBase)</span>
-                        </div>
-                        <div class="summary-row">
-                            <span class="summary-row__label">Número total de chapas</span>
-                            <span class="summary-row__value">@EstadoProyecto.Tanque.NumeroTotalChapas</span>
-                        </div>
+                        <div class="summary-row"><span class="summary-row__label">Modelo geométrico</span><span class="summary-row__value">@TextoSeguro(EstadoProyecto.Tanque.Modelo)</span></div>
+                        <div class="summary-row"><span class="summary-row__label">Tipo de techo</span><span class="summary-row__value">@TextoSeguro(EstadoProyecto.Instalacion.TipoTecho)</span></div>
+                        <div class="summary-row"><span class="summary-row__label">Tipo anillo</span><span class="summary-row__value">@TextoSeguro(EstadoProyecto.Instalacion.TipoMedioAnillo)</span></div>
+                        <div class="summary-row"><span class="summary-row__label">Material base</span><span class="summary-row__value">@TextoSeguro(EstadoProyecto.Proyecto.MaterialPrincipal)</span></div>
+                        <div class="summary-row"><span class="summary-row__label">Resolución de anillos</span><span class="summary-row__value">Automática</span></div>
+                        <div class="summary-row"><span class="summary-row__label">Diámetro calculado</span><span class="summary-row__value">@ValorSeguro(EstadoProyecto.Tanque.Diametro)</span></div>
+                        <div class="summary-row"><span class="summary-row__label">Altura total calculada</span><span class="summary-row__value">@ValorSeguro(EstadoProyecto.Tanque.AlturaTotal)</span></div>
+                        <div class="summary-row"><span class="summary-row__label">Altura panel base</span><span class="summary-row__value">@ValorSeguro(EstadoProyecto.Tanque.AlturaPanelBase)</span></div>
+                        <div class="summary-row"><span class="summary-row__label">Número total de chapas</span><span class="summary-row__value">@EstadoProyecto.Tanque.NumeroTotalChapas</span></div>
                     </div>
                 </article>
             </aside>
@@ -249,7 +167,6 @@
         _anillosArranque = Opciones.ObtenerAnillosArranque();
         _tiposMedioAnillo = Opciones.ObtenerTiposMedioAnillo();
         _tiposTecho = Opciones.ObtenerTiposTechoInstalacion();
-
         AplicarValoresPorDefecto();
         InicializarColeccionesSiFaltan();
         RecalcularYValidar();
@@ -263,39 +180,16 @@
 
     private void AplicarValoresPorDefecto()
     {
-        if (EstadoProyecto.Tanque.ChapasPorAnillo <= 0)
-            EstadoProyecto.Tanque.ChapasPorAnillo = 16;
-
-        if (EstadoProyecto.Tanque.NumeroAnillos <= 0)
-            EstadoProyecto.Tanque.NumeroAnillos = 6;
-
-        if (EstadoProyecto.Tanque.AnilloArranque <= 0)
-            EstadoProyecto.Tanque.AnilloArranque = _anillosArranque.FirstOrDefault();
-
-        if (EstadoProyecto.Tanque.AnilloArranque > EstadoProyecto.Tanque.NumeroAnillos)
-            EstadoProyecto.Tanque.AnilloArranque = EstadoProyecto.Tanque.NumeroAnillos;
-
-        if (EstadoProyecto.Tanque.BordeLibre <= 0)
-            EstadoProyecto.Tanque.BordeLibre = 300;
-
-        if (EstadoProyecto.Tanque.DensidadLiquido <= 0)
-            EstadoProyecto.Tanque.DensidadLiquido = 1;
-
-        if (string.IsNullOrWhiteSpace(EstadoProyecto.Instalacion.TipoMedioAnillo))
-            EstadoProyecto.Instalacion.TipoMedioAnillo = "Anillo entero";
-
-        if (string.IsNullOrWhiteSpace(EstadoProyecto.Instalacion.TipoTecho))
-            EstadoProyecto.Instalacion.TipoTecho = "Sin techo";
-
-        if (string.IsNullOrWhiteSpace(EstadoProyecto.Cargas.RoofType))
-        {
-            EstadoProyecto.Cargas.RoofType = EstadoProyecto.Instalacion.TipoTecho.Equals("Sin techo", StringComparison.OrdinalIgnoreCase)
-                ? "None"
-                : EstadoProyecto.Instalacion.TipoTecho;
-        }
-
-        if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.MaterialPrincipal))
-            EstadoProyecto.Proyecto.MaterialPrincipal = "S235";
+        if (EstadoProyecto.Tanque.ChapasPorAnillo <= 0) EstadoProyecto.Tanque.ChapasPorAnillo = 22;
+        if (EstadoProyecto.Tanque.NumeroAnillos <= 0) EstadoProyecto.Tanque.NumeroAnillos = 9;
+        if (EstadoProyecto.Tanque.AnilloArranque <= 0) EstadoProyecto.Tanque.AnilloArranque = _anillosArranque.FirstOrDefault();
+        if (EstadoProyecto.Tanque.AnilloArranque > EstadoProyecto.Tanque.NumeroAnillos) EstadoProyecto.Tanque.AnilloArranque = EstadoProyecto.Tanque.NumeroAnillos;
+        if (EstadoProyecto.Tanque.BordeLibre <= 0) EstadoProyecto.Tanque.BordeLibre = 800;
+        if (EstadoProyecto.Tanque.DensidadLiquido <= 0) EstadoProyecto.Tanque.DensidadLiquido = 1;
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Instalacion.TipoMedioAnillo)) EstadoProyecto.Instalacion.TipoMedioAnillo = "Anillo entero";
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Instalacion.TipoTecho)) EstadoProyecto.Instalacion.TipoTecho = "Cónico";
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Cargas.RoofType)) EstadoProyecto.Cargas.RoofType = EstadoProyecto.Instalacion.TipoTecho.Equals("Sin techo", StringComparison.OrdinalIgnoreCase) ? "None" : EstadoProyecto.Instalacion.TipoTecho;
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.MaterialPrincipal)) EstadoProyecto.Proyecto.MaterialPrincipal = "S235";
     }
 
     private void InicializarColeccionesSiFaltan()
@@ -305,161 +199,60 @@
         EstadoProyecto.Tanque.ConfiguracionesAnillos ??= new List<string>();
     }
 
-    private void OnChapasPorAnilloInput(ChangeEventArgs e)
-    {
-        if (int.TryParse(e.Value?.ToString(), out int valor))
-        {
-            EstadoProyecto.Tanque.ChapasPorAnillo = Math.Max(1, valor);
-            RecalcularYValidar();
-        }
-    }
-
-    private void OnNumeroAnillosInput(ChangeEventArgs e)
-    {
-        if (int.TryParse(e.Value?.ToString(), out int valor))
-        {
-            EstadoProyecto.Tanque.NumeroAnillos = Math.Max(1, valor);
-
-            if (EstadoProyecto.Tanque.AnilloArranque > EstadoProyecto.Tanque.NumeroAnillos)
-                EstadoProyecto.Tanque.AnilloArranque = EstadoProyecto.Tanque.NumeroAnillos;
-
-            RecalcularYValidar();
-        }
-    }
-
-    private void OnAnilloArranqueChange(ChangeEventArgs e)
-    {
-        if (int.TryParse(e.Value?.ToString(), out int valor))
-            EstadoProyecto.Tanque.AnilloArranque = valor;
-
-        RecalcularYValidar();
-    }
-
-    private void OnBordeLibreInput(ChangeEventArgs e)
-    {
-        EstadoProyecto.Tanque.BordeLibre = ParseDoubleOrZero(e.Value?.ToString());
-        RecalcularYValidar();
-    }
-
-    private void OnDensidadLiquidoInput(ChangeEventArgs e)
-    {
-        EstadoProyecto.Tanque.DensidadLiquido = ParseDoubleOrZero(e.Value?.ToString());
-
-        if (EstadoProyecto.Tanque.DensidadLiquido > 0)
-            EstadoProyecto.Cargas.DensidadLiquido = EstadoProyecto.Tanque.DensidadLiquido;
-
-        RecalcularYValidar();
-    }
-
-    private void OnTipoTechoChange(ChangeEventArgs e)
-    {
-        EstadoProyecto.Instalacion.TipoTecho = e.Value?.ToString() ?? "Sin techo";
-
-        if (string.IsNullOrWhiteSpace(EstadoProyecto.Instalacion.TipoTecho) ||
-            EstadoProyecto.Instalacion.TipoTecho.Equals("Sin techo", StringComparison.OrdinalIgnoreCase))
-        {
-            EstadoProyecto.Cargas.RoofType = "None";
-            EstadoProyecto.Cargas.RoofDeadLoad = 0;
-            EstadoProyecto.Cargas.RoofSnowLoad = 0;
-            EstadoProyecto.Cargas.RoofLiveLoad = 0;
-            EstadoProyecto.Cargas.RoofCentroid = 0;
-            EstadoProyecto.Cargas.RoofProjectedArea = 0;
-            EstadoProyecto.Cargas.RoofAngle = "0°";
-        }
-        else
-        {
-            EstadoProyecto.Cargas.RoofType = EstadoProyecto.Instalacion.TipoTecho;
-        }
-
-        RecalcularYValidar();
-    }
-
-    private void OnTipoMedioAnilloChange(ChangeEventArgs e)
-    {
-        EstadoProyecto.Instalacion.TipoMedioAnillo = e.Value?.ToString() ?? "Anillo entero";
-        RecalcularYValidar();
-    }
+    private void OnChapasPorAnilloInput(ChangeEventArgs e) { if (int.TryParse(e.Value?.ToString(), out int valor)) { EstadoProyecto.Tanque.ChapasPorAnillo = Math.Max(1, valor); RecalcularYValidar(); } }
+    private void OnNumeroAnillosInput(ChangeEventArgs e) { if (int.TryParse(e.Value?.ToString(), out int valor)) { EstadoProyecto.Tanque.NumeroAnillos = Math.Max(1, valor); if (EstadoProyecto.Tanque.AnilloArranque > EstadoProyecto.Tanque.NumeroAnillos) EstadoProyecto.Tanque.AnilloArranque = EstadoProyecto.Tanque.NumeroAnillos; RecalcularYValidar(); } }
+    private void OnAnilloArranqueChange(ChangeEventArgs e) { if (int.TryParse(e.Value?.ToString(), out int valor)) EstadoProyecto.Tanque.AnilloArranque = valor; RecalcularYValidar(); }
+    private void OnBordeLibreInput(ChangeEventArgs e) { EstadoProyecto.Tanque.BordeLibre = ParseDoubleOrZero(e.Value?.ToString()); RecalcularYValidar(); }
+    private void OnDensidadLiquidoInput(ChangeEventArgs e) { EstadoProyecto.Tanque.DensidadLiquido = ParseDoubleOrZero(e.Value?.ToString()); if (EstadoProyecto.Tanque.DensidadLiquido > 0) EstadoProyecto.Cargas.DensidadLiquido = EstadoProyecto.Tanque.DensidadLiquido; RecalcularYValidar(); }
+    private void OnTipoTechoChange(ChangeEventArgs e) { EstadoProyecto.Instalacion.TipoTecho = e.Value?.ToString() ?? "Sin techo"; if (string.IsNullOrWhiteSpace(EstadoProyecto.Instalacion.TipoTecho) || EstadoProyecto.Instalacion.TipoTecho.Equals("Sin techo", StringComparison.OrdinalIgnoreCase)) { EstadoProyecto.Cargas.RoofType = "None"; EstadoProyecto.Cargas.RoofDeadLoad = 0; EstadoProyecto.Cargas.RoofSnowLoad = 0; EstadoProyecto.Cargas.RoofLiveLoad = 0; EstadoProyecto.Cargas.RoofCentroid = 0; EstadoProyecto.Cargas.RoofProjectedArea = 0; EstadoProyecto.Cargas.RoofAngle = "0°"; } else { EstadoProyecto.Cargas.RoofType = EstadoProyecto.Instalacion.TipoTecho; } RecalcularYValidar(); }
+    private void OnTipoMedioAnilloChange(ChangeEventArgs e) { EstadoProyecto.Instalacion.TipoMedioAnillo = e.Value?.ToString() ?? "Anillo entero"; RecalcularYValidar(); }
 
     private string GenerarModeloAutomatico()
     {
         string letraFabricante = ObtenerLetraFabricante(EstadoProyecto.Proyecto.Fabricante);
         int chapasPorAnillo = Math.Max(0, EstadoProyecto.Tanque.ChapasPorAnillo);
         double numeroAnillosVisible = ObtenerNumeroAnillosVisible();
-
-        if (string.IsNullOrWhiteSpace(letraFabricante) || chapasPorAnillo <= 0 || numeroAnillosVisible <= 0)
-            return string.Empty;
-
-        string anillosTexto = numeroAnillosVisible % 1 == 0
-            ? ((int)numeroAnillosVisible).ToString(CultureInfo.InvariantCulture)
-            : numeroAnillosVisible.ToString("0.0", CultureInfo.InvariantCulture);
-
+        if (string.IsNullOrWhiteSpace(letraFabricante) || chapasPorAnillo <= 0 || numeroAnillosVisible <= 0) return string.Empty;
+        string anillosTexto = numeroAnillosVisible % 1 == 0 ? ((int)numeroAnillosVisible).ToString(CultureInfo.InvariantCulture) : numeroAnillosVisible.ToString("0.0", CultureInfo.InvariantCulture);
         return $"{letraFabricante}{chapasPorAnillo}/{anillosTexto}";
     }
 
     private double ObtenerNumeroAnillosVisible()
     {
         double numeroAnillos = EstadoProyecto.Tanque.NumeroAnillos;
-
-        if (string.Equals(EstadoProyecto.Instalacion.TipoMedioAnillo, "1/2 anillo", StringComparison.OrdinalIgnoreCase))
-            return numeroAnillos + 0.5;
-
-        if (string.Equals(EstadoProyecto.Instalacion.TipoMedioAnillo, "1/4 anillo", StringComparison.OrdinalIgnoreCase))
-            return numeroAnillos + 0.25;
-
+        if (string.Equals(EstadoProyecto.Instalacion.TipoMedioAnillo, "1/2 anillo", StringComparison.OrdinalIgnoreCase)) return numeroAnillos + 0.5;
+        if (string.Equals(EstadoProyecto.Instalacion.TipoMedioAnillo, "1/4 anillo", StringComparison.OrdinalIgnoreCase)) return numeroAnillos + 0.25;
         return numeroAnillos;
     }
 
     private static string ObtenerLetraFabricante(string? fabricante)
     {
-        if (string.IsNullOrWhiteSpace(fabricante))
-            return string.Empty;
-
+        if (string.IsNullOrWhiteSpace(fabricante)) return string.Empty;
         var valor = fabricante.Trim().ToUpperInvariant();
-
-        if (valor.Contains("BALMORAL"))
-            return "B";
-
-        if (valor.Contains("PERMASTORE"))
-            return "P";
-
-        if (valor.Contains("DL2"))
-            return "D";
-
+        if (valor.Contains("BALMORAL")) return "B";
+        if (valor.Contains("PERMASTORE")) return "P";
+        if (valor.Contains("DL2")) return "D";
         return valor.Substring(0, 1);
     }
 
     private void RecalcularYValidar()
     {
-        EstadoProyecto.Tanque.AlturaPanelBase =
-            CalculoGeometriaService.ObtenerAlturaPanelBase(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);
-
-        EstadoProyecto.Tanque.AlturaTotal =
-            CalculoGeometriaService.ObtenerAlturaTotal(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);
-
-        EstadoProyecto.Tanque.Diametro =
-            CalculoGeometriaService.ObtenerDiametro(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);
-
+        EstadoProyecto.Tanque.AlturaPanelBase = CalculoGeometriaService.ObtenerAlturaPanelBase(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);
+        EstadoProyecto.Tanque.AlturaTotal = CalculoGeometriaService.ObtenerAlturaTotal(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);
+        EstadoProyecto.Tanque.Diametro = CalculoGeometriaService.ObtenerDiametro(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);
         EstadoProyecto.Tanque.Modelo = GenerarModeloAutomatico();
-
         _errores = ValidacionService.ValidarGeometria(EstadoProyecto.Tanque);
         StateHasChanged();
     }
 
     private double ParseDoubleOrZero(string? texto)
     {
-        if (string.IsNullOrWhiteSpace(texto))
-            return 0;
-
+        if (string.IsNullOrWhiteSpace(texto)) return 0;
         texto = texto.Replace(',', '.');
         return double.TryParse(texto, NumberStyles.Any, CultureInfo.InvariantCulture, out double valor) ? valor : 0;
     }
 
-    private string FormatearNumero(double valor)
-        => valor.ToString("0.##", CultureInfo.InvariantCulture);
-
-    private string ValorSeguro(double valor)
-        => valor > 0 ? valor.ToString("0.##", CultureInfo.InvariantCulture) : "—";
-
-    private string TextoSeguro(string? texto)
-        => string.IsNullOrWhiteSpace(texto) ? "—" : texto.Trim();
+    private string FormatearNumero(double valor) => valor.ToString("0.##", CultureInfo.InvariantCulture);
+    private string ValorSeguro(double valor) => valor > 0 ? valor.ToString("0.##", CultureInfo.InvariantCulture) : "—";
+    private string TextoSeguro(string? texto) => string.IsNullOrWhiteSpace(texto) ? "—" : texto.Trim();
 }

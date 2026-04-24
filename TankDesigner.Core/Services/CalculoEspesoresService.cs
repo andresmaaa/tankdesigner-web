@@ -84,6 +84,7 @@ namespace TankDesigner.Core.Services
                 double presionKPa = _formulaPresionService.CalcularPresionEnAltura(input.DensidadLiquido, alturaLiquidoSobreCentroMm);
 
                 string materialAnillo = ObtenerMaterialAnillo(input, i);
+                string materialPreferido = materialAnillo;
                 string configuracionPreferida = ObtenerConfiguracionAnillo(input, i);
 
                 var proyectoAnillo = new ProyectoGeneralModel
@@ -134,12 +135,13 @@ namespace TankDesigner.Core.Services
                         Mensaje = "No se pudo calcular el anillo",
                         TipoFallo = "DESCONOCIDO",
                         ConfiguracionAplicada = configuracionPreferida,
-                        MaterialAplicado = materialAnillo
+                        MaterialAplicado = materialPreferido
                     };
                 }
                 else
                 {
-                    mejorResultado.MaterialAplicado = materialAnillo;
+                    if (string.IsNullOrWhiteSpace(mejorResultado.MaterialAplicado))
+                        mejorResultado.MaterialAplicado = materialPreferido;
                 }
 
                 resultados.Add(mejorResultado);
@@ -286,9 +288,10 @@ namespace TankDesigner.Core.Services
                             fuTornillo,
                             fy,
                             fu,
-                            configuracion.Nombre ?? "—");
-                        ultimoResultadoConfiguracion = resultadoAnillo;
-                        mejorResultado = ElegirMejorResultado(mejorResultado, resultadoAnillo);
+                            configuracion.Nombre ?? "—",
+                            string.IsNullOrWhiteSpace(plancha.Material) ? input.MaterialPrincipal : plancha.Material);
+                            ultimoResultadoConfiguracion = resultadoAnillo;
+                            mejorResultado = ElegirMejorResultado(mejorResultado, resultadoAnillo);
 
                         // Si ya es válido, devolvemos directamente esa solución.
                         if (resultadoAnillo != null && resultadoAnillo.EsValido)
@@ -402,7 +405,8 @@ namespace TankDesigner.Core.Services
             double fuTornillo,
             double fy,
             double fu,
-            string nombreConfiguracion)
+            string nombreConfiguracion,
+            string materialPlancha)
         {
             // Filtramos espesores disponibles que sean suficientes.
             var espesoresValidos = espesoresDisponibles
@@ -432,6 +436,7 @@ namespace TankDesigner.Core.Services
                     TornilloAplicado = nombreTornillo,
                     DiametroTornilloAplicado = diametroTornillo,
                     ConfiguracionAplicada = nombreConfiguracion,
+                    MaterialAplicado = materialPlancha,
                     DiametroAgujero = diametroAgujero,
                     FyPlancha = fy,
                     FuPlancha = fu,
@@ -537,6 +542,7 @@ namespace TankDesigner.Core.Services
                     TornilloAplicado = nombreTornillo,
                     DiametroTornilloAplicado = diametroTornillo,
                     ConfiguracionAplicada = nombreConfiguracion,
+                    MaterialAplicado = materialPlancha,
                     DiametroAgujero = diametroAgujero,
                     FyPlancha = fy,
                     FuPlancha = fu,
@@ -882,28 +888,29 @@ namespace TankDesigner.Core.Services
                         continue;
 
                     ResultadoAnilloModel resultado = CalcularMejorOpcionAnillo(
-                        numeroAnillo,
-                        alturaInferiorMm,
-                        alturaSuperiorMm,
-                        alturaCentroMm,
-                        headM,
-                        presionKPa,
-                        espesorRequerido,
-                        espesoresDisponibles,
-                        tensionAdmisibleBase,
-                        tensionAdmisible,
-                        coeficienteNormativa,
-                        normativa,
-                        radioMm,
-                        configuracionPreferida.S,
-                        configuracionPreferida.R,
-                        configuracionPreferida.DiametroAgujero,
-                        tornillo.CalidadTornillo ?? "No definido",
-                        tornillo.Diametro,
-                        ObtenerFuTornillo(tornillo),
-                        fy,
-                        fu,
-                        configuracionPreferida.Nombre ?? "No definida");
+                       numeroAnillo,
+                       alturaInferiorMm,
+                       alturaSuperiorMm,
+                       alturaCentroMm,
+                       headM,
+                       presionKPa,
+                       espesorRequerido,
+                       espesoresDisponibles,
+                       tensionAdmisibleBase,
+                       tensionAdmisible,
+                       coeficienteNormativa,
+                       normativa,
+                       radioMm,
+                       configuracionPreferida.S,
+                       configuracionPreferida.R,
+                       configuracionPreferida.DiametroAgujero,
+                       tornillo.CalidadTornillo ?? "No definido",
+                       tornillo.Diametro,
+                       ObtenerFuTornillo(tornillo),
+                       fy,
+                       fu,
+                       configuracionPreferida.Nombre ?? "No definida",
+                       string.IsNullOrWhiteSpace(plancha.Material) ? input.MaterialPrincipal : plancha.Material);
 
                     mejorResultado = ElegirMejorResultado(mejorResultado, resultado);
 

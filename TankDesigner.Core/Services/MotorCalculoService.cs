@@ -199,6 +199,12 @@ namespace TankDesigner.Core.Services
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
+            var materiales = anillosValidos
+                .Select(a => (a.MaterialAplicado ?? string.Empty).Trim())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
             var tornillos = anillosValidos
                 .Select(a => (a.TornilloAplicado ?? string.Empty).Trim())
                 .Where(x => !string.IsNullOrWhiteSpace(x))
@@ -208,6 +214,10 @@ namespace TankDesigner.Core.Services
             resultado.NombreConfiguracionCalculada = configuraciones.Count == 1
                 ? configuraciones[0]
                 : (configuraciones.Count > 1 ? "Mixta por anillo" : string.Empty);
+
+            resultado.MaterialPrincipal = materiales.Count == 1
+                ? materiales[0]
+                : (materiales.Count > 1 ? string.Join(", ", materiales) : resultado.MaterialPrincipal);
 
             resultado.NombreTornilloCalculado = tornillos.Count == 1
                 ? tornillos[0]

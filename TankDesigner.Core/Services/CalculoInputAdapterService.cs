@@ -35,7 +35,7 @@ namespace TankDesigner.Core.Services
             List<string> materialesAnillos = NormalizarTextosAnillos(
                 tanque.MaterialesAnillos,
                 tanque.NumeroAnillos,
-                (proyecto.MaterialPrincipal ?? string.Empty).Trim());
+                string.Empty);
             List<string> configuracionesAnillos = NormalizarTextosAnillos(
                 tanque.ConfiguracionesAnillos,
                 tanque.NumeroAnillos,

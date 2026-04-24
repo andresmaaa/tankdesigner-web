@@ -34,6 +34,13 @@ namespace TankDesigner.Core.Services
                 .Trim()
                 .ToUpperInvariant();
 
+            if (string.IsNullOrWhiteSpace(materialBuscado))
+            {
+                return todas
+                    .Where(p => p.Altura > 0 && p.Ancho > 0)
+                    .ToList();
+            }
+
             var filtradas = todas
                 .Where(p =>
                     (!string.IsNullOrWhiteSpace(p.Material) && p.Material.ToUpperInvariant() == materialBuscado)
@@ -129,7 +136,7 @@ namespace TankDesigner.Core.Services
             {
                 Fabricante = proyecto.Fabricante,
                 MaterialPrincipal = string.IsNullOrWhiteSpace(materialAnillo)
-                    ? proyecto.MaterialPrincipal
+                    ? string.Empty
                     : materialAnillo
             };
 
