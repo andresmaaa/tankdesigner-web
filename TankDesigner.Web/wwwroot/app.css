@@ -13,7 +13,7 @@ a, .btn-link {
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+    box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
 }
 
 .content {
@@ -217,6 +217,7 @@ h1:focus {
         font-size: 0.82rem;
         color: #64748b;
     }
+
 .role-badge {
     display: inline-flex;
     align-items: center;
@@ -254,4 +255,31 @@ h1:focus {
     font-size: 0.9rem;
     color: #5b6b84;
     line-height: 1.35;
+}
+
+.auth-footer--split {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.auth-password-rules {
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 12px 14px;
+    background: #f8fafc;
+    color: #475569;
+    font-size: 0.92rem;
+}
+
+.auth-password-rules__title {
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 6px;
+}
+
+.auth-password-rules ul {
+    margin: 0;
+    padding-left: 18px;
 }

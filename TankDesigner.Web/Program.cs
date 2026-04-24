@@ -1,9 +1,11 @@
-using Microsoft.AspNetCore.DataProtection;
+ï»¿using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Infrastructure;
+using System.Text;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Threading.RateLimiting;
@@ -16,20 +18,20 @@ using TankDesigner.Web.Services.Ai;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Servicio para envío de emails (invitaciones, etc.)
+// Servicio para envï¿½o de emails (invitaciones, etc.)
 builder.Services.AddScoped<EmailService>();
 
-// Configuración de Blazor Server (componentes interactivos)
+// Configuraciï¿½n de Blazor Server (componentes interactivos)
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// Permite usar estado de autenticación en Blazor
+// Permite usar estado de autenticaciï¿½n en Blazor
 builder.Services.AddCascadingAuthenticationState();
 
 // Permite acceder al HttpContext desde servicios
 builder.Services.AddHttpContextAccessor();
 
-// Configuración para Railway / proxy inverso
+// Configuraciï¿½n para Railway / proxy inverso
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
@@ -37,9 +39,9 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.KnownProxies.Clear();
 });
 
-// Obtiene la cadena de conexión desde configuración
+// Obtiene la cadena de conexiï¿½n desde configuraciï¿½n
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("No se ha encontrado la cadena de conexión 'DefaultConnection'.");
+    ?? throw new InvalidOperationException("No se ha encontrado la cadena de conexiï¿½n 'DefaultConnection'.");
 
 // Registro del DbContext principal con PostgreSQL
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -50,11 +52,11 @@ builder.Services.AddDbContextFactory<ApplicationDbContext>(
     options => options.UseNpgsql(connectionString),
     ServiceLifetime.Scoped);
 
-// Configuración de Identity (usuarios, roles, login, etc.)
+// Configuraciï¿½n de Identity (usuarios, roles, login, etc.)
 builder.Services
     .AddIdentity<ApplicationUser, IdentityRole>(options =>
     {
-        // Política de contraseña segura y profesional
+        // Polï¿½tica de contraseï¿½a segura y profesional
         options.Password.RequireDigit = true;
         options.Password.RequireLowercase = true;
         options.Password.RequireUppercase = true;
@@ -67,7 +69,7 @@ builder.Services
         options.Lockout.MaxFailedAccessAttempts = 5;
         options.Lockout.AllowedForNewUsers = true;
 
-        // Sin confirmación de email obligatoria de momento
+        // Sin confirmaciï¿½n de email obligatoria de momento
         options.SignIn.RequireConfirmedEmail = false;
         options.SignIn.RequireConfirmedAccount = false;
     })
@@ -86,12 +88,12 @@ if (string.IsNullOrWhiteSpace(dataProtectionPath))
 // Asegura que la carpeta existe
 Directory.CreateDirectory(dataProtectionPath);
 
-// Configuración de DataProtection
+// Configuraciï¿½n de DataProtection
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionPath))
     .SetApplicationName("TankDesigner");
 
-// Configuración de la cookie de autenticación
+// Configuraciï¿½n de la cookie de autenticaciï¿½n
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.Cookie.Name = "TankDesigner.Auth";
@@ -101,10 +103,10 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.LogoutPath = "/login";
     options.AccessDeniedPath = "/login";
 
-    // Duración de la sesión
+    // Duraciï¿½n de la sesiï¿½n
     options.ExpireTimeSpan = TimeSpan.FromDays(30);
 
-    // Renovación automática mientras navega
+    // Renovaciï¿½n automï¿½tica mientras navega
     options.SlidingExpiration = true;
 
     // Seguridad de la cookie
@@ -144,11 +146,11 @@ builder.Services.AddRateLimiter(options =>
     });
 });
 
-// Autorización
+// Autorizaciï¿½n
 builder.Services.AddAuthorizationCore();
 builder.Services.AddAuthorization();
 
-// Registro de servicios propios de la aplicación
+// Registro de servicios propios de la aplicaciï¿½n
 builder.Services.AddScoped<AdminService>();
 builder.Services.AddScoped<InvitacionesService>();
 builder.Services.AddScoped<ProyectoPersistenciaService>();
@@ -163,7 +165,7 @@ builder.Services.AddScoped<InformeHtmlService>();
 builder.Services.AddScoped<PdfRenderService>();
 builder.Services.AddScoped<InformeResumenProyectosService>();
 
-// Configuración del servicio de IA (Gemini)
+// Configuraciï¿½n del servicio de IA (Gemini)
 builder.Services.Configure<AiOptions>(builder.Configuration.GetSection("Gemini"));
 builder.Services.AddHttpClient<AiEngineeringService>();
 
@@ -172,7 +174,7 @@ QuestPDF.Settings.License = LicenseType.Community;
 
 var app = builder.Build();
 
-// Railway usa puerto dinámico
+// Railway usa puerto dinï¿½mico
 var port = Environment.GetEnvironmentVariable("PORT");
 if (!string.IsNullOrWhiteSpace(port))
 {
@@ -182,17 +184,17 @@ if (!string.IsNullOrWhiteSpace(port))
 // Procesa encabezados reenviados del proxy
 app.UseForwardedHeaders();
 
-// Configuración de errores en producción
+// Configuraciï¿½n de errores en producciï¿½n
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
     app.UseHsts();
 }
 
-// Redirección a HTTPS
+// Redirecciï¿½n a HTTPS
 app.UseHttpsRedirection();
 
-// Cabeceras de seguridad básicas
+// Cabeceras de seguridad bï¿½sicas
 app.Use(async (context, next) =>
 {
     context.Response.Headers["X-Frame-Options"] = "DENY";
@@ -216,7 +218,7 @@ app.Use(async (context, next) =>
 // Rate limiting
 app.UseRateLimiter();
 
-// Middleware de autenticación / autorización
+// Middleware de autenticaciï¿½n / autorizaciï¿½n
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
@@ -254,22 +256,22 @@ app.MapPost("/auth/register", async (
     }
 
     if (string.IsNullOrWhiteSpace(nombreCompleto))
-        return Results.Redirect(BuildRegisterRedirect("Debes indicar un nombre completo válido."));
+        return Results.Redirect(BuildRegisterRedirect("Debes indicar un nombre completo vï¿½lido."));
 
     if (string.IsNullOrWhiteSpace(email))
-        return Results.Redirect(BuildRegisterRedirect("Debes indicar un correo electrónico válido."));
+        return Results.Redirect(BuildRegisterRedirect("Debes indicar un correo electrï¿½nico vï¿½lido."));
 
     if (!new EmailAddressAttribute().IsValid(email))
-        return Results.Redirect(BuildRegisterRedirect("El correo electrónico no es válido."));
+        return Results.Redirect(BuildRegisterRedirect("El correo electrï¿½nico no es vï¿½lido."));
 
     if (string.IsNullOrWhiteSpace(password))
-        return Results.Redirect(BuildRegisterRedirect("Debes indicar una contraseña válida."));
+        return Results.Redirect(BuildRegisterRedirect("Debes indicar una contraseï¿½a vï¿½lida."));
 
     if (password.Length < 8)
-        return Results.Redirect(BuildRegisterRedirect("La contraseña debe tener al menos 8 caracteres."));
+        return Results.Redirect(BuildRegisterRedirect("La contraseï¿½a debe tener al menos 8 caracteres."));
 
     if (!string.Equals(password, confirmPassword, StringComparison.Ordinal))
-        return Results.Redirect(BuildRegisterRedirect("Las contraseñas no coinciden."));
+        return Results.Redirect(BuildRegisterRedirect("Las contraseï¿½as no coinciden."));
 
     var usuarioExistente = await userManager.FindByEmailAsync(email);
 
@@ -278,7 +280,7 @@ app.MapPost("/auth/register", async (
         bool tienePassword = await userManager.HasPasswordAsync(usuarioExistente);
 
         if (tienePassword)
-            return Results.Redirect(BuildRegisterRedirect("Ya existe una cuenta registrada con ese correo electrónico."));
+            return Results.Redirect(BuildRegisterRedirect("Ya existe una cuenta registrada con ese correo electrï¿½nico."));
 
         usuarioExistente.UserName = email;
         usuarioExistente.Email = email;
@@ -342,7 +344,7 @@ app.MapPost("/auth/register", async (
 
     var resultadoRol = await userManager.AddToRoleAsync(usuario, RolesAplicacion.Usuario);
     if (!resultadoRol.Succeeded)
-        return Results.Redirect(BuildRegisterRedirect("La cuenta se creó, pero no se pudo asignar el rol Usuario."));
+        return Results.Redirect(BuildRegisterRedirect("La cuenta se creï¿½, pero no se pudo asignar el rol Usuario."));
 
     if (!string.IsNullOrWhiteSpace(token))
         await invitacionesService.AplicarInvitacionPorTokenAsync(usuario, token);
@@ -385,7 +387,7 @@ app.MapPost("/auth/login", async (
         email,
         password,
         isPersistent: rememberMe,
-        lockoutOnFailure: true);
+        lockoutOnFailure: false);
 
     if (result.Succeeded)
     {
@@ -407,6 +409,148 @@ app.MapPost("/auth/login", async (
     return Results.Redirect($"/login?error=1&returnUrl={Uri.EscapeDataString(returnUrl)}");
 }).RequireRateLimiting("login");
 
+
+// Endpoint POST para solicitar recuperaciÃ³n de contraseÃ±a
+app.MapPost("/auth/forgot-password", async (
+    HttpContext httpContext,
+    UserManager<ApplicationUser> userManager,
+    EmailService emailService) =>
+{
+    var form = await httpContext.Request.ReadFormAsync();
+
+    string email = (form["email"].ToString() ?? string.Empty).Trim().ToLowerInvariant();
+
+    string BuildForgotRedirect(bool error = false)
+    {
+        string url = "/forgot-password?sent=1";
+
+        if (!string.IsNullOrWhiteSpace(email))
+            url += $"&email={Uri.EscapeDataString(email)}";
+
+        if (error)
+            url += "&error=1";
+
+        return url;
+    }
+
+    if (string.IsNullOrWhiteSpace(email) || !new EmailAddressAttribute().IsValid(email))
+        return Results.Redirect(BuildForgotRedirect());
+
+    var usuario = await userManager.FindByEmailAsync(email);
+
+    // No se informa si el correo existe o no para evitar enumeraciÃ³n de usuarios.
+    if (usuario is null || string.IsNullOrWhiteSpace(usuario.Email))
+        return Results.Redirect(BuildForgotRedirect());
+
+    var token = await userManager.GeneratePasswordResetTokenAsync(usuario);
+    var tokenCodificado = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+
+    var request = httpContext.Request;
+    var enlace = $"{request.Scheme}://{request.Host}/reset-password?email={Uri.EscapeDataString(email)}&token={Uri.EscapeDataString(tokenCodificado)}";
+
+    var cuerpoHtml = $"""
+        <div style="font-family: Arial, sans-serif; color: #1f2937; line-height: 1.5;">
+            <h2 style="margin-bottom: 8px;">Recuperar contraseÃ±a</h2>
+            <p>Hemos recibido una solicitud para cambiar la contraseÃ±a de tu cuenta de Tank Structural Designer.</p>
+            <p>Pulsa en el siguiente botÃ³n para crear una nueva contraseÃ±a:</p>
+            <p style="margin: 24px 0;">
+                <a href="{enlace}" style="background:#0f172a;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:10px;display:inline-block;">
+                    Cambiar contraseÃ±a
+                </a>
+            </p>
+            <p>Este enlace caduca en 2 horas. Si no has solicitado este cambio, puedes ignorar este correo.</p>
+        </div>
+        """;
+
+    try
+    {
+        await emailService.EnviarEmailAsync(email, "Recuperar contraseÃ±a - Tank Structural Designer", cuerpoHtml);
+    }
+    catch
+    {
+        return Results.Redirect(BuildForgotRedirect(error: true));
+    }
+
+    return Results.Redirect(BuildForgotRedirect());
+}).RequireRateLimiting("password-reset");
+
+// Endpoint POST para aplicar nueva contraseÃ±a
+app.MapPost("/auth/reset-password", async (
+    HttpContext httpContext,
+    UserManager<ApplicationUser> userManager) =>
+{
+    var form = await httpContext.Request.ReadFormAsync();
+
+    string email = (form["email"].ToString() ?? string.Empty).Trim().ToLowerInvariant();
+    string tokenCodificado = (form["token"].ToString() ?? string.Empty).Trim();
+    string password = form["password"].ToString() ?? string.Empty;
+    string confirmPassword = form["confirmPassword"].ToString() ?? string.Empty;
+
+    string BuildResetRedirect(string error)
+    {
+        string url = $"/reset-password?error={Uri.EscapeDataString(error)}";
+
+        if (!string.IsNullOrWhiteSpace(email))
+            url += $"&email={Uri.EscapeDataString(email)}";
+
+        if (!string.IsNullOrWhiteSpace(tokenCodificado))
+            url += $"&token={Uri.EscapeDataString(tokenCodificado)}";
+
+        return url;
+    }
+
+    if (string.IsNullOrWhiteSpace(email) ||
+        string.IsNullOrWhiteSpace(tokenCodificado) ||
+        !new EmailAddressAttribute().IsValid(email))
+    {
+        return Results.Redirect("/forgot-password");
+    }
+
+    if (string.IsNullOrWhiteSpace(password))
+        return Results.Redirect(BuildResetRedirect("Debes indicar una contraseÃ±a vÃ¡lida."));
+
+    if (password.Length < 8)
+        return Results.Redirect(BuildResetRedirect("La contraseÃ±a debe tener al menos 8 caracteres."));
+
+    if (!password.Any(char.IsUpper))
+        return Results.Redirect(BuildResetRedirect("La contraseÃ±a debe incluir al menos una mayÃºscula."));
+
+    if (!password.Any(char.IsLower))
+        return Results.Redirect(BuildResetRedirect("La contraseÃ±a debe incluir al menos una minÃºscula."));
+
+    if (!password.Any(char.IsDigit))
+        return Results.Redirect(BuildResetRedirect("La contraseÃ±a debe incluir al menos un nÃºmero."));
+
+    if (!password.Any(c => !char.IsLetterOrDigit(c)))
+        return Results.Redirect(BuildResetRedirect("La contraseÃ±a debe incluir al menos un sÃ­mbolo."));
+
+    if (!string.Equals(password, confirmPassword, StringComparison.Ordinal))
+        return Results.Redirect(BuildResetRedirect("Las contraseÃ±as no coinciden."));
+
+    var usuario = await userManager.FindByEmailAsync(email);
+
+    if (usuario is null)
+        return Results.Redirect("/login?passwordReset=1");
+
+    string token;
+    try
+    {
+        token = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(tokenCodificado));
+    }
+    catch
+    {
+        return Results.Redirect(BuildResetRedirect("El enlace de recuperaciÃ³n no es vÃ¡lido."));
+    }
+
+    var resultado = await userManager.ResetPasswordAsync(usuario, token, password);
+
+    if (!resultado.Succeeded)
+        return Results.Redirect(BuildResetRedirect("El enlace ha caducado o la contraseÃ±a no cumple los requisitos. Solicita un nuevo enlace."));
+
+    return Results.Redirect("/login?passwordReset=1");
+}).RequireRateLimiting("password-reset");
+
+
 // Endpoint POST para logout
 app.MapPost("/auth/logout", async (SignInManager<ApplicationUser> signInManager) =>
 {
@@ -414,10 +558,10 @@ app.MapPost("/auth/logout", async (SignInManager<ApplicationUser> signInManager)
     return Results.Redirect("/login");
 }).RequireRateLimiting("logout");
 
-// Archivos estáticos
+// Archivos estï¿½ticos
 app.MapStaticAssets();
 
-// Configuración de Blazor
+// Configuraciï¿½n de Blazor
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
@@ -431,5 +575,5 @@ using (var scope = app.Services.CreateScope())
 // Seed de roles y SuperAdmin
 await IdentitySeedData.InicializarAsync(app.Services, app.Configuration);
 
-// Arranque de la aplicación
+// Arranque de la aplicaciï¿½n
 app.Run();

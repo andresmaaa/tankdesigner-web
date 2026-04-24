@@ -18,6 +18,13 @@
             <p>Accede para trabajar con tus proyectos guardados.</p>
         </div>
 
+        @if (PasswordActualizada())
+        {
+            <div class="auth-alert auth-alert--ok">
+                La contraseña se ha actualizado correctamente. Ya puedes iniciar sesión.
+            </div>
+        }
+
         @if (MostrarBloqueo())
         {
             <div class="auth-alert auth-alert--error">
@@ -82,9 +89,12 @@
             </div>
         </form>
 
-        <div class="auth-footer">
-            ¿No tienes cuenta?
-            <a href="@ObtenerRutaRegistro()">Crear cuenta</a>
+        <div class="auth-footer auth-footer--split">
+            <span>
+                ¿No tienes cuenta?
+                <a href="@ObtenerRutaRegistro()">Crear cuenta</a>
+            </span>
+            <a href="/forgot-password">He olvidado mi contraseña</a>
         </div>
     </div>
 </div>
@@ -100,6 +110,13 @@
             var tokens = Antiforgery.GetAndStoreTokens(httpContext);
             _token = tokens.RequestToken ?? string.Empty;
         }
+    }
+
+    private bool PasswordActualizada()
+    {
+        var uri = new Uri(NavigationManager.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        return query.ContainsKey("passwordReset");
     }
 
     private bool MostrarError()
