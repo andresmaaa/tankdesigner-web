@@ -62,10 +62,11 @@ builder.Services
         options.Password.RequiredLength = 8;
         options.Password.RequiredUniqueChars = 1;
 
-        // Bloqueo por intentos fallidos
-        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
-        options.Lockout.MaxFailedAccessAttempts = 5;
-        options.Lockout.AllowedForNewUsers = true;
+        // En desarrollo desactivo el bloqueo de cuenta para evitar suspensiones accidentales.
+        // El rate limiting sigue protegiendo los endpoints de login y registro.
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.Zero;
+        options.Lockout.MaxFailedAccessAttempts = 999;
+        options.Lockout.AllowedForNewUsers = false;
 
         // Sin confirmación de email obligatoria de momento
         options.SignIn.RequireConfirmedEmail = false;
@@ -250,10 +251,23 @@ app.MapPost("/auth/register", async (
         if (!string.IsNullOrWhiteSpace(email))
             url += $"&email={Uri.EscapeDataString(email)}";
 
+        if (!string.IsNullOrWhiteSpace(nombreCompleto))
+            url += $"&nombreCompleto={Uri.EscapeDataString(nombreCompleto)}";
+
         return url;
     }
 
-    if (string.IsNullOrWhiteSpace(nombreCompleto))
+    static bool TieneMayuscula(string valor) => valor.Any(char.IsUpper);
+    static bool TieneMinuscula(string valor) => valor.Any(char.IsLower);
+    static bool TieneNumero(string valor) => valor.Any(char.IsDigit);
+    static bool TieneSimbolo(string valor) => valor.Any(c => !char.IsLetterOrDigit(c));
+
+    static string MensajePassword()
+    {
+        return "La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un símbolo.";
+    }
+
+    if (string.IsNullOrWhiteSpace(nombreCompleto) || nombreCompleto.Length < 3)
         return Results.Redirect(BuildRegisterRedirect("Debes indicar un nombre completo válido."));
 
     if (string.IsNullOrWhiteSpace(email))
@@ -263,10 +277,10 @@ app.MapPost("/auth/register", async (
         return Results.Redirect(BuildRegisterRedirect("El correo electrónico no es válido."));
 
     if (string.IsNullOrWhiteSpace(password))
-        return Results.Redirect(BuildRegisterRedirect("Debes indicar una contraseña válida."));
+        return Results.Redirect(BuildRegisterRedirect(MensajePassword()));
 
-    if (password.Length < 8)
-        return Results.Redirect(BuildRegisterRedirect("La contraseña debe tener al menos 8 caracteres."));
+    if (password.Length < 8 || !TieneMayuscula(password) || !TieneMinuscula(password) || !TieneNumero(password) || !TieneSimbolo(password))
+        return Results.Redirect(BuildRegisterRedirect(MensajePassword()));
 
     if (!string.Equals(password, confirmPassword, StringComparison.Ordinal))
         return Results.Redirect(BuildRegisterRedirect("Las contraseñas no coinciden."));
@@ -385,7 +399,7 @@ app.MapPost("/auth/login", async (
         email,
         password,
         isPersistent: rememberMe,
-        lockoutOnFailure: true);
+        lockoutOnFailure: false);
 
     if (result.Succeeded)
     {
@@ -400,9 +414,6 @@ app.MapPost("/auth/login", async (
 
         return Results.Redirect(returnUrl);
     }
-
-    if (result.IsLockedOut)
-        return Results.Redirect($"/login?locked=1&returnUrl={Uri.EscapeDataString(returnUrl)}");
 
     return Results.Redirect($"/login?error=1&returnUrl={Uri.EscapeDataString(returnUrl)}");
 }).RequireRateLimiting("login");

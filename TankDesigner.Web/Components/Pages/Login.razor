@@ -17,14 +17,7 @@
             <h1>Iniciar sesión</h1>
             <p>Accede para trabajar con tus proyectos guardados.</p>
         </div>
-
-        @if (MostrarBloqueo())
-        {
-            <div class="auth-alert auth-alert--error">
-                Cuenta bloqueada temporalmente por demasiados intentos fallidos. Inténtalo de nuevo más tarde.
-            </div>
-        }
-        else if (MostrarError())
+        @if (MostrarError())
         {
             <div class="auth-alert auth-alert--error">
                 Correo o contraseña incorrectos.
@@ -109,12 +102,6 @@
         return query.ContainsKey("error");
     }
 
-    private bool MostrarBloqueo()
-    {
-        var uri = new Uri(NavigationManager.Uri);
-        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
-        return query.ContainsKey("locked");
-    }
 
     private string ObtenerReturnUrl()
     {

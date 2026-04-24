@@ -23,7 +23,7 @@
             <div class="auth-alert auth-alert--error">@ObtenerError()</div>
         }
 
-        <form method="post" action="/auth/register">
+        <form id="registerForm" method="post" action="/auth/register" novalidate>
             <input type="hidden" name="__RequestVerificationToken" value="@_token" />
             <input type="hidden" name="returnUrl" value="@ObtenerReturnUrl()" />
             <input type="hidden" name="token" value="@ObtenerTokenInvitacion()" />
@@ -39,6 +39,7 @@
                            autocomplete="name"
                            minlength="3"
                            required />
+                    <small class="auth-help">Indica tu nombre completo para identificar tu cuenta.</small>
                 </div>
 
                 <div class="auth-field">
@@ -65,9 +66,17 @@
                            autocomplete="new-password"
                            minlength="8"
                            required />
-                    <small class="auth-help">
-                        Debe tener al menos 8 caracteres e incluir mayúscula, minúscula, número y símbolo.
-                    </small>
+
+                    <div class="password-rules" aria-live="polite">
+                        <div class="password-rules__title">La contraseña debe cumplir todas estas condiciones:</div>
+                        <ul>
+                            <li id="ruleLength" class="password-rule password-rule--pending">Mínimo 8 caracteres.</li>
+                            <li id="ruleUpper" class="password-rule password-rule--pending">Al menos una letra mayúscula.</li>
+                            <li id="ruleLower" class="password-rule password-rule--pending">Al menos una letra minúscula.</li>
+                            <li id="ruleNumber" class="password-rule password-rule--pending">Al menos un número.</li>
+                            <li id="ruleSymbol" class="password-rule password-rule--pending">Al menos un símbolo o carácter especial.</li>
+                        </ul>
+                    </div>
                 </div>
 
                 <div class="auth-field">
@@ -79,9 +88,14 @@
                            autocomplete="new-password"
                            minlength="8"
                            required />
+                    <small id="confirmPasswordHelp" class="auth-help">Repite la contraseña exactamente igual.</small>
                 </div>
 
-                <button type="submit" class="auth-btn">
+                <div id="registerClientError" class="auth-alert auth-alert--error auth-alert--hidden">
+                    Revisa los campos del formulario antes de crear la cuenta.
+                </div>
+
+                <button id="registerSubmit" type="submit" class="auth-btn" disabled>
                     Registrarse
                 </button>
             </div>
@@ -93,6 +107,156 @@
         </div>
     </div>
 </div>
+
+<style>
+    .password-rules {
+        margin-top: .65rem;
+        padding: .85rem;
+        border: 1px solid rgba(148, 163, 184, .35);
+        border-radius: 14px;
+        background: rgba(15, 23, 42, .03);
+    }
+
+    .password-rules__title {
+        margin-bottom: .4rem;
+        font-size: .85rem;
+        font-weight: 700;
+    }
+
+    .password-rules ul {
+        margin: 0;
+        padding-left: 1.1rem;
+    }
+
+    .password-rule {
+        margin: .2rem 0;
+        font-size: .84rem;
+        line-height: 1.35;
+    }
+
+    .password-rule--pending {
+        color: #64748b;
+    }
+
+    .password-rule--ok {
+        color: #15803d;
+        font-weight: 700;
+    }
+
+    .password-rule--bad {
+        color: #b91c1c;
+        font-weight: 700;
+    }
+
+    .auth-alert--hidden {
+        display: none;
+    }
+
+    .auth-btn:disabled {
+        cursor: not-allowed;
+        opacity: .55;
+    }
+</style>
+
+<script>
+    (() => {
+        const form = document.getElementById("registerForm");
+        const nombre = document.getElementById("nombreCompleto");
+        const email = document.getElementById("email");
+        const password = document.getElementById("password");
+        const confirmPassword = document.getElementById("confirmPassword");
+        const submit = document.getElementById("registerSubmit");
+        const clientError = document.getElementById("registerClientError");
+        const confirmHelp = document.getElementById("confirmPasswordHelp");
+
+        const rules = {
+            length: document.getElementById("ruleLength"),
+            upper: document.getElementById("ruleUpper"),
+            lower: document.getElementById("ruleLower"),
+            number: document.getElementById("ruleNumber"),
+            symbol: document.getElementById("ruleSymbol")
+        };
+
+        function setRule(element, isOk, hasValue) {
+            element.classList.remove("password-rule--pending", "password-rule--ok", "password-rule--bad");
+
+            if (!hasValue) {
+                element.classList.add("password-rule--pending");
+                return;
+            }
+
+            element.classList.add(isOk ? "password-rule--ok" : "password-rule--bad");
+        }
+
+        function emailValido() {
+            return email.validity.valid && email.value.trim().length > 0;
+        }
+
+        function validarFormulario() {
+            const pass = password.value;
+            const confirm = confirmPassword.value;
+            const hasValue = pass.length > 0;
+
+            const cumpleLongitud = pass.length >= 8;
+            const cumpleMayuscula = /[A-ZÁÉÍÓÚÜÑ]/.test(pass);
+            const cumpleMinuscula = /[a-záéíóúüñ]/.test(pass);
+            const cumpleNumero = /\d/.test(pass);
+            const cumpleSimbolo = /[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9]/.test(pass);
+            const coinciden = pass.length > 0 && pass === confirm;
+
+            setRule(rules.length, cumpleLongitud, hasValue);
+            setRule(rules.upper, cumpleMayuscula, hasValue);
+            setRule(rules.lower, cumpleMinuscula, hasValue);
+            setRule(rules.number, cumpleNumero, hasValue);
+            setRule(rules.symbol, cumpleSimbolo, hasValue);
+
+            if (confirm.length === 0) {
+                confirmHelp.textContent = "Repite la contraseña exactamente igual.";
+                confirmHelp.classList.remove("password-rule--ok", "password-rule--bad");
+            } else if (coinciden) {
+                confirmHelp.textContent = "Las contraseñas coinciden.";
+                confirmHelp.classList.add("password-rule--ok");
+                confirmHelp.classList.remove("password-rule--bad");
+            } else {
+                confirmHelp.textContent = "Las contraseñas no coinciden.";
+                confirmHelp.classList.add("password-rule--bad");
+                confirmHelp.classList.remove("password-rule--ok");
+            }
+
+            const formularioValido =
+                nombre.value.trim().length >= 3 &&
+                emailValido() &&
+                cumpleLongitud &&
+                cumpleMayuscula &&
+                cumpleMinuscula &&
+                cumpleNumero &&
+                cumpleSimbolo &&
+                coinciden;
+
+            submit.disabled = !formularioValido;
+
+            if (formularioValido) {
+                clientError.classList.add("auth-alert--hidden");
+            }
+
+            return formularioValido;
+        }
+
+        [nombre, email, password, confirmPassword].forEach(input => {
+            input.addEventListener("input", validarFormulario);
+            input.addEventListener("change", validarFormulario);
+        });
+
+        form.addEventListener("submit", event => {
+            if (!validarFormulario()) {
+                event.preventDefault();
+                clientError.classList.remove("auth-alert--hidden");
+            }
+        });
+
+        validarFormulario();
+    })();
+</script>
 
 @code {
     private string _token = string.Empty;
@@ -153,6 +317,12 @@
 
     private string ObtenerNombreInicial()
     {
+        var uri = new Uri(NavigationManager.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+
+        if (query.TryGetValue("nombreCompleto", out var nombreCompleto))
+            return nombreCompleto.ToString();
+
         return string.Empty;
     }
 
