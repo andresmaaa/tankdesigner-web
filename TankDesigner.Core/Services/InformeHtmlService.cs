@@ -554,6 +554,30 @@ namespace TankDesigner.Core.Services
         }
 
         private int NumeroAnillos() => _resultado?.NumeroAnillos > 0 ? _resultado.NumeroAnillos : (_tanque?.NumeroAnillos ?? 0);
+
+        private List<ResultadoAnilloModel> ObtenerAnillosOrdenInformeAscendente()
+        {
+            if (_resultado?.Anillos == null || _resultado.Anillos.Count == 0)
+                return new List<ResultadoAnilloModel>();
+
+            return _resultado.Anillos
+                .Where(a => a != null)
+                .OrderBy(a => a.Head > 0 ? a.Head : double.MaxValue)
+                .ThenByDescending(a => a.AlturaSuperior)
+                .ThenBy(a => a.AlturaInferior)
+                .ThenBy(a => a.NumeroAnillo)
+                .ToList();
+        }
+
+        private int ObtenerNumeroAnilloInforme(ResultadoAnilloModel anillo, List<ResultadoAnilloModel> anillosOrdenados)
+        {
+            if (anillo == null || anillosOrdenados == null || anillosOrdenados.Count == 0)
+                return anillo?.NumeroAnillo ?? 0;
+
+            int indice = anillosOrdenados.FindIndex(a => ReferenceEquals(a, anillo));
+            return indice >= 0 ? indice + 1 : anillo.NumeroAnillo;
+        }
+
         private int ChapasPorAnillo() => _resultado?.ChapasPorAnillo > 0 ? _resultado.ChapasPorAnillo : (_tanque?.ChapasPorAnillo ?? 0);
         private int AnilloArranque() => _resultado?.AnilloArranque > 0 ? _resultado.AnilloArranque : (_tanque?.AnilloArranque ?? 0);
         private double BordeLibre() => _resultado?.BordeLibre > 0 ? _resultado.BordeLibre : (_tanque?.BordeLibre ?? 0);
@@ -591,18 +615,20 @@ namespace TankDesigner.Core.Services
 
             if (_resultado?.Anillos != null && _resultado.Anillos.Count > 0)
             {
-                int ultimoAnillo = _resultado.Anillos.Max(a => a.NumeroAnillo);
+                var anillosOrdenados = ObtenerAnillosOrdenInformeAscendente();
+                int ultimoIndice = anillosOrdenados.Count - 1;
 
-                foreach (var anillo in _resultado.Anillos.OrderBy(a => a.NumeroAnillo))
+                for (int i = 0; i < anillosOrdenados.Count; i++)
                 {
+                    var anillo = anillosOrdenados[i];
                     string rigidizadores = "—";
-                    if (_resultado.TieneRigidizadorBase && anillo.NumeroAnillo == ultimoAnillo)
+                    if (_resultado.TieneRigidizadorBase && i == ultimoIndice)
                     {
                         rigidizadores = _resultado.AlturaRigidizadorBase > 0
                             ? $"{_resultado.NombreRigidizadorBase} ({Formato(_resultado.AlturaRigidizadorBase, "0.###")} x {Formato(_resultado.EspesorRigidizadorBase, "0.###")})"
                             : TextoSeguroSinInventar(_resultado.NombreRigidizadorBase);
                     }
-                    else if (_resultado.TieneStarterRing && anillo.NumeroAnillo == ultimoAnillo)
+                    else if (_resultado.TieneStarterRing && i == ultimoIndice)
                     {
                         rigidizadores = $"Starter Ring {Formato(_resultado.AlturaStarterRing, "0.###")}";
                     }
@@ -616,7 +642,7 @@ namespace TankDesigner.Core.Services
 
                     lista.Add(new ResumenTanqueRow
                     {
-                        Anillo = anillo.NumeroAnillo,
+                        Anillo = i + 1,
                         Altura = alturaPanel > 0 ? Formato(alturaPanel, "0.###") : "—",
                         Espesor = anillo.EspesorSeleccionado > 0 ? Formato(anillo.EspesorSeleccionado, "0.###") : "—",
                         PosicionRigidizadores = rigidizadores,
@@ -1566,14 +1592,17 @@ namespace TankDesigner.Core.Services
 
             if (_resultado?.Anillos != null && _resultado.Anillos.Count > 0)
             {
-                foreach (var anillo in _resultado.Anillos.OrderBy(a => a.NumeroAnillo))
+                var anillosOrdenados = ObtenerAnillosOrdenInformeAscendente();
+
+                for (int i = 0; i < anillosOrdenados.Count; i++)
                 {
+                    var anillo = anillosOrdenados[i];
                     bool esViento = Math.Abs(factor - 1.18) < 0.01;
                     bool esSismo = Math.Abs(factor - 1.42) < 0.01;
 
                     lista.Add(new TensionAxialRow
                     {
-                        Anillo = anillo.NumeroAnillo,
+                        Anillo = i + 1,
                         CargaAxial = ValorSegunCaso(anillo.AxialLoad, anillo.WindAxialLoad, anillo.SeismicAxialLoad, esViento, esSismo),
                         TensionAxial = ValorSegunCaso(anillo.AxialStress, anillo.WindAxialStress, anillo.SeismicAxialStress, esViento, esSismo),
                         TensionAxialAdmisible = ValorSegunCaso(anillo.AllowableAxialStress, anillo.WindAllowableAxialStress, anillo.SeismicAllowableAxialStress, esViento, esSismo),
@@ -1620,11 +1649,14 @@ namespace TankDesigner.Core.Services
 
             if (_resultado?.Anillos != null && _resultado.Anillos.Count > 0)
             {
-                foreach (var anillo in _resultado.Anillos.OrderBy(a => a.NumeroAnillo))
+                var anillosOrdenados = ObtenerAnillosOrdenInformeAscendente();
+
+                for (int i = 0; i < anillosOrdenados.Count; i++)
                 {
+                    var anillo = anillosOrdenados[i];
                     lista.Add(new TensionHidrodinamicaRow
                     {
-                        Anillo = anillo.NumeroAnillo,
+                        Anillo = i + 1,
                         CargaTotal = anillo.CombinedTotalHoopLoad > 0 ? Formato(anillo.CombinedTotalHoopLoad, "0.###") : "—",
                         TensionTraccion = anillo.CombinedNetTensileStress > 0 ? Formato(anillo.CombinedNetTensileStress, "0.###") : "—",
                         TensionTraccionAdmisible = anillo.CombinedAllowableTensileStress > 0 ? Formato(anillo.CombinedAllowableTensileStress, "0.###") : "—",

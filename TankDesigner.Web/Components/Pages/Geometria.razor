@@ -123,59 +123,31 @@
                 <article class="td-panel">
                     <div class="td-panel__header">
                         <div class="section-kicker">Bloque 02</div>
-                        <h2>Datos reales por anillo</h2>
-                        <p>Aquí puedes definir la altura, material y configuración de cada anillo. Si dejas la configuración en automática, el cálculo elegirá la válida del catálogo.</p>
+                        <h2>Lógica automática del modelo</h2>
+                        <p>Los materiales, configuraciones y espesores finales se resuelven automáticamente durante el cálculo usando la lógica del motor y los catálogos JSON reales.</p>
                     </div>
 
-                    <div style="overflow-x:auto;">
-                        <table class="td-table" style="width:100%; border-collapse:separate; border-spacing:0 10px;">
-                            <thead>
-                                <tr>
-                                    <th style="text-align:left;">Anillo</th>
-                                    <th style="text-align:left;">Altura (mm)</th>
-                                    <th style="text-align:left;">Material</th>
-                                    <th style="text-align:left;">Configuración</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @for (int i = 0; i < EstadoProyecto.Tanque.NumeroAnillos; i++)
-                                {
-                                    var index = i;
-                                    <tr>
-                                        <td style="padding:6px 8px;">@(index + 1)</td>
-                                        <td style="padding:6px 8px; min-width:140px;">
-                                            <input class="td-input"
-                                                   type="number"
-                                                   min="1"
-                                                   step="1"
-                                                   value="@FormatearNumero(ObtenerAlturaAnillo(index))"
-                                                   @oninput="e => OnAlturaAnilloInput(index, e)" />
-                                        </td>
-                                        <td style="padding:6px 8px; min-width:180px;">
-                                            <select class="td-input td-select"
-                                                    value="@ObtenerMaterialAnillo(index)"
-                                                    @onchange="e => OnMaterialAnilloChange(index, e)">
-                                                @foreach (var item in _materiales)
-                                                {
-                                                    <option value="@item">@item</option>
-                                                }
-                                            </select>
-                                        </td>
-                                        <td style="padding:6px 8px; min-width:220px;">
-                                            <select class="td-input td-select"
-                                                    value="@ObtenerConfiguracionAnillo(index)"
-                                                    @onchange="e => OnConfiguracionAnilloChange(index, e)">
-                                                <option value="">Automática</option>
-                                                @foreach (var item in _configuraciones)
-                                                {
-                                                    <option value="@item">@item</option>
-                                                }
-                                            </select>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
+                    <div class="summary-list">
+                        <div class="summary-row">
+                            <span class="summary-row__label">Material base del proyecto</span>
+                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Proyecto.MaterialPrincipal)</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-row__label">Fabricante</span>
+                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Proyecto.Fabricante)</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-row__label">Normativa</span>
+                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Proyecto.Normativa)</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-row__label">Resolución por anillo</span>
+                            <span class="summary-row__value">Automática desde cálculo y catálogo</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-row__label">Entrada manual por anillo</span>
+                            <span class="summary-row__value">No editable en esta pantalla</span>
+                        </div>
                     </div>
                 </article>
 
@@ -236,12 +208,12 @@
                             <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Instalacion.TipoMedioAnillo)</span>
                         </div>
                         <div class="summary-row">
-                            <span class="summary-row__label">Materiales aplicados</span>
-                            <span class="summary-row__value">@ObtenerResumenMateriales()</span>
+                            <span class="summary-row__label">Material base</span>
+                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Proyecto.MaterialPrincipal)</span>
                         </div>
                         <div class="summary-row">
-                            <span class="summary-row__label">Configuraciones aplicadas</span>
-                            <span class="summary-row__value">@ObtenerResumenConfiguraciones()</span>
+                            <span class="summary-row__label">Resolución de anillos</span>
+                            <span class="summary-row__value">Automática</span>
                         </div>
                         <div class="summary-row">
                             <span class="summary-row__label">Diámetro calculado</span>
@@ -270,8 +242,6 @@
     private List<int> _anillosArranque = new();
     private List<string> _tiposMedioAnillo = new();
     private List<string> _tiposTecho = new();
-    private List<string> _materiales = new();
-    private List<string> _configuraciones = new();
     private List<string> _errores = new();
 
     protected override void OnInitialized()
@@ -279,18 +249,15 @@
         _anillosArranque = Opciones.ObtenerAnillosArranque();
         _tiposMedioAnillo = Opciones.ObtenerTiposMedioAnillo();
         _tiposTecho = Opciones.ObtenerTiposTechoInstalacion();
-        _materiales = Opciones.ObtenerMateriales();
 
-        CargarConfiguraciones();
         AplicarValoresPorDefecto();
-        SincronizarDatosPorAnillo();
+        LimpiarDatosAutomaticosPorAnillo();
         RecalcularYValidar();
     }
 
     protected override void OnParametersSet()
     {
-        CargarConfiguraciones();
-        SincronizarDatosPorAnillo();
+        LimpiarDatosAutomaticosPorAnillo();
         RecalcularYValidar();
     }
 
@@ -305,6 +272,9 @@
         if (EstadoProyecto.Tanque.AnilloArranque <= 0)
             EstadoProyecto.Tanque.AnilloArranque = _anillosArranque.FirstOrDefault();
 
+        if (EstadoProyecto.Tanque.AnilloArranque > EstadoProyecto.Tanque.NumeroAnillos)
+            EstadoProyecto.Tanque.AnilloArranque = EstadoProyecto.Tanque.NumeroAnillos;
+
         if (EstadoProyecto.Tanque.BordeLibre <= 0)
             EstadoProyecto.Tanque.BordeLibre = 300;
 
@@ -318,56 +288,30 @@
             EstadoProyecto.Instalacion.TipoTecho = "Sin techo";
 
         if (string.IsNullOrWhiteSpace(EstadoProyecto.Cargas.RoofType))
+        {
             EstadoProyecto.Cargas.RoofType = EstadoProyecto.Instalacion.TipoTecho.Equals("Sin techo", StringComparison.OrdinalIgnoreCase)
                 ? "None"
                 : EstadoProyecto.Instalacion.TipoTecho;
+        }
+
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.MaterialPrincipal))
+            EstadoProyecto.Proyecto.MaterialPrincipal = "S235";
     }
 
-    private void CargarConfiguraciones()
-    {
-        _configuraciones = Opciones.ObtenerModelosPorFabricante(EstadoProyecto.Proyecto.Fabricante ?? string.Empty);
-        _configuraciones ??= new List<string>();
-    }
-
-    private void SincronizarDatosPorAnillo()
+    private void LimpiarDatosAutomaticosPorAnillo()
     {
         EstadoProyecto.Tanque.AlturasAnillos ??= new List<double>();
         EstadoProyecto.Tanque.MaterialesAnillos ??= new List<string>();
         EstadoProyecto.Tanque.ConfiguracionesAnillos ??= new List<string>();
 
-        string materialDefault = !string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.MaterialPrincipal)
-            ? EstadoProyecto.Proyecto.MaterialPrincipal.Trim()
-            : (_materiales.FirstOrDefault() ?? "S235");
+        if (EstadoProyecto.Tanque.AlturasAnillos.Count > 0)
+            EstadoProyecto.Tanque.AlturasAnillos.Clear();
 
-        while (EstadoProyecto.Tanque.AlturasAnillos.Count < EstadoProyecto.Tanque.NumeroAnillos)
-            EstadoProyecto.Tanque.AlturasAnillos.Add(EstadoProyecto.Tanque.AlturaPanelBase > 0 ? EstadoProyecto.Tanque.AlturaPanelBase : 1200);
+        if (EstadoProyecto.Tanque.MaterialesAnillos.Count > 0)
+            EstadoProyecto.Tanque.MaterialesAnillos.Clear();
 
-        while (EstadoProyecto.Tanque.MaterialesAnillos.Count < EstadoProyecto.Tanque.NumeroAnillos)
-            EstadoProyecto.Tanque.MaterialesAnillos.Add(materialDefault);
-
-        while (EstadoProyecto.Tanque.ConfiguracionesAnillos.Count < EstadoProyecto.Tanque.NumeroAnillos)
-            EstadoProyecto.Tanque.ConfiguracionesAnillos.Add(string.Empty);
-
-        if (EstadoProyecto.Tanque.AlturasAnillos.Count > EstadoProyecto.Tanque.NumeroAnillos)
-            EstadoProyecto.Tanque.AlturasAnillos = EstadoProyecto.Tanque.AlturasAnillos.Take(EstadoProyecto.Tanque.NumeroAnillos).ToList();
-
-        if (EstadoProyecto.Tanque.MaterialesAnillos.Count > EstadoProyecto.Tanque.NumeroAnillos)
-            EstadoProyecto.Tanque.MaterialesAnillos = EstadoProyecto.Tanque.MaterialesAnillos.Take(EstadoProyecto.Tanque.NumeroAnillos).ToList();
-
-        if (EstadoProyecto.Tanque.ConfiguracionesAnillos.Count > EstadoProyecto.Tanque.NumeroAnillos)
-            EstadoProyecto.Tanque.ConfiguracionesAnillos = EstadoProyecto.Tanque.ConfiguracionesAnillos.Take(EstadoProyecto.Tanque.NumeroAnillos).ToList();
-
-        for (int i = 0; i < EstadoProyecto.Tanque.NumeroAnillos; i++)
-        {
-            if (EstadoProyecto.Tanque.AlturasAnillos[i] <= 0)
-                EstadoProyecto.Tanque.AlturasAnillos[i] = EstadoProyecto.Tanque.AlturaPanelBase > 0 ? EstadoProyecto.Tanque.AlturaPanelBase : 1200;
-
-            if (string.IsNullOrWhiteSpace(EstadoProyecto.Tanque.MaterialesAnillos[i]))
-                EstadoProyecto.Tanque.MaterialesAnillos[i] = materialDefault;
-
-            EstadoProyecto.Tanque.MaterialesAnillos[i] = EstadoProyecto.Tanque.MaterialesAnillos[i].Trim();
-            EstadoProyecto.Tanque.ConfiguracionesAnillos[i] = (EstadoProyecto.Tanque.ConfiguracionesAnillos[i] ?? string.Empty).Trim();
-        }
+        if (EstadoProyecto.Tanque.ConfiguracionesAnillos.Count > 0)
+            EstadoProyecto.Tanque.ConfiguracionesAnillos.Clear();
     }
 
     private void OnChapasPorAnilloInput(ChangeEventArgs e)
@@ -388,7 +332,6 @@
             if (EstadoProyecto.Tanque.AnilloArranque > EstadoProyecto.Tanque.NumeroAnillos)
                 EstadoProyecto.Tanque.AnilloArranque = EstadoProyecto.Tanque.NumeroAnillos;
 
-            SincronizarDatosPorAnillo();
             RecalcularYValidar();
         }
     }
@@ -446,51 +389,6 @@
         RecalcularYValidar();
     }
 
-    private void OnAlturaAnilloInput(int index, ChangeEventArgs e)
-    {
-        SincronizarDatosPorAnillo();
-        EstadoProyecto.Tanque.AlturasAnillos[index] = Math.Max(1, ParseDoubleOrZero(e.Value?.ToString()));
-        RecalcularYValidar();
-    }
-
-    private void OnMaterialAnilloChange(int index, ChangeEventArgs e)
-    {
-        SincronizarDatosPorAnillo();
-        EstadoProyecto.Tanque.MaterialesAnillos[index] = e.Value?.ToString()?.Trim() ?? string.Empty;
-        RecalcularYValidar();
-    }
-
-    private void OnConfiguracionAnilloChange(int index, ChangeEventArgs e)
-    {
-        SincronizarDatosPorAnillo();
-        EstadoProyecto.Tanque.ConfiguracionesAnillos[index] = e.Value?.ToString()?.Trim() ?? string.Empty;
-        RecalcularYValidar();
-    }
-
-    private double ObtenerAlturaAnillo(int index)
-    {
-        SincronizarDatosPorAnillo();
-        return index >= 0 && index < EstadoProyecto.Tanque.AlturasAnillos.Count
-            ? EstadoProyecto.Tanque.AlturasAnillos[index]
-            : (EstadoProyecto.Tanque.AlturaPanelBase > 0 ? EstadoProyecto.Tanque.AlturaPanelBase : 1200);
-    }
-
-    private string ObtenerMaterialAnillo(int index)
-    {
-        SincronizarDatosPorAnillo();
-        return index >= 0 && index < EstadoProyecto.Tanque.MaterialesAnillos.Count
-            ? EstadoProyecto.Tanque.MaterialesAnillos[index]
-            : (!string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.MaterialPrincipal) ? EstadoProyecto.Proyecto.MaterialPrincipal.Trim() : "S235");
-    }
-
-    private string ObtenerConfiguracionAnillo(int index)
-    {
-        SincronizarDatosPorAnillo();
-        return index >= 0 && index < EstadoProyecto.Tanque.ConfiguracionesAnillos.Count
-            ? EstadoProyecto.Tanque.ConfiguracionesAnillos[index]
-            : string.Empty;
-    }
-
     private string GenerarModeloAutomatico()
     {
         string letraFabricante = ObtenerLetraFabricante(EstadoProyecto.Proyecto.Fabricante);
@@ -541,8 +439,6 @@
 
     private void RecalcularYValidar()
     {
-        SincronizarDatosPorAnillo();
-
         EstadoProyecto.Tanque.AlturaPanelBase =
             CalculoGeometriaService.ObtenerAlturaPanelBase(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);
 
@@ -556,34 +452,6 @@
 
         _errores = ValidacionService.ValidarGeometria(EstadoProyecto.Tanque);
         StateHasChanged();
-    }
-
-    private string ObtenerResumenMateriales()
-    {
-        SincronizarDatosPorAnillo();
-
-        var materiales = EstadoProyecto.Tanque.MaterialesAnillos
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Select(x => x.Trim())
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(x => x)
-            .ToList();
-
-        return materiales.Count > 0 ? string.Join(", ", materiales) : "—";
-    }
-
-    private string ObtenerResumenConfiguraciones()
-    {
-        SincronizarDatosPorAnillo();
-
-        var configuraciones = EstadoProyecto.Tanque.ConfiguracionesAnillos
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Select(x => x.Trim())
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(x => x)
-            .ToList();
-
-        return configuraciones.Count > 0 ? string.Join(", ", configuraciones) : "Automática";
     }
 
     private double ParseDoubleOrZero(string? texto)

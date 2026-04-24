@@ -57,27 +57,6 @@ namespace TankDesigner.Web.Services
             if (tanque.DensidadLiquido <= 0)
                 errores.Add("La densidad del líquido debe ser mayor que 0.");
 
-            if (tanque.AlturasAnillos != null && tanque.AlturasAnillos.Count > 0)
-            {
-                if (tanque.AlturasAnillos.Count != tanque.NumeroAnillos)
-                    errores.Add("La lista de alturas por anillo no coincide con el número de anillos.");
-
-                if (tanque.AlturasAnillos.Any(x => x <= 0))
-                    errores.Add("Todas las alturas por anillo deben ser mayores que 0.");
-            }
-
-            if (tanque.MaterialesAnillos != null && tanque.MaterialesAnillos.Count > 0)
-            {
-                if (tanque.MaterialesAnillos.Count != tanque.NumeroAnillos)
-                    errores.Add("La lista de materiales por anillo no coincide con el número de anillos.");
-
-                if (tanque.MaterialesAnillos.Any(string.IsNullOrWhiteSpace))
-                    errores.Add("Todos los anillos deben tener material.");
-            }
-
-            if (tanque.ConfiguracionesAnillos != null && tanque.ConfiguracionesAnillos.Count > tanque.NumeroAnillos)
-                errores.Add("La lista de configuraciones por anillo no puede exceder el número de anillos.");
-
             return errores;
         }
 
