@@ -1,43 +1,54 @@
-﻿using System.Net;
-using System.Net.Mail;
+﻿using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 
 namespace TankDesigner.Web.Services
 {
     public class EmailService
     {
         private readonly IConfiguration _config;
+        private readonly HttpClient _http;
 
         public EmailService(IConfiguration config)
         {
             _config = config;
+            _http = new HttpClient();
         }
 
         public async Task EnviarEmailAsync(string toEmail, string subject, string body)
         {
-            var smtpHost = _config["Email:SmtpHost"];
-            var smtpPort = int.Parse(_config["Email:SmtpPort"] ?? "587");
-            var user = _config["Email:User"];
-            var password = _config["Email:Password"];
+            var apiKey = _config["Email:ApiKey"];
             var fromEmail = _config["Email:FromEmail"];
-            var fromName = _config["Email:FromName"];
+            var fromName = _config["Email:FromName"] ?? "Tank Structural Designer";
 
-            var client = new SmtpClient(smtpHost, smtpPort)
+            if (string.IsNullOrWhiteSpace(apiKey))
+                throw new Exception("Falta Email:ApiKey");
+
+            var request = new HttpRequestMessage(HttpMethod.Post, "https://api.resend.com/emails");
+
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+            var payload = new
             {
-                Credentials = new NetworkCredential(user, password),
-                EnableSsl = true
+                from = $"{fromName} <{fromEmail}>",
+                to = new[] { toEmail },
+                subject = subject,
+                html = body
             };
 
-            var mail = new MailMessage
+            request.Content = new StringContent(
+                JsonSerializer.Serialize(payload),
+                Encoding.UTF8,
+                "application/json"
+            );
+
+            var response = await _http.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
             {
-                From = new MailAddress(fromEmail, fromName),
-                Subject = subject,
-                Body = body,
-                IsBodyHtml = true
-            };
-
-            mail.To.Add(toEmail);
-
-            await client.SendMailAsync(mail);
+                var error = await response.Content.ReadAsStringAsync();
+                throw new Exception($"Error Resend: {error}");
+            }
         }
     }
 }
