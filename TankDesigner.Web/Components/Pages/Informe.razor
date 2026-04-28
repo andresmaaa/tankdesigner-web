@@ -23,7 +23,6 @@
 @inject CalculoGeometriaService CalculoGeometriaService
 @inject InformeHtmlService InformeHtmlService
 @inject PdfRenderService PdfRenderService
-@inject IJSRuntime JS
 
 <PageTitle>Informe</PageTitle>
 
@@ -43,6 +42,7 @@
 
     <div class="page-layout">
         <section class="main-column">
+
             <article class="td-panel">
                 <div class="td-panel__header td-panel__header--split">
                     <div>
@@ -53,9 +53,6 @@
                             de vista previa o exportación.
                         </p>
                     </div>
-                    <article class="td-panel">
-                        <Vista3D Resultado="EstadoProyecto.Resultado" />
-                    </article>
 
                     <div class="toolbar-actions">
                         <div class="idioma-switch">
@@ -99,6 +96,10 @@
                         Descargar ZIP con los 3 informes
                     </button>
                 </div>
+            </article>
+
+            <article class="td-panel">
+                <Vista3D Resultado="EstadoProyecto.Resultado" />
             </article>
 
             <article class="td-panel">
@@ -324,7 +325,7 @@
         <textarea class="ia-question-box__textarea"
                   @bind="_preguntaIa"
                   placeholder="Ejemplo: ¿Qué incoherencias detectas entre las cargas y el resultado del cálculo?">
-            </textarea>
+        </textarea>
 
         <div class="ia-question-box__actions">
             <button type="button"
@@ -540,7 +541,6 @@
             _mensaje = $"Error al preparar el cálculo inicial: {ex.Message}";
         }
     }
-
 
     private void SincronizarGeometriaActual()
     {
