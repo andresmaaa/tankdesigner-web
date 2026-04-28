@@ -100,6 +100,17 @@
                             </select>
                             <small>Fabricante filtrado contra los catálogos disponibles.</small>
                         </div>
+
+                        <div class="field field--full">
+                            <label>Material principal</label>
+                            <select class="td-input td-select" value="@EstadoProyecto.Proyecto.MaterialPrincipal" @onchange="OnMaterialChange">
+                                @foreach (var item in _materiales)
+                                {
+                                    <option value="@item">@item</option>
+                                }
+                            </select>
+                            <small>Material base general del tanque. El acero real de cada anillo se calcula desde los JSON.</small>
+                        </div>
                     </div>
                 </article>
             </section>
@@ -135,6 +146,10 @@
                             <span class="summary-row__label">Fabricante</span>
                             <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Proyecto.Fabricante)</span>
                         </div>
+                        <div class="summary-row">
+                            <span class="summary-row__label">Material</span>
+                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Proyecto.MaterialPrincipal)</span>
+                        </div>
                     </div>
                 </article>
             </aside>
@@ -146,6 +161,7 @@
     private List<string> _modelosCalculo = new();
     private List<string> _normativas = new();
     private List<string> _fabricantes = new();
+    private List<string> _materiales = new();
     private List<string> _errores = new();
 
     protected override void OnInitialized()
@@ -153,6 +169,7 @@
         _modelosCalculo = Opciones.ObtenerModelosCalculo();
         _normativas = Opciones.ObtenerNormativas();
         _fabricantes = Opciones.ObtenerFabricantes();
+        _materiales = Opciones.ObtenerMateriales();
 
         if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.NombreProyecto))
             EstadoProyecto.Proyecto.NombreProyecto = "Depósito vertical 01";
@@ -167,13 +184,14 @@
             string.Equals(EstadoProyecto.Proyecto.Normativa.Trim(), "AWWA", StringComparison.OrdinalIgnoreCase))
             EstadoProyecto.Proyecto.Normativa = _normativas.FirstOrDefault() ?? "AWWA D103-19";
 
-        // AplicarMigracionBaseRealSiProcede();
-
         if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.Fabricante))
             EstadoProyecto.Proyecto.Fabricante = _fabricantes.FirstOrDefault() ?? "Permastore";
 
-        // El material no se fuerza desde Proyecto.
-        // El cálculo selecciona el tipo de acero por anillo desde los JSON de planchas.
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.MaterialPrincipal) ||
+            !_materiales.Contains(EstadoProyecto.Proyecto.MaterialPrincipal, StringComparer.OrdinalIgnoreCase))
+        {
+            EstadoProyecto.Proyecto.MaterialPrincipal = _materiales.FirstOrDefault() ?? "Acero vitrificado";
+        }
 
         if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.IdiomaInforme))
             EstadoProyecto.Proyecto.IdiomaInforme = "ES";
@@ -208,6 +226,12 @@
     private void OnFabricanteChange(ChangeEventArgs e)
     {
         EstadoProyecto.Proyecto.Fabricante = e.Value?.ToString() ?? string.Empty;
+        ValidarProyecto();
+    }
+
+    private void OnMaterialChange(ChangeEventArgs e)
+    {
+        EstadoProyecto.Proyecto.MaterialPrincipal = e.Value?.ToString() ?? string.Empty;
         ValidarProyecto();
     }
 
