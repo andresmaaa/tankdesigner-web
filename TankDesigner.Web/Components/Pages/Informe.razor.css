@@ -937,4 +937,125 @@
         color: #0f172a;
         white-space: pre-line;
     }
+
+    /* Vista 3D del tanque */
+    .tank3d-card {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+    }
+
+    .tank3d-card__header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 18px;
+    }
+
+        .tank3d-card__header h2 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 800;
+            color: #0f172a;
+            line-height: 1.25;
+        }
+
+        .tank3d-card__header p {
+            margin: 8px 0 0 0;
+            font-size: 14px;
+            color: #64748b;
+            line-height: 1.6;
+        }
+
+    .tank3d-warning {
+        padding: 12px 14px;
+        border: 1px solid #f7d7aa;
+        background: #fff7ed;
+        color: #9a3412;
+        border-radius: 14px;
+        font-size: 14px;
+        font-weight: 650;
+    }
+
+    .tank3d-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 280px;
+        gap: 18px;
+        align-items: stretch;
+    }
+
+    .tank3d-viewport {
+        min-height: 520px;
+        border: 1px solid #dbe3ee;
+        border-radius: 20px;
+        overflow: hidden;
+        background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
+    }
+
+        .tank3d-viewport canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+    .tank3d-info {
+        border: 1px solid #e2e8f0;
+        border-radius: 18px;
+        background: #ffffff;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .tank3d-info__title,
+    .tank3d-legend__title {
+        font-size: 13px;
+        font-weight: 850;
+        color: #0f172a;
+        margin-bottom: 4px;
+    }
+
+    .tank3d-info__row,
+    .tank3d-legend__item {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 9px 0;
+        border-bottom: 1px solid #edf2f7;
+        font-size: 13px;
+    }
+
+        .tank3d-info__row span,
+        .tank3d-legend__item span {
+            color: #64748b;
+        }
+
+        .tank3d-info__row strong,
+        .tank3d-legend__item strong {
+            color: #0f172a;
+            text-align: right;
+            font-weight: 800;
+        }
+
+    .tank3d-legend {
+        margin-top: 8px;
+        padding-top: 10px;
+        border-top: 1px solid #e2e8f0;
+        max-height: 260px;
+        overflow: auto;
+    }
+
+    @media (max-width: 1100px) {
+        .tank3d-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .tank3d-card__header {
+            flex-direction: column;
+        }
+    }
+
 }

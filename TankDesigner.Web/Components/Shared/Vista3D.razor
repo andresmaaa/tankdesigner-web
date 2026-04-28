@@ -1,0 +1,188 @@
+@using TankDesigner.Core.Models
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<div class="tank3d-card">
+    <div class="tank3d-card__header">
+        <div>
+            <div class="section-kicker">Visualización 3D</div>
+            <h2>Modelo tridimensional del tanque</h2>
+            <p>
+                Vista generada desde el resultado real del cálculo: diámetro, altura total,
+                anillos, espesores, materiales y configuración aplicada.
+            </p>
+        </div>
+
+        <button type="button" class="action-btn action-btn--blue" @onclick="ActualizarVista3D">
+            Actualizar vista
+        </button>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_mensaje))
+    {
+        <div class="tank3d-warning">@_mensaje</div>
+    }
+
+    <div class="tank3d-layout">
+        <div class="tank3d-viewport" @ref="_contenedor3d"></div>
+
+        <div class="tank3d-info">
+            <div class="tank3d-info__title">Datos usados</div>
+
+            <div class="tank3d-info__row">
+                <span>Diámetro</span>
+                <strong>@FormatoNumero(Resultado?.Diametro) m</strong>
+            </div>
+
+            <div class="tank3d-info__row">
+                <span>Altura total</span>
+                <strong>@FormatoNumero(Resultado?.AlturaTotal) m</strong>
+            </div>
+
+            <div class="tank3d-info__row">
+                <span>Anillos</span>
+                <strong>@(Resultado?.Anillos?.Count ?? 0)</strong>
+            </div>
+
+            <div class="tank3d-info__row">
+                <span>Configuración</span>
+                <strong>@TextoSeguro(Resultado?.NombreConfiguracionCalculada, Resultado?.NombreConfiguracion)</strong>
+            </div>
+
+            <div class="tank3d-info__row">
+                <span>Material principal</span>
+                <strong>@TextoSeguro(Resultado?.MaterialPrincipal)</strong>
+            </div>
+
+            <div class="tank3d-legend">
+                <div class="tank3d-legend__title">Anillos calculados</div>
+                @foreach (var anillo in AnillosOrdenados())
+                {
+                    <div class="tank3d-legend__item">
+                        <span>Anillo @anillo.NumeroAnillo</span>
+                        <strong>@TextoSeguro(anillo.MaterialAplicado) · @FormatoNumero(anillo.EspesorSeleccionado) mm</strong>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public ResultadoCalculoModel? Resultado { get; set; }
+
+    private ElementReference _contenedor3d;
+    private IJSObjectReference? _modulo3d;
+    private bool _renderInicialPendiente = true;
+    private string? _mensaje;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender && !_renderInicialPendiente)
+            return;
+
+        _renderInicialPendiente = false;
+        await ActualizarVista3D();
+    }
+
+    protected override void OnParametersSet()
+    {
+        _renderInicialPendiente = true;
+    }
+
+    private async Task ActualizarVista3D()
+    {
+        try
+        {
+            _mensaje = null;
+
+            if (!HayDatosSuficientes())
+            {
+                _mensaje = "Todavía no hay un resultado calculado válido con anillos para generar la vista 3D.";
+                return;
+            }
+
+            _modulo3d ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/tank3d.js");
+            await _modulo3d.InvokeVoidAsync("renderTank3D", _contenedor3d, CrearDto3D());
+        }
+        catch (Exception ex)
+        {
+            _mensaje = $"No se pudo cargar la vista 3D: {ex.Message}";
+        }
+    }
+
+    private bool HayDatosSuficientes()
+    {
+        return Resultado is not null
+            && Resultado.Diametro > 0
+            && Resultado.AlturaTotal > 0
+            && Resultado.Anillos is not null
+            && Resultado.Anillos.Count > 0;
+    }
+
+    private object CrearDto3D()
+    {
+        var resultado = Resultado!;
+        var anillos = AnillosOrdenados().Select(a => new
+        {
+            numero = a.NumeroAnillo,
+            alturaInferior = a.AlturaInferior,
+            alturaSuperior = a.AlturaSuperior,
+            altura = Math.Max(0, a.AlturaSuperior - a.AlturaInferior),
+            espesor = a.EspesorSeleccionado,
+            material = TextoSeguro(a.MaterialAplicado, resultado.MaterialPrincipal),
+            configuracion = TextoSeguro(a.ConfiguracionAplicada, resultado.NombreConfiguracionCalculada, resultado.NombreConfiguracion),
+            valido = a.EsValido
+        }).ToList();
+
+        return new
+        {
+            diametro = resultado.Diametro,
+            alturaTotal = resultado.AlturaTotal,
+            materialPrincipal = TextoSeguro(resultado.MaterialPrincipal),
+            configuracion = TextoSeguro(resultado.NombreConfiguracionCalculada, resultado.NombreConfiguracion),
+            rigidizadorSuperior = TextoSeguro(resultado.NombreRigidizadorBase),
+            anillos
+        };
+    }
+
+    private List<ResultadoAnilloModel> AnillosOrdenados()
+    {
+        return Resultado?.Anillos?
+            .OrderBy(a => a.AlturaInferior)
+            .ThenBy(a => a.NumeroAnillo)
+            .ToList() ?? new List<ResultadoAnilloModel>();
+    }
+
+    private static string TextoSeguro(params string?[] valores)
+    {
+        foreach (var valor in valores)
+        {
+            if (!string.IsNullOrWhiteSpace(valor))
+                return valor.Trim();
+        }
+
+        return "—";
+    }
+
+    private static string FormatoNumero(double? valor)
+    {
+        if (!valor.HasValue || valor.Value <= 0)
+            return "—";
+
+        return valor.Value.ToString("0.###", System.Globalization.CultureInfo.CurrentCulture);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_modulo3d is not null)
+                await _modulo3d.DisposeAsync();
+        }
+        catch
+        {
+            // No bloqueo la página si el navegador ya ha liberado el módulo JS.
+        }
+    }
+}
