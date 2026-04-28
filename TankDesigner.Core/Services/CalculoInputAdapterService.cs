@@ -31,7 +31,7 @@ namespace TankDesigner.Core.Services
                 ? tanque.Diametro
                 : _calculoGeometriaService.ObtenerDiametro(tanque, proyecto);
 
-            List<double> alturasAnillos = NormalizarAlturasAnillos(tanque, alturaPanelBase);
+            List<double> alturasAnillos = NormalizarAlturasAnillos(tanque, proyecto, _calculoGeometriaService, alturaPanelBase);
             List<string> materialesAnillos = NormalizarTextosAnillos(
                 tanque.MaterialesAnillos,
                 tanque.NumeroAnillos,
@@ -112,12 +112,19 @@ namespace TankDesigner.Core.Services
             return inputBase;
         }
 
-        private static List<double> NormalizarAlturasAnillos(TankModel tanque, double alturaPanelBase)
+        private static List<double> NormalizarAlturasAnillos(
+            TankModel tanque,
+            ProyectoGeneralModel proyecto,
+            CalculoGeometriaService calculoGeometriaService,
+            double alturaPanelBase)
         {
             var lista = new List<double>();
 
-            if (tanque?.AlturasAnillos != null)
+            if (tanque != null && calculoGeometriaService.AlturasAnillosSonValidasParaCatalogo(tanque, proyecto))
                 lista.AddRange(tanque.AlturasAnillos.Where(a => a > 0));
+
+            if (lista.Count == 0 && tanque != null)
+                lista.AddRange(calculoGeometriaService.GenerarAlturasAnillosDesdeCatalogo(tanque, proyecto));
 
             while (lista.Count < Math.Max(0, tanque?.NumeroAnillos ?? 0))
                 lista.Add(alturaPanelBase);

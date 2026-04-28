@@ -6,6 +6,7 @@ namespace TankDesigner.Web.Services
     public class OpcionesFormularioService
     {
         private readonly CatalogoJsonService _catalogoJsonService;
+        private readonly JsonCatalogService _jsonCatalogService = new();
 
         public OpcionesFormularioService(CatalogoJsonService catalogoJsonService)
         {
@@ -22,21 +23,28 @@ namespace TankDesigner.Web.Services
         public List<string> ObtenerFabricantes()
             => new() { "Permastore", "Balmoral", "DL2" };
 
-        public List<string> ObtenerMateriales()
-            => new()
+        public List<string> ObtenerMateriales(string fabricante)
+        {
+            var materialesOcultos = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
                 "S235",
                 "S275",
                 "S355",
                 "HSLA4",
-                "HSLA5",
-                "AISI 304",
-                "AISI 316",
-                "Acero galvanizado",
-                "Acero vitrificado",
-                "Acero epoxi"
-            };
+                "HSLA5"
+             };
 
+            return _jsonCatalogService.CargarPlanchas(fabricante)
+                .Where(x => x != null && !string.IsNullOrWhiteSpace(x.Material))
+                .Select(x => x.Material.Trim())
+                .Where(x => !materialesOcultos.Contains(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(x => x)
+                .ToList();
+        }
+
+        public List<string> ObtenerMateriales()
+            => ObtenerMateriales("PERMASTORE");
         public List<int> ObtenerChapasPorAnillo()
             => new() { 16, 14, 12, 10, 8 };
 
@@ -63,7 +71,7 @@ namespace TankDesigner.Web.Services
         {
             return _catalogoJsonService
                 .ObtenerRigidizadoresSuperiores(fabricante)
-                .Select(x => x.Tipo)
+                .Select(x => !string.IsNullOrWhiteSpace(x.Nombre) ? x.Nombre : x.Tipo)
                 .Where(x => !string.IsNullOrWhiteSpace(x))
                 .Distinct()
                 .ToList();

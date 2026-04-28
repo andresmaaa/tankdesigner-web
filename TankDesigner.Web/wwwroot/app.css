@@ -332,3 +332,63 @@ h1:focus {
     .auth-links-row a:hover {
         text-decoration: underline;
     }
+.auth-card--recovery {
+    max-width: 560px;
+}
+
+.auth-form {
+    display: grid;
+    gap: 18px;
+}
+
+.auth-field {
+    display: grid;
+    gap: 8px;
+}
+
+    .auth-field label {
+        font-weight: 800;
+        color: #0f172a;
+    }
+
+.auth-kicker {
+    display: inline-flex;
+    width: fit-content;
+    margin-bottom: 12px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: #ecfdf5;
+    color: #047857;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.auth-btn--primary {
+    width: 100%;
+    border: 0;
+    border-radius: 14px;
+    padding: 15px 18px;
+    color: white;
+    font-weight: 900;
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.18);
+    cursor: pointer;
+}
+
+    .auth-btn--primary:disabled {
+        opacity: .65;
+        cursor: not-allowed;
+    }
+
+   .auth-footer--center {
+       margin-top: 18px;
+       text-align: center;
+    }
+
+    .auth-footer--center a {
+        color: #0f172a;
+        font-weight: 800;
+        text-decoration: none;
+    }

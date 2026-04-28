@@ -10,7 +10,7 @@
         public string Modelo { get; set; } = string.Empty;
         public double Diametro { get; set; }
         public double AlturaTotal { get; set; }
-        public double AlturaPanelBase { get; set; } = 1200;
+        public double AlturaPanelBase { get; set; }
 
         // Modelo real por anillo.
         // Si estas listas vienen vacías, el sistema usa los valores globales como respaldo.

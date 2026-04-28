@@ -189,7 +189,6 @@
         if (string.IsNullOrWhiteSpace(EstadoProyecto.Instalacion.TipoMedioAnillo)) EstadoProyecto.Instalacion.TipoMedioAnillo = "Anillo entero";
         if (string.IsNullOrWhiteSpace(EstadoProyecto.Instalacion.TipoTecho)) EstadoProyecto.Instalacion.TipoTecho = "Cónico";
         if (string.IsNullOrWhiteSpace(EstadoProyecto.Cargas.RoofType)) EstadoProyecto.Cargas.RoofType = EstadoProyecto.Instalacion.TipoTecho.Equals("Sin techo", StringComparison.OrdinalIgnoreCase) ? "None" : EstadoProyecto.Instalacion.TipoTecho;
-        if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.MaterialPrincipal)) EstadoProyecto.Proyecto.MaterialPrincipal = "S235";
     }
 
     private void InicializarColeccionesSiFaltan()
@@ -238,6 +237,10 @@
     private void RecalcularYValidar()
     {
         EstadoProyecto.Tanque.AlturaPanelBase = CalculoGeometriaService.ObtenerAlturaPanelBase(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);
+
+        if (!CalculoGeometriaService.AlturasAnillosSonValidasParaCatalogo(EstadoProyecto.Tanque, EstadoProyecto.Proyecto))
+            EstadoProyecto.Tanque.AlturasAnillos = CalculoGeometriaService.GenerarAlturasAnillosDesdeCatalogo(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);
+
         EstadoProyecto.Tanque.AlturaTotal = CalculoGeometriaService.ObtenerAlturaTotal(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);
         EstadoProyecto.Tanque.Diametro = CalculoGeometriaService.ObtenerDiametro(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);
         EstadoProyecto.Tanque.Modelo = GenerarModeloAutomatico();

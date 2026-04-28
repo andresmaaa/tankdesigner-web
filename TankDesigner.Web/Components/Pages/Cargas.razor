@@ -73,7 +73,7 @@
                                         <option value="@item">@item</option>
                                     }
                                 </InputSelect>
-                                <small>Ángulo superior editable en rango de 0 a 100.</small>
+                                <small>Opciones reales cargadas desde ListaPosiblesRigidizadoresSuperiores.json.</small>
                             </div>
 
                             <div class="field">
@@ -288,9 +288,10 @@
 
     private void CargarAngulosSuperiores()
     {
-        _angulosSuperiores = Enumerable.Range(0, 101)
-            .Select(x => x.ToString())
-            .ToList();
+        _angulosSuperiores = Opciones.ObtenerAngulosSuperiores(EstadoProyecto.Proyecto.Fabricante);
+
+        if (_angulosSuperiores.Count == 0)
+            _angulosSuperiores.Add("0");
     }
 
     private void SincronizarNormativa()
@@ -361,8 +362,8 @@
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(EstadoProyecto.Cargas.AnguloSuperior))
-            EstadoProyecto.Cargas.AnguloSuperior = "0";
+        if (string.IsNullOrWhiteSpace(EstadoProyecto.Cargas.AnguloSuperior) || !_angulosSuperiores.Contains(EstadoProyecto.Cargas.AnguloSuperior))
+            EstadoProyecto.Cargas.AnguloSuperior = _angulosSuperiores.FirstOrDefault() ?? "0";
 
         EstadoProyecto.Cargas.RoofAngle = EstadoProyecto.Cargas.AnguloSuperior;
     }
