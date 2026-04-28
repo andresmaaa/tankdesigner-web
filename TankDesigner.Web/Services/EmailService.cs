@@ -6,34 +6,47 @@ namespace TankDesigner.Web.Services
 {
     public class EmailService
     {
-        private readonly IConfiguration _config;
-        private readonly HttpClient _http;
+        private readonly IConfiguration _configuration;
+        private readonly HttpClient _httpClient;
+        private readonly ILogger<EmailService> _logger;
 
-        public EmailService(IConfiguration config)
+        public EmailService(
+            IConfiguration configuration,
+            HttpClient httpClient,
+            ILogger<EmailService> logger)
         {
-            _config = config;
-            _http = new HttpClient();
+            _configuration = configuration;
+            _httpClient = httpClient;
+            _logger = logger;
         }
 
-        public async Task EnviarEmailAsync(string toEmail, string subject, string body)
+        public async Task EnviarEmailAsync(string destino, string asunto, string cuerpoHtml)
         {
-            var apiKey = _config["Email:ApiKey"];
-            var fromEmail = _config["Email:FromEmail"];
-            var fromName = _config["Email:FromName"] ?? "Tank Structural Designer";
+            var provider = _configuration["Email:Provider"];
+
+            if (!string.Equals(provider, "Resend", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Proveedor de email no configurado. Usa Email__Provider=Resend.");
+
+            var apiKey = _configuration["Email:ApiKey"];
+            var fromEmail = _configuration["Email:FromEmail"];
+            var fromName = _configuration["Email:FromName"] ?? "Tank Structural Designer";
 
             if (string.IsNullOrWhiteSpace(apiKey))
-                throw new Exception("Falta Email:ApiKey");
+                throw new InvalidOperationException("Falta Email__ApiKey.");
 
-            var request = new HttpRequestMessage(HttpMethod.Post, "https://api.resend.com/emails");
+            if (string.IsNullOrWhiteSpace(fromEmail))
+                throw new InvalidOperationException("Falta Email__FromEmail.");
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.resend.com/emails");
 
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
             var payload = new
             {
                 from = $"{fromName} <{fromEmail}>",
-                to = new[] { toEmail },
-                subject = subject,
-                html = body
+                to = new[] { destino },
+                subject = asunto,
+                html = cuerpoHtml
             };
 
             request.Content = new StringContent(
@@ -42,12 +55,13 @@ namespace TankDesigner.Web.Services
                 "application/json"
             );
 
-            var response = await _http.SendAsync(request);
+            using var response = await _httpClient.SendAsync(request);
+            var responseBody = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
             {
-                var error = await response.Content.ReadAsStringAsync();
-                throw new Exception($"Error Resend: {error}");
+                _logger.LogError("Error Resend: {StatusCode} - {Body}", response.StatusCode, responseBody);
+                throw new Exception($"Error Resend: {responseBody}");
             }
         }
     }

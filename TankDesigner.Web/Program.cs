@@ -19,8 +19,7 @@ using TankDesigner.Web.Services.Ai;
 var builder = WebApplication.CreateBuilder(args);
 
 // Servicio para env�o de emails (invitaciones, etc.)
-builder.Services.AddScoped<EmailService>();
-
+builder.Services.AddHttpClient<EmailService>();
 // Configuraci�n de Blazor Server (componentes interactivos)
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
