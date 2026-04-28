@@ -99,7 +99,20 @@
             </article>
 
             <article class="td-panel">
-                <Vista3D Resultado="EstadoProyecto.Resultado" />
+                <div class="td-panel__header td-panel__header--split">
+                    <div>
+                        <div class="section-kicker">Modelo 3D</div>
+                        <h2>Visualización del tanque</h2>
+                        <p>
+                            Abre una vista 3D generada con los datos reales del cálculo:
+                            diámetro, altura, anillos, materiales y espesores.
+                        </p>
+                    </div>
+
+                    <button type="button" class="action-btn action-btn--blue" @onclick="AbrirVista3D">
+                        Ver tanque en 3D
+                    </button>
+                </div>
             </article>
 
             <article class="td-panel">
@@ -135,7 +148,9 @@
                         <span class="summary-row__label">Estado del cálculo</span>
                         <span class="summary-row__value @ClaseEstadoTexto()">@TextoEstadoCalculo()</span>
                     </div>
-
+                    <button type="button" class="action-btn action-btn--blue" @onclick="AbrirVista3D">
+                        Ver tanque en 3D
+                    </button>
                     <div class="summary-row">
                         <span class="summary-row__label">Idioma</span>
                         <span class="summary-row__value">@IdiomaVisible()</span>
@@ -195,6 +210,28 @@
     </div>
 </div>
 
+@if (_mostrarVista3D)
+{
+    <div class="vista3d-overlay" @onclick="CerrarVista3D"></div>
+
+    <section class="vista3d-modal" @onclick:stopPropagation="true">
+        <div class="vista3d-modal__header">
+            <div>
+                <div class="section-kicker">Visualización 3D</div>
+                <h2>Modelo tridimensional del tanque</h2>
+                <p>
+                    Representación basada en los resultados calculados del proyecto actual.
+                </p>
+            </div>
+
+            <button type="button" class="vista3d-modal__close" @onclick="CerrarVista3D">
+                ×
+            </button>
+        </div>
+
+        <Vista3D Resultado="EstadoProyecto.Resultado" />
+    </section>
+}
 <button type="button" class="ia-fab" @onclick="AbrirPanelIa" title="Asistente IA">
     IA
 </button>
@@ -359,6 +396,19 @@
     private AiAnalisisResultadoDto? _resultadoIa;
     private string _preguntaIa = string.Empty;
     private string? _respuestaIa;
+
+
+    private bool _mostrarVista3D = false;
+
+    private void AbrirVista3D()
+    {
+        _mostrarVista3D = true;
+    }
+
+    private void CerrarVista3D()
+    {
+        _mostrarVista3D = false;
+    }
 
     private void AbrirPanelIa()
     {
