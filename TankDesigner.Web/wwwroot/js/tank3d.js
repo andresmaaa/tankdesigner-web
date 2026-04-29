@@ -1,42 +1,77 @@
 ﻿const viewers = new WeakMap();
 
 function renderTank3D(container, tank) {
-    if (!container || !tank || !Array.isArray(tank.anillos)) {
-        return;
-    }
+    if (!container) return;
+
+    container.innerHTML = "";
 
     if (!window.THREE) {
-        console.error("Three.js no está cargado.");
+        showError(container, "Three.js no está cargado. Revisa App.razor.");
         return;
     }
 
-    if (!THREE.OrbitControls) {
-        console.error("OrbitControls no está cargado.");
+    if (!tank || !Array.isArray(tank.anillos) || tank.anillos.length === 0) {
+        showError(container, "No hay anillos válidos para generar el modelo 3D.");
         return;
     }
 
-    let viewer = viewers.get(container);
+    const rings = tank.anillos.filter(r => Number(r.altura) > 0);
 
-    if (!viewer) {
-        viewer = createViewer(container);
-        viewers.set(container, viewer);
+    if (rings.length === 0) {
+        showError(container, "Los anillos no tienen altura válida.");
+        return;
     }
 
-    clearScene(viewer);
-    buildTank(viewer, tank);
-    fitCamera(viewer, tank);
-    resize(viewer);
+    const realDiameter = Number(tank.diametro) || 1;
+    const realHeight = Number(tank.alturaTotal) || rings.reduce((s, r) => s + Number(r.altura || 0), 0);
+
+    const maxRealSize = Math.max(realDiameter, realHeight, 1);
+    const targetModelSize = 42;
+    const scale = targetModelSize / maxRealSize;
+    const metersPerUnit = 1 / scale;
+
+    const viewer = createViewer(container, scale, metersPerUnit);
+
+    viewers.set(container, viewer);
+
+    buildTank(viewer, tank, rings, scale);
+    fitCamera(viewer);
 
     viewer.renderer.render(viewer.scene, viewer.camera);
 }
 
-function createViewer(container) {
-    container.innerHTML = "";
+function createViewer(container, scale, metersPerUnit) {
+    const shell = document.createElement("div");
+    shell.style.position = "relative";
+    shell.style.width = "100%";
+    shell.style.height = "100%";
+    shell.style.minHeight = "560px";
+    shell.style.borderRadius = "24px";
+    shell.style.overflow = "hidden";
+    container.appendChild(shell);
+
+    const scaleBadge = document.createElement("div");
+    scaleBadge.innerHTML = `
+        <strong>Escala automática</strong><br>
+        1 unidad 3D = ${metersPerUnit.toFixed(2)} m<br>
+        Factor aplicado = ${scale.toExponential(3)}
+    `;
+    scaleBadge.style.position = "absolute";
+    scaleBadge.style.left = "18px";
+    scaleBadge.style.bottom = "18px";
+    scaleBadge.style.zIndex = "5";
+    scaleBadge.style.padding = "12px 14px";
+    scaleBadge.style.borderRadius = "16px";
+    scaleBadge.style.background = "rgba(15,23,42,0.86)";
+    scaleBadge.style.color = "#ffffff";
+    scaleBadge.style.font = "13px Arial";
+    scaleBadge.style.lineHeight = "1.45";
+    shell.appendChild(scaleBadge);
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xf8fafc);
 
-    const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 100000);
+    const camera = new THREE.PerspectiveCamera(42, 1, 0.01, 10000);
 
     const renderer = new THREE.WebGLRenderer({
         antialias: true,
@@ -47,117 +82,121 @@ function createViewer(container) {
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-    container.appendChild(renderer.domElement);
-
-    const controls = new THREE.OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.08;
-    controls.screenSpacePanning = false;
-    controls.minDistance = 1;
-    controls.maxDistance = 100000;
-
-    const ambient = new THREE.AmbientLight(0xffffff, 0.72);
-    scene.add(ambient);
-
-    const key = new THREE.DirectionalLight(0xffffff, 1.1);
-    key.position.set(12, 18, 10);
-    key.castShadow = true;
-    scene.add(key);
-
-    const fill = new THREE.DirectionalLight(0xffffff, 0.45);
-    fill.position.set(-10, 8, -14);
-    scene.add(fill);
+    shell.appendChild(renderer.domElement);
 
     const group = new THREE.Group();
     scene.add(group);
 
+    const ambient = new THREE.AmbientLight(0xffffff, 0.78);
+    scene.add(ambient);
+
+    const key = new THREE.DirectionalLight(0xffffff, 1.15);
+    key.position.set(28, 40, 26);
+    key.castShadow = true;
+    scene.add(key);
+
+    const fill = new THREE.DirectionalLight(0xffffff, 0.45);
+    fill.position.set(-30, 18, -26);
+    scene.add(fill);
+
     const viewer = {
         container,
+        shell,
         scene,
         camera,
         renderer,
-        controls,
-        group
+        group,
+        yaw: 0.85,
+        pitch: 0.42,
+        distance: 72,
+        target: new THREE.Vector3(0, 0, 0),
+        isDragging: false,
+        lastX: 0,
+        lastY: 0
     };
+
+    bindControls(viewer);
+    resize(viewer);
 
     const resizeObserver = new ResizeObserver(() => resize(viewer));
     resizeObserver.observe(container);
     viewer.resizeObserver = resizeObserver;
 
-    resize(viewer);
     animate(viewer);
 
     return viewer;
+}
+
+function bindControls(viewer) {
+    const canvas = viewer.renderer.domElement;
+
+    canvas.style.cursor = "grab";
+
+    canvas.addEventListener("pointerdown", e => {
+        viewer.isDragging = true;
+        viewer.lastX = e.clientX;
+        viewer.lastY = e.clientY;
+        canvas.setPointerCapture(e.pointerId);
+        canvas.style.cursor = "grabbing";
+    });
+
+    canvas.addEventListener("pointerup", e => {
+        viewer.isDragging = false;
+        canvas.releasePointerCapture(e.pointerId);
+        canvas.style.cursor = "grab";
+    });
+
+    canvas.addEventListener("pointermove", e => {
+        if (!viewer.isDragging) return;
+
+        const dx = e.clientX - viewer.lastX;
+        const dy = e.clientY - viewer.lastY;
+
+        viewer.lastX = e.clientX;
+        viewer.lastY = e.clientY;
+
+        viewer.yaw -= dx * 0.006;
+        viewer.pitch -= dy * 0.006;
+        viewer.pitch = Math.max(-1.1, Math.min(1.1, viewer.pitch));
+
+        updateCamera(viewer);
+    });
+
+    canvas.addEventListener("wheel", e => {
+        e.preventDefault();
+
+        const factor = e.deltaY > 0 ? 1.08 : 0.92;
+        viewer.distance = Math.max(18, Math.min(260, viewer.distance * factor));
+
+        updateCamera(viewer);
+    }, { passive: false });
 }
 
 function resize(viewer) {
     const rect = viewer.container.getBoundingClientRect();
 
     const width = Math.max(320, rect.width || 320);
-    const height = Math.max(520, rect.height || 520);
+    const height = Math.max(560, rect.height || 560);
 
     viewer.camera.aspect = width / height;
     viewer.camera.updateProjectionMatrix();
+
     viewer.renderer.setSize(width, height, false);
 }
 
 function animate(viewer) {
     requestAnimationFrame(() => animate(viewer));
-
-    viewer.controls.update();
     viewer.renderer.render(viewer.scene, viewer.camera);
 }
 
-function clearScene(viewer) {
-    while (viewer.group.children.length > 0) {
-        const child = viewer.group.children.pop();
-        disposeObject(child);
-    }
-}
-
-function disposeObject(object) {
-    if (!object) {
-        return;
-    }
-
-    if (typeof object.traverse === "function") {
-        object.traverse((child) => disposeGeometryAndMaterial(child));
-    } else {
-        disposeGeometryAndMaterial(object);
-    }
-}
-
-function disposeGeometryAndMaterial(child) {
-    if (child.geometry) {
-        child.geometry.dispose();
-    }
-
-    if (child.material) {
-        if (Array.isArray(child.material)) {
-            child.material.forEach((material) => material.dispose());
-        } else {
-            child.material.dispose();
-        }
-    }
-}
-
-function buildTank(viewer, tank) {
-    const scale = 0.01; 
-
+function buildTank(viewer, tank, rings, scale) {
     const diameter = (Number(tank.diametro) || 1) * scale;
     const radius = diameter / 2;
-
-    const rings = tank.anillos
-        .filter(r => Number(r.altura) > 0);
-
-    if (rings.length === 0) {
-        return;
-    }
 
     let currentY = 0;
 
     rings.forEach((ring, index) => {
-        const height = Number(ring.altura);
+        const height = Number(ring.altura) * scale;
         const materialName = ring.material || tank.materialPrincipal || "material";
         const color = colorForMaterial(materialName);
 
@@ -173,9 +212,9 @@ function buildTank(viewer, tank) {
         const shellMaterial = new THREE.MeshStandardMaterial({
             color,
             metalness: 0.72,
-            roughness: 0.28,
+            roughness: 0.30,
             transparent: true,
-            opacity: ring.valido === false ? 0.55 : 0.9,
+            opacity: 0.9,
             side: THREE.DoubleSide
         });
 
@@ -191,17 +230,14 @@ function buildTank(viewer, tank) {
             new THREE.LineBasicMaterial({
                 color: 0x0f172a,
                 transparent: true,
-                opacity: 0.18
+                opacity: 0.22
             })
         );
-
         edges.position.copy(shell.position);
         viewer.group.add(edges);
 
-        addRingSeam(viewer.group, radius, currentY, 0x1e293b);
-        addRingSeam(viewer.group, radius, currentY + height, 0x1e293b);
-
-        addRingLabel(viewer.group, radius, currentY + height / 2, index + 1, materialName, ring.espesor);
+        addRingSeam(viewer.group, radius, currentY);
+        addRingSeam(viewer.group, radius, currentY + height);
 
         currentY += height;
     });
@@ -211,9 +247,14 @@ function buildTank(viewer, tank) {
     addReferenceGrid(viewer.group, radius, currentY);
 
     viewer.group.position.y = -currentY / 2;
+
+    viewer.modelRadius = radius;
+    viewer.modelHeight = currentY;
+
+    addSimpleAxis(viewer.group, radius, currentY);
 }
 
-function addRingSeam(group, radius, y, color) {
+function addRingSeam(group, radius, y) {
     const curve = new THREE.EllipseCurve(
         0,
         0,
@@ -228,13 +269,14 @@ function addRingSeam(group, radius, y, color) {
     const points = curve.getPoints(180).map(p => new THREE.Vector3(p.x, y, p.y));
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
 
-    const material = new THREE.LineBasicMaterial({
-        color,
-        transparent: true,
-        opacity: 0.65
-    });
-
-    group.add(new THREE.LineLoop(geometry, material));
+    group.add(new THREE.LineLoop(
+        geometry,
+        new THREE.LineBasicMaterial({
+            color: 0x0f172a,
+            transparent: true,
+            opacity: 0.62
+        })
+    ));
 }
 
 function addBottomDisc(group, radius) {
@@ -242,7 +284,7 @@ function addBottomDisc(group, radius) {
 
     const material = new THREE.MeshStandardMaterial({
         color: 0xe2e8f0,
-        metalness: 0.45,
+        metalness: 0.42,
         roughness: 0.38,
         side: THREE.DoubleSide
     });
@@ -256,7 +298,7 @@ function addBottomDisc(group, radius) {
 }
 
 function addTopOpening(group, radius, height) {
-    const geometry = new THREE.TorusGeometry(radius, radius * 0.012, 12, 180);
+    const geometry = new THREE.TorusGeometry(radius, Math.max(radius * 0.012, 0.035), 12, 180);
 
     const material = new THREE.MeshStandardMaterial({
         color: 0x0f172a,
@@ -272,92 +314,57 @@ function addTopOpening(group, radius, height) {
 }
 
 function addReferenceGrid(group, radius, height) {
-    const size = Math.max(radius * 3.2, height * 1.4, 10);
+    const size = Math.max(radius * 3.2, height * 1.4, 20);
 
     const grid = new THREE.GridHelper(
         size,
-        18,
+        20,
         0x94a3b8,
         0xcbd5e1
     );
 
-    grid.position.y = -0.015;
+    grid.position.y = -0.02;
     group.add(grid);
 }
 
-function addRingLabel(group, radius, y, index, materialName, thickness) {
-    const text = `A${index} · ${materialName}${thickness ? ` · ${thickness} mm` : ""}`;
-    const canvas = document.createElement("canvas");
+function addSimpleAxis(group, radius, height) {
+    const geometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(radius * 1.35, 0, 0),
+        new THREE.Vector3(radius * 1.35, height, 0)
+    ]);
 
-    canvas.width = 512;
-    canvas.height = 128;
-
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    ctx.fillStyle = "rgba(15,23,42,0.86)";
-    roundRect(ctx, 12, 22, 488, 84, 18);
-    ctx.fill();
-
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "700 34px Arial";
-    ctx.fillText(text, 34, 76);
-
-    const texture = new THREE.CanvasTexture(canvas);
-    const material = new THREE.SpriteMaterial({
-        map: texture,
-        transparent: true
+    const material = new THREE.LineBasicMaterial({
+        color: 0xef4444,
+        transparent: true,
+        opacity: 0.7
     });
 
-    const sprite = new THREE.Sprite(material);
-    sprite.position.set(radius * 1.22, y, 0);
-    sprite.scale.set(radius * 0.52, radius * 0.13, 1);
-
-    group.add(sprite);
+    group.add(new THREE.Line(geometry, material));
 }
 
-function roundRect(ctx, x, y, width, height, radius) {
-    ctx.beginPath();
-    ctx.moveTo(x + radius, y);
-    ctx.lineTo(x + width - radius, y);
-    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-    ctx.lineTo(x + width, y + height - radius);
-    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-    ctx.lineTo(x + radius, y + height);
-    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-    ctx.lineTo(x, y + radius);
-    ctx.quadraticCurveTo(x, y, x + radius, y);
-    ctx.closePath();
-}
+function fitCamera(viewer) {
+    const height = viewer.modelHeight || 40;
+    const radius = viewer.modelRadius || 20;
 
-function fitCamera(viewer, tank) {
-    const height = Number(tank.alturaTotal) || totalHeightFromRings(tank.anillos);
-    const radius = (Number(tank.diametro) || 1) / 2;
     const maxSize = Math.max(height, radius * 2, 1);
 
-    viewer.camera.position.set(
-        radius * 2.4,
-        height * 0.45,
-        maxSize * 1.55
-    );
+    viewer.distance = maxSize * 2.2;
+    viewer.target.set(0, 0, 0);
 
-    viewer.camera.near = Math.max(0.01, maxSize / 1000);
-    viewer.camera.far = maxSize * 100;
-    viewer.camera.updateProjectionMatrix();
-
-    viewer.controls.target.set(0, 0, 0);
-    viewer.controls.update();
+    updateCamera(viewer);
 }
 
-function totalHeightFromRings(rings) {
-    if (!Array.isArray(rings)) {
-        return 1;
-    }
+function updateCamera(viewer) {
+    const x = viewer.distance * Math.cos(viewer.pitch) * Math.sin(viewer.yaw);
+    const y = viewer.distance * Math.sin(viewer.pitch);
+    const z = viewer.distance * Math.cos(viewer.pitch) * Math.cos(viewer.yaw);
 
-    return rings.reduce(
-        (sum, ring) => sum + Math.max(0, Number(ring.altura) || 0),
-        0
-    );
+    viewer.camera.position.set(x, y, z);
+    viewer.camera.lookAt(viewer.target);
+
+    viewer.camera.near = 0.01;
+    viewer.camera.far = 10000;
+    viewer.camera.updateProjectionMatrix();
 }
 
 function colorForMaterial(name) {
@@ -369,22 +376,21 @@ function colorForMaterial(name) {
     if (normalized.includes("S235")) return 0x64748b;
     if (normalized.includes("GLASS") || normalized.includes("VITR")) return 0x0891b2;
 
-    let hash = 0;
+    return 0x2563eb;
+}
 
-    for (let i = 0; i < normalized.length; i++) {
-        hash = normalized.charCodeAt(i) + ((hash << 5) - hash);
-    }
-
-    const palette = [
-        0x2563eb,
-        0x0f766e,
-        0x7c3aed,
-        0x9333ea,
-        0x0369a1,
-        0x475569
-    ];
-
-    return palette[Math.abs(hash) % palette.length];
+function showError(container, message) {
+    container.innerHTML = `
+        <div style="
+            padding:18px;
+            border-radius:18px;
+            background:#fff7ed;
+            color:#9a3412;
+            border:1px solid #fed7aa;
+            font-weight:700;">
+            ${message}
+        </div>
+    `;
 }
 
 window.tank3d = {
