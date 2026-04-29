@@ -72,7 +72,6 @@
     [Parameter] public ResultadoCalculoModel? Resultado { get; set; }
 
     private ElementReference _contenedor3d;
-    private IJSObjectReference? _modulo3d;
     private bool _renderInicialPendiente = true;
     private string? _mensaje;
 
@@ -102,8 +101,7 @@
                 return;
             }
 
-            _modulo3d ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/tank3d.js");
-            await _modulo3d.InvokeVoidAsync("renderTank3D", _contenedor3d, CrearDto3D());
+            await JS.InvokeVoidAsync("tank3d.renderTank3D", _contenedor3d, CrearDto3D());
         }
         catch (Exception ex)
         {
@@ -173,16 +171,8 @@
         return valor.Value.ToString("0.###", System.Globalization.CultureInfo.CurrentCulture);
     }
 
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
-        try
-        {
-            if (_modulo3d is not null)
-                await _modulo3d.DisposeAsync();
-        }
-        catch
-        {
-            // No bloqueo la página si el navegador ya ha liberado el módulo JS.
-        }
+        return ValueTask.CompletedTask;
     }
 }

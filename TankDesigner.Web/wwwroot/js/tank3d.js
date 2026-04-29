@@ -1,7 +1,4 @@
-﻿import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js";
-import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/controls/OrbitControls.js";
-
-const viewers = new WeakMap();
+﻿const viewers = new WeakMap();
 
 export function renderTank3D(container, tank) {
     if (!container || !tank || !Array.isArray(tank.anillos)) {
@@ -35,7 +32,7 @@ function createViewer(container) {
 
     container.appendChild(renderer.domElement);
 
-    const controls = new OrbitControls(camera, renderer.domElement);
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.screenSpacePanning = false;
@@ -218,3 +215,7 @@ function colorForMaterial(name) {
     const palette = [0x2563eb, 0x0f766e, 0x7c3aed, 0x9333ea, 0x0369a1, 0x475569];
     return palette[Math.abs(hash) % palette.length];
 }
+
+window.tank3d = {
+    renderTank3D
+};
