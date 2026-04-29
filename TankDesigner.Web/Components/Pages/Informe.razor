@@ -110,6 +110,9 @@
                         </p>
                     </div>
 
+                    <button type="button" class="action-btn action-btn--blue" @onclick="AbrirVista3D">
+                        Ver tanque en 3D
+                    </button>
                 </div>
             </article>
 
@@ -146,9 +149,7 @@
                         <span class="summary-row__label">Estado del cálculo</span>
                         <span class="summary-row__value @ClaseEstadoTexto()">@TextoEstadoCalculo()</span>
                     </div>
-                    <button type="button" class="action-btn action-btn--blue" @onclick="AbrirVista3D">
-                        Ver tanque en 3D
-                    </button>
+
                     <div class="summary-row">
                         <span class="summary-row__label">Idioma</span>
                         <span class="summary-row__value">@IdiomaVisible()</span>
@@ -230,6 +231,7 @@
         <Vista3D Resultado="EstadoProyecto.Resultado" />
     </section>
 }
+
 <button type="button" class="ia-fab" @onclick="AbrirPanelIa" title="Asistente IA">
     IA
 </button>
@@ -360,7 +362,7 @@
         <textarea class="ia-question-box__textarea"
                   @bind="_preguntaIa"
                   placeholder="Ejemplo: ¿Qué incoherencias detectas entre las cargas y el resultado del cálculo?">
-        </textarea>
+            </textarea>
 
         <div class="ia-question-box__actions">
             <button type="button"
@@ -386,6 +388,7 @@
     private string _htmlActual = "";
     private string _mensaje = "";
 
+    private bool _mostrarVista3D = false;
     private bool _mostrarPanelIa = false;
     private bool _analizandoIa = false;
     private bool _preguntandoIa = false;
@@ -395,14 +398,8 @@
     private string _preguntaIa = string.Empty;
     private string? _respuestaIa;
 
-
-    private bool _mostrarVista3D = false;
-
     private async Task AbrirVista3D()
     {
-        if (!AsegurarResultadoActual())
-            return;
-
         _mostrarVista3D = true;
         await InvokeAsync(StateHasChanged);
     }
@@ -631,6 +628,7 @@
             return TextoSeguro(EstadoProyecto.Proyecto?.ModeloCalculo);
 
         string letraFabricante = "";
+
         if (fabricante.Contains("BALMORAL", StringComparison.OrdinalIgnoreCase))
             letraFabricante = "B";
         else if (fabricante.Contains("PERMASTORE", StringComparison.OrdinalIgnoreCase))
