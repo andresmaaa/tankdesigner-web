@@ -9,12 +9,13 @@
             <h2>Modelo tridimensional del tanque</h2>
             <p>
                 Vista generada desde el resultado real del cálculo: diámetro, altura total,
-                anillos, espesores, materiales y configuración aplicada.
+                anillos, espesores, materiales, configuración, rigidizador y techo aplicado.
             </p>
         </div>
 
-        <button type="button" class="action-btn action-btn--blue" @onclick="ActualizarVista3D">
-            Actualizar vista
+        <button type="button" class="td-btn td-btn--primary td-btn--with-icon" @onclick="ActualizarVista3D">
+            <span class="td-btn__icon">⟳</span>
+            <span>Actualizar vista</span>
         </button>
     </div>
 
@@ -54,6 +55,16 @@
                 <strong>@TextoSeguro(Resultado?.MaterialPrincipal)</strong>
             </div>
 
+            <div class="tank3d-info__row">
+                <span>Techo</span>
+                <strong>@DetectarTecho()</strong>
+            </div>
+
+            <div class="tank3d-info__row">
+                <span>Rigidizador</span>
+                <strong>@TextoSeguro(Resultado?.NombreRigidizadorBase)</strong>
+            </div>
+
             <div class="tank3d-legend">
                 <div class="tank3d-legend__title">Anillos calculados</div>
                 @foreach (var anillo in AnillosOrdenados())
@@ -70,6 +81,11 @@
 
 @code {
     [Parameter] public ResultadoCalculoModel? Resultado { get; set; }
+
+    // Los dejo como object para no acoplar esta vista a un modelo concreto.
+    // Así puedo leer el tipo de techo aunque esté en Tanque o en Cargas.
+    [Parameter] public object? Tanque { get; set; }
+    [Parameter] public object? Cargas { get; set; }
 
     private ElementReference _contenedor3d;
     private bool _renderInicialPendiente = true;
@@ -121,6 +137,7 @@
     private object CrearDto3D()
     {
         var resultado = Resultado!;
+
         var anillos = AnillosOrdenados().Select(a => new
         {
             numero = a.NumeroAnillo,
@@ -140,8 +157,50 @@
             materialPrincipal = TextoSeguro(resultado.MaterialPrincipal),
             configuracion = TextoSeguro(resultado.NombreConfiguracionCalculada, resultado.NombreConfiguracion),
             rigidizadorSuperior = TextoSeguro(resultado.NombreRigidizadorBase),
+            techo = DetectarTecho(),
             anillos
         };
+    }
+
+    private string DetectarTecho()
+    {
+        var valores = new[]
+        {
+            LeerPropiedad(Cargas, "Techo"),
+            LeerPropiedad(Cargas, "TipoTecho"),
+            LeerPropiedad(Cargas, "Cubierta"),
+            LeerPropiedad(Cargas, "TipoCubierta"),
+            LeerPropiedad(Cargas, "Roof"),
+            LeerPropiedad(Cargas, "RoofType"),
+
+            LeerPropiedad(Tanque, "Techo"),
+            LeerPropiedad(Tanque, "TipoTecho"),
+            LeerPropiedad(Tanque, "Cubierta"),
+            LeerPropiedad(Tanque, "TipoCubierta"),
+            LeerPropiedad(Tanque, "Roof"),
+            LeerPropiedad(Tanque, "RoofType")
+        };
+
+        foreach (var valor in valores)
+        {
+            if (!string.IsNullOrWhiteSpace(valor))
+                return valor.Trim();
+        }
+
+        return "None";
+    }
+
+    private static string? LeerPropiedad(object? origen, string nombre)
+    {
+        if (origen is null)
+            return null;
+
+        var propiedad = origen.GetType().GetProperty(nombre);
+
+        if (propiedad is null)
+            return null;
+
+        return propiedad.GetValue(origen)?.ToString();
     }
 
     private List<ResultadoAnilloModel> AnillosOrdenados()

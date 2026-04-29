@@ -97,3 +97,36 @@
     color: #9a3412;
     margin-bottom: 14px;
 }
+
+.td-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    border-radius: 12px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.td-btn--primary {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: white;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+    .td-btn--primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+    }
+
+    .td-btn--primary:active {
+        transform: scale(0.98);
+    }
+
+.td-btn__icon {
+    font-size: 14px;
+    opacity: 0.9;
+}
