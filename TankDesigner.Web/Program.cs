@@ -167,6 +167,7 @@ builder.Services.AddScoped<EmailService>();
 // Configuraci�n del servicio de IA (Gemini)
 builder.Services.Configure<AiOptions>(builder.Configuration.GetSection("Gemini"));
 builder.Services.AddHttpClient<AiEngineeringService>();
+builder.Services.AddHttpClient<AiEngineeringService>();
 
 // Licencia de QuestPDF
 QuestPDF.Settings.License = LicenseType.Community;

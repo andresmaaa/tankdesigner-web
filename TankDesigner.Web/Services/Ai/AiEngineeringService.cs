@@ -1,5 +1,4 @@
-﻿using System.Net.Http.Headers;
-using System.Text;
+﻿using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
@@ -7,20 +6,25 @@ using TankDesigner.Core.Models;
 
 namespace TankDesigner.Web.Services.Ai;
 
-// Servicio que conecta tu aplicación con Gemini (IA)
-// Se usa para analizar proyectos y responder preguntas técnicas
+// Servicio que conecta la aplicación con Gemini.
+// La IA no calcula el tanque: interpreta datos ya calculados por el motor real.
 public class AiEngineeringService
 {
     private readonly HttpClient _httpClient;
     private readonly AiOptions _options;
+    private readonly AiPreanalisisTecnicoService _preanalisis;
 
-    public AiEngineeringService(HttpClient httpClient, IOptions<AiOptions> options)
+    public AiEngineeringService(
+        HttpClient httpClient,
+        IOptions<AiOptions> options,
+        AiPreanalisisTecnicoService preanalisis)
     {
         _httpClient = httpClient;
         _options = options.Value;
+        _preanalisis = preanalisis;
     }
 
-    // ANALISIS AUTOMÁTICO DEL PROYECTO
+    // ANÁLISIS AUTOMÁTICO DEL PROYECTO
     public async Task<AiAnalisisResultadoDto> AnalizarProyectoAsync(
         ProyectoGeneralModel proyecto,
         TankModel tanque,
@@ -28,61 +32,72 @@ public class AiEngineeringService
         InstalacionModel instalacion,
         ResultadoCalculoModel? resultado)
     {
-        // Verifica que la API Key esté configurada
+        var dtoTecnico = _preanalisis.CrearDtoTecnico(
+            proyecto,
+            tanque,
+            cargas,
+            instalacion,
+            resultado);
+
         if (string.IsNullOrWhiteSpace(_options.ApiKey))
-            throw new InvalidOperationException("No se ha configurado Gemini:ApiKey.");
+            return CrearRespuestaFallback(dtoTecnico, "No se ha configurado Gemini:ApiKey.");
 
-        // Se agrupan todos los datos del proyecto
-        var datosProyecto = new
-        {
-            Proyecto = proyecto,
-            Tanque = tanque,
-            Cargas = cargas,
-            Instalacion = instalacion,
-            Resultado = resultado
-        };
-
-        // Se serializa a JSON para enviarlo a la IA
-        var datosProyectoJson = JsonSerializer.Serialize(datosProyecto, new JsonSerializerOptions
+        var dtoTecnicoJson = JsonSerializer.Serialize(dtoTecnico, new JsonSerializerOptions
         {
             WriteIndented = true,
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
         });
 
-        // Prompt de sistema: reglas de comportamiento de la IA
         var promptSistema = """
-Eres un asistente técnico de ingeniería especializado en diseño de tanques industriales.
+Eres un asistente técnico especializado en diseño estructural de tanques atornillados de acero.
 
-Reglas:
-- No inventes datos.
-- No recalcules normativa.
-- No sustituyas normativa ni validación de ingeniería.
-- Solo analiza coherencia, completitud, consistencia e interpretación técnica.
-- Si faltan datos, dilo claramente.
-- Sé concreto y útil.
+Reglas obligatorias:
 - Responde siempre en español.
+- No inventes datos.
+- No recalcules la normativa completa.
+- No sustituyas al cálculo estructural del software.
+- Solo puedes usar los valores recibidos en el JSON técnico.
+- Si falta información, indícalo claramente.
+- Tus recomendaciones deben estar basadas en datos reales del proyecto.
+- Debes detectar problemas de seguridad, coherencia técnica, cargas, materiales, presupuesto y optimización.
+- No des respuestas genéricas.
 """;
 
-        // Prompt de usuario: qué queremos que devuelva
-        var promptUsuario = $"""
-Analiza este proyecto técnico y devuelve:
-- resumenGeneral
-- nivelRiesgo (bajo, medio o alto)
-- hallazgos
+        var promptUsuario = """
+El software ya ha calculado el tanque. Analiza únicamente el siguiente DTO técnico:
 
-Cada hallazgo debe indicar:
-- tipo (error, advertencia, sugerencia o info)
-- campo
-- titulo
-- descripcion
-- recomendacion
-- prioridad (1 a 5)
+"""
+        + dtoTecnicoJson
+        + """
 
-Datos del proyecto:
-{datosProyectoJson}
+Devuelve SOLO un JSON válido con esta estructura:
+
+{
+  "resumenGeneral": "Resumen técnico breve del proyecto.",
+  "nivelRiesgo": "bajo | medio | alto",
+  "hallazgos": [
+    {
+      "tipo": "error | advertencia | sugerencia | info",
+      "campo": "campo afectado",
+      "titulo": "título breve",
+      "descripcion": "explicación técnica basada en datos reales",
+      "recomendacion": "acción concreta recomendada",
+      "prioridad": 1
+    }
+  ]
+}
+
+Prioridades:
+1 = informativo
+2 = mejora menor
+3 = mejora recomendable
+4 = advertencia importante
+5 = problema crítico
+
+No incluyas Markdown.
+No expliques nada fuera del JSON.
 """;
 
-        // Schema JSON que obligamos a cumplir a la IA
         var schema = new
         {
             type = "object",
@@ -135,7 +150,6 @@ Datos del proyecto:
             required = new[] { "resumenGeneral", "nivelRiesgo", "hallazgos" }
         };
 
-        // Cuerpo de la petición a Gemini
         var requestBody = new
         {
             system_instruction = new
@@ -159,16 +173,13 @@ Datos del proyecto:
             {
                 responseMimeType = "application/json",
                 responseJsonSchema = schema,
-                temperature = 0.2 // baja creatividad, más técnico
+                temperature = 0.15
             }
         };
 
-        // URL del modelo Gemini
         var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_options.Model}:generateContent";
 
         using var request = new HttpRequestMessage(HttpMethod.Post, url);
-
-        // API Key en cabecera
         request.Headers.Add("x-goog-api-key", _options.ApiKey);
 
         request.Content = new StringContent(
@@ -176,36 +187,41 @@ Datos del proyecto:
             Encoding.UTF8,
             "application/json");
 
-        // Se envía la petición
-        using var response = await _httpClient.SendAsync(request);
-        var responseText = await response.Content.ReadAsStringAsync();
+        try
+        {
+            using var response = await _httpClient.SendAsync(request);
+            var responseText = await response.Content.ReadAsStringAsync();
 
-        // Si falla la llamada → error detallado
-        if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException(
-                $"Error Gemini ({(int)response.StatusCode}): {LimpiarErrorGemini(responseText)}");
+            if (!response.IsSuccessStatusCode)
+                return CrearRespuestaFallback(
+                    dtoTecnico,
+                    $"Error Gemini ({(int)response.StatusCode}): {LimpiarErrorGemini(responseText)}");
 
-        // Se parsea la respuesta
-        using var document = JsonDocument.Parse(responseText);
+            using var document = JsonDocument.Parse(responseText);
 
-        // Se extrae el JSON generado por la IA
-        var jsonSalida = ExtraerTextoRespuesta(document.RootElement);
+            var jsonSalida = ExtraerTextoRespuesta(document.RootElement);
 
-        if (string.IsNullOrWhiteSpace(jsonSalida))
-            throw new InvalidOperationException("Gemini no devolvió contenido estructurado.");
+            if (string.IsNullOrWhiteSpace(jsonSalida))
+                return CrearRespuestaFallback(dtoTecnico, "Gemini no devolvió contenido estructurado.");
 
-        // Se convierte a DTO
-        var resultadoDto = JsonSerializer.Deserialize<AiAnalisisResultadoDto>(
-            jsonSalida,
-            new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
+            var resultadoDto = JsonSerializer.Deserialize<AiAnalisisResultadoDto>(
+                jsonSalida,
+                new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
 
-        if (resultadoDto is null)
-            throw new InvalidOperationException("No se pudo deserializar la respuesta de Gemini.");
+            if (resultadoDto is null)
+                return CrearRespuestaFallback(dtoTecnico, "No se pudo deserializar la respuesta de Gemini.");
 
-        return resultadoDto;
+            FusionarHallazgosPrevios(resultadoDto, dtoTecnico);
+
+            return resultadoDto;
+        }
+        catch (Exception ex)
+        {
+            return CrearRespuestaFallback(dtoTecnico, ex.Message);
+        }
     }
 
     // CHAT SOBRE EL PROYECTO
@@ -217,45 +233,43 @@ Datos del proyecto:
         ResultadoCalculoModel? resultado,
         string preguntaUsuario)
     {
-        if (string.IsNullOrWhiteSpace(_options.ApiKey))
-            throw new InvalidOperationException("No se ha configurado Gemini:ApiKey.");
-
         if (string.IsNullOrWhiteSpace(preguntaUsuario))
             throw new InvalidOperationException("La pregunta no puede estar vacía.");
 
-        // Datos del proyecto
-        var datosProyecto = new
-        {
-            Proyecto = proyecto,
-            Tanque = tanque,
-            Cargas = cargas,
-            Instalacion = instalacion,
-            Resultado = resultado
-        };
+        var dtoTecnico = _preanalisis.CrearDtoTecnico(
+            proyecto,
+            tanque,
+            cargas,
+            instalacion,
+            resultado);
 
-        var datosProyectoJson = JsonSerializer.Serialize(datosProyecto, new JsonSerializerOptions
+        if (string.IsNullOrWhiteSpace(_options.ApiKey))
+            return "No se ha configurado Gemini:ApiKey. Aun así, el preanálisis interno ha detectado estos puntos: "
+                   + string.Join(" | ", dtoTecnico.HallazgosPrevios.Select(h => $"{h.Titulo}: {h.Descripcion}"));
+
+        var dtoTecnicoJson = JsonSerializer.Serialize(dtoTecnico, new JsonSerializerOptions
         {
             WriteIndented = true,
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
         });
 
-        // Prompt de sistema (más enfocado a responder preguntas)
         var promptSistema = """
-Eres un asistente técnico de ingeniería especializado en diseño de tanques industriales.
+Eres un asistente técnico especializado en diseño estructural de tanques atornillados de acero.
 
 Reglas:
+- Responde siempre en español.
 - No inventes datos.
 - No recalcules normativa.
 - No sustituyas el cálculo estructural del software.
-- Solo interpreta y explica lo que se ve en los datos del proyecto.
+- Solo interpreta datos reales recibidos.
 - Si falta información, dilo claramente.
-- Responde siempre en español.
-- Sé técnico, claro y útil.
+- Sé técnico, directo y útil.
+- Puedes proponer mejoras de seguridad, presupuesto, materiales, cargas o informe, pero siempre justificadas con los datos disponibles.
 """;
 
         var promptUsuario = $"""
-Proyecto actual en JSON:
-{datosProyectoJson}
+DTO técnico real del proyecto:
+{dtoTecnicoJson}
 
 Pregunta del usuario:
 {preguntaUsuario}
@@ -284,7 +298,7 @@ Responde de forma clara, técnica y centrada solo en este proyecto.
             },
             generationConfig = new
             {
-                temperature = 0.2
+                temperature = 0.15
             }
         };
 
@@ -315,7 +329,49 @@ Responde de forma clara, técnica y centrada solo en este proyecto.
         return texto;
     }
 
-    // Extrae el texto de la respuesta de Gemini
+    private static void FusionarHallazgosPrevios(
+        AiAnalisisResultadoDto resultadoDto,
+        AiProyectoTecnicoDto dtoTecnico)
+    {
+        if (dtoTecnico.HallazgosPrevios.Count == 0)
+            return;
+
+        resultadoDto.Hallazgos ??= new List<AiHallazgoDto>();
+
+        foreach (var hallazgo in dtoTecnico.HallazgosPrevios)
+            resultadoDto.Hallazgos.Insert(0, hallazgo);
+    }
+
+    private static AiAnalisisResultadoDto CrearRespuestaFallback(
+        AiProyectoTecnicoDto dtoTecnico,
+        string motivo)
+    {
+        var hallazgos = dtoTecnico.HallazgosPrevios.ToList();
+
+        hallazgos.Insert(0, new AiHallazgoDto
+        {
+            Tipo = "advertencia",
+            Campo = "ia",
+            Titulo = "Análisis IA no disponible",
+            Descripcion = motivo,
+            Recomendacion = "Revisa la configuración de Gemini. Mientras tanto, se muestran los hallazgos generados internamente por el preanálisis técnico.",
+            Prioridad = 4
+        });
+
+        var nivelRiesgo = hallazgos.Any(h => h.Prioridad >= 5)
+            ? "alto"
+            : hallazgos.Any(h => h.Prioridad >= 4)
+                ? "medio"
+                : "bajo";
+
+        return new AiAnalisisResultadoDto
+        {
+            ResumenGeneral = "Se ha generado un análisis técnico interno basado en los resultados reales disponibles del proyecto. La respuesta avanzada de Gemini no está disponible o no ha podido procesarse correctamente.",
+            NivelRiesgo = nivelRiesgo,
+            Hallazgos = hallazgos
+        };
+    }
+
     private static string ExtraerTextoRespuesta(JsonElement root)
     {
         if (!root.TryGetProperty("candidates", out var candidates) ||
@@ -345,7 +401,6 @@ Responde de forma clara, técnica y centrada solo en este proyecto.
         return string.Empty;
     }
 
-    // Limpia errores de Gemini para mostrarlos mejor
     private static string LimpiarErrorGemini(string responseText)
     {
         try
@@ -371,7 +426,7 @@ Responde de forma clara, técnica y centrada solo en este proyecto.
         }
         catch
         {
-            // Si falla el parseo, devuelve texto original
+            // Si falla el parseo, se devuelve el texto original.
         }
 
         return responseText;
