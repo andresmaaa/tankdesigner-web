@@ -62,7 +62,7 @@
 
             <div class="tank3d-info__row">
                 <span>Rigidizador</span>
-                <strong>@TextoSeguro(Resultado?.NombreRigidizadorBase)</strong>
+                <strong>@TextoSeguro(Resultado?.NombreRigidizadorBase, "No encontrado")</strong>
             </div>
 
             <div class="tank3d-legend">
@@ -71,7 +71,10 @@
                 {
                     <div class="tank3d-legend__item">
                         <span>Anillo @anillo.NumeroAnillo</span>
-                        <strong>@TextoSeguro(anillo.MaterialAplicado) · @FormatoNumero(anillo.EspesorSeleccionado) mm</strong>
+                        <strong>
+                            @TextoSeguro(anillo.MaterialAplicado, Resultado?.MaterialPrincipal)
+                            · @FormatoNumero(anillo.EspesorSeleccionado) mm
+                        </strong>
                     </div>
                 }
             </div>
@@ -82,10 +85,10 @@
 @code {
     [Parameter] public ResultadoCalculoModel? Resultado { get; set; }
 
-    // Los dejo como object para no acoplar esta vista a un modelo concreto.
-    // Así puedo leer el tipo de techo aunque esté en Tanque o en Cargas.
     [Parameter] public object? Tanque { get; set; }
     [Parameter] public object? Cargas { get; set; }
+    [Parameter] public object? Instalacion { get; set; }
+    [Parameter] public object? Proyecto { get; set; }
 
     private ElementReference _contenedor3d;
     private bool _renderInicialPendiente = true;
@@ -164,30 +167,63 @@
 
     private string DetectarTecho()
     {
-        var valores = new[]
+        var fuentes = new object?[]
         {
-            LeerPropiedad(Cargas, "Techo"),
-            LeerPropiedad(Cargas, "TipoTecho"),
-            LeerPropiedad(Cargas, "Cubierta"),
-            LeerPropiedad(Cargas, "TipoCubierta"),
-            LeerPropiedad(Cargas, "Roof"),
-            LeerPropiedad(Cargas, "RoofType"),
-
-            LeerPropiedad(Tanque, "Techo"),
-            LeerPropiedad(Tanque, "TipoTecho"),
-            LeerPropiedad(Tanque, "Cubierta"),
-            LeerPropiedad(Tanque, "TipoCubierta"),
-            LeerPropiedad(Tanque, "Roof"),
-            LeerPropiedad(Tanque, "RoofType")
+            Cargas,
+            Tanque,
+            Instalacion,
+            Proyecto
         };
 
-        foreach (var valor in valores)
+        var nombresExactos = new[]
         {
-            if (!string.IsNullOrWhiteSpace(valor))
-                return valor.Trim();
+            "TipoTecho",
+            "Techo",
+            "TipoCubierta",
+            "Cubierta",
+            "RoofType",
+            "Roof",
+            "TipoDeTecho",
+            "TipoCubiertaSeleccionada",
+            "TipoTechoSeleccionado"
+        };
+
+        foreach (var fuente in fuentes)
+        {
+            foreach (var nombre in nombresExactos)
+            {
+                var valor = LeerPropiedad(fuente, nombre);
+
+                if (EsValorTechoValido(valor))
+                    return valor!.Trim();
+            }
+        }
+
+        foreach (var fuente in fuentes)
+        {
+            var valor =
+                BuscarPropiedadQueContenga(fuente, "techo") ??
+                BuscarPropiedadQueContenga(fuente, "cubierta") ??
+                BuscarPropiedadQueContenga(fuente, "roof");
+
+            if (EsValorTechoValido(valor))
+                return valor!.Trim();
         }
 
         return "None";
+    }
+
+    private static bool EsValorTechoValido(string? valor)
+    {
+        if (string.IsNullOrWhiteSpace(valor))
+            return false;
+
+        var limpio = valor.Trim();
+
+        if (limpio == "—")
+            return false;
+
+        return true;
     }
 
     private static string? LeerPropiedad(object? origen, string nombre)
@@ -201,6 +237,27 @@
             return null;
 
         return propiedad.GetValue(origen)?.ToString();
+    }
+
+    private static string? BuscarPropiedadQueContenga(object? origen, string texto)
+    {
+        if (origen is null)
+            return null;
+
+        var propiedades = origen.GetType().GetProperties();
+
+        foreach (var propiedad in propiedades)
+        {
+            if (!propiedad.Name.Contains(texto, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var valor = propiedad.GetValue(origen)?.ToString();
+
+            if (EsValorTechoValido(valor))
+                return valor;
+        }
+
+        return null;
     }
 
     private List<ResultadoAnilloModel> AnillosOrdenados()
