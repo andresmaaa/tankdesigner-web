@@ -354,6 +354,8 @@ app.MapPost("/auth/register", async (
     return Results.Redirect(returnUrl);
 }).RequireRateLimiting("register");
 
+
+app.UseStaticFiles();
 // Endpoint POST para login manual
 app.MapPost("/auth/login", async (
     HttpContext httpContext,

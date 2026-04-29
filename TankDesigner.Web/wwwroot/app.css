@@ -392,3 +392,67 @@ h1:focus {
         font-weight: 800;
         text-decoration: none;
     }
+
+.vista3d-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(6px);
+    z-index: 99998;
+}
+
+.vista3d-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(1180px, 94vw);
+    max-height: 90vh;
+    overflow: auto;
+    background: #ffffff;
+    border-radius: 28px;
+    padding: 30px;
+    z-index: 99999;
+    box-shadow: 0 35px 100px rgba(15, 23, 42, 0.45);
+}
+
+.vista3d-modal__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    align-items: flex-start;
+    margin-bottom: 24px;
+}
+
+    .vista3d-modal__header h2 {
+        margin: 0;
+        color: #0f172a;
+        font-size: 1.7rem;
+        font-weight: 900;
+    }
+
+    .vista3d-modal__header p {
+        margin: 8px 0 0;
+        color: #64748b;
+    }
+
+    .vista3d-modal__close {
+        width: 48px;
+        height: 48px;
+        border: 0;
+        border-radius: 999px;
+        background: #0f172a;
+        color: #ffffff;
+        font-size: 2rem;
+        cursor: pointer;
+    }
+
+    .tank-3d-container {
+        width: 100%;
+        height: 560px;
+        min-height: 560px;
+        border-radius: 24px;
+        overflow: hidden;
+        border: 1px solid #dbe4f0;
+        background: #f8fafc;
+    }
