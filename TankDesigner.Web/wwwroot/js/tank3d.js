@@ -142,7 +142,9 @@ function disposeGeometryAndMaterial(child) {
 }
 
 function buildTank(viewer, tank) {
-    const diameter = Number(tank.diametro) || 1;
+    const scale = 0.01; 
+
+    const diameter = (Number(tank.diametro) || 1) * scale;
     const radius = diameter / 2;
 
     const rings = tank.anillos
