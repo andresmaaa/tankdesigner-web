@@ -400,6 +400,7 @@
 
     private async Task AbrirVista3D()
     {
+        _mensaje = "HAS PULSADO EL BOTÓN 3D";
         _mostrarVista3D = true;
         await InvokeAsync(StateHasChanged);
     }
