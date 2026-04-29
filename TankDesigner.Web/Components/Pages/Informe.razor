@@ -109,9 +109,6 @@
                         </p>
                     </div>
 
-                    <button type="button" class="action-btn action-btn--blue" @onclick="AbrirVista3D">
-                        Ver tanque en 3D
-                    </button>
                 </div>
             </article>
 
@@ -400,14 +397,19 @@
 
     private bool _mostrarVista3D = false;
 
-    private void AbrirVista3D()
+    private async Task AbrirVista3D()
     {
+        if (!AsegurarResultadoActual())
+            return;
+
         _mostrarVista3D = true;
+        await InvokeAsync(StateHasChanged);
     }
 
-    private void CerrarVista3D()
+    private async Task CerrarVista3D()
     {
         _mostrarVista3D = false;
+        await InvokeAsync(StateHasChanged);
     }
 
     private void AbrirPanelIa()
