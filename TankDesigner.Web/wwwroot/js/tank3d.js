@@ -331,38 +331,53 @@ function addConeRoofRafters(group, radius, baseHeight, roofHeight, vigasTechoCon
     const beamMaterial = new THREE.MeshStandardMaterial({
         color: 0xb91c1c,
         emissive: new THREE.Color(0x450a0a),
-        emissiveIntensity: 0.16,
+        emissiveIntensity: 0.12,
         metalness: 0.78,
-        roughness: 0.23
+        roughness: 0.24
     });
 
-    const startRadius = radius * 0.075;
+    const startRadius = radius * 0.09;
     const endRadius = radius * 0.965;
-    const beamLengthPlan = endRadius - startRadius;
-    const beamLength3d = Math.sqrt(Math.pow(beamLengthPlan, 2) + Math.pow(roofHeight * (beamLengthPlan / radius), 2));
-
-    const beamWidth = Math.max(radius * 0.012, 0.035);
-    const beamDepth = Math.max(radius * 0.018, 0.045);
-
-    const slopeAngle = Math.atan(roofHeight / radius);
+    const beamRadius = Math.max(radius * 0.0065, 0.035);
+    const offsetY = Math.max(radius * 0.012, 0.05);
 
     for (let i = 0; i < numeroVigas; i++) {
         const angle = (Math.PI * 2 * i) / numeroVigas;
 
-        const midRadius = (startRadius + endRadius) / 2;
-        const midY = baseHeight + roofHeight * (1 - midRadius / radius) + 0.08;
+        const x1 = Math.cos(angle) * startRadius;
+        const z1 = Math.sin(angle) * startRadius;
+        const y1 = baseHeight + roofHeight * (1 - startRadius / radius) + offsetY;
 
-        const x = Math.cos(angle) * midRadius;
-        const z = Math.sin(angle) * midRadius;
+        const x2 = Math.cos(angle) * endRadius;
+        const z2 = Math.sin(angle) * endRadius;
+        const y2 = baseHeight + roofHeight * (1 - endRadius / radius) + offsetY;
 
-        const geometry = new THREE.BoxGeometry(beamWidth, beamDepth, beamLength3d);
+        const start = new THREE.Vector3(x1, y1, z1);
+        const end = new THREE.Vector3(x2, y2, z2);
+
+        const direction = new THREE.Vector3().subVectors(end, start);
+        const length = direction.length();
+
+        const geometry = new THREE.CylinderGeometry(
+            beamRadius,
+            beamRadius,
+            length,
+            14,
+            1,
+            false
+        );
+
         const beam = new THREE.Mesh(geometry, beamMaterial);
 
-        beam.position.set(x, midY, z);
+        beam.position.copy(start).add(end).multiplyScalar(0.5);
 
-        beam.rotation.order = "YXZ";
-        beam.rotation.y = -angle;
-        beam.rotation.x = slopeAngle;
+        const quaternion = new THREE.Quaternion();
+        quaternion.setFromUnitVectors(
+            new THREE.Vector3(0, 1, 0),
+            direction.clone().normalize()
+        );
+
+        beam.quaternion.copy(quaternion);
 
         beam.castShadow = true;
         beam.receiveShadow = true;
