@@ -506,23 +506,25 @@ function addLadder(group, radius, height, escalera) {
 
 function addVerticalLadder(group, radius, height) {
     const material = new THREE.MeshStandardMaterial({
-        color: 0xf97316,
-        metalness: 0.7,
-        roughness: 0.28
+        color: 0xffea00,
+        emissive: new THREE.Color(0x7c2d12),
+        emissiveIntensity: 0.22,
+        metalness: 0.55,
+        roughness: 0.25
     });
 
-    const angle = -Math.PI / 5;
+    const angle = -Math.PI / 4;
+    const ladderRadius = radius * 1.18;
+
     const radial = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
     const tangent = new THREE.Vector3(-Math.sin(angle), 0, Math.cos(angle));
 
-    const ladderRadius = radius * 1.075;
-    const railDistance = Math.max(radius * 0.035, 0.22);
-    const railRadius = Math.max(radius * 0.005, 0.025);
-    const rungRadius = Math.max(radius * 0.004, 0.018);
+    const railDistance = Math.max(radius * 0.05, 0.35);
+    const railRadius = Math.max(radius * 0.009, 0.04);
+    const rungRadius = Math.max(radius * 0.007, 0.032);
 
-    const railHeight = height * 0.92;
-    const bottomY = height * 0.04;
-    const topY = bottomY + railHeight;
+    const bottomY = height * 0.03;
+    const topY = height * 1.02;
 
     const centerBase = radial.clone().multiplyScalar(ladderRadius);
 
@@ -538,13 +540,13 @@ function addVerticalLadder(group, radius, height) {
     const rail2Top = centerBase.clone().add(tangent.clone().multiplyScalar(railDistance));
     rail2Top.y = topY;
 
-    addCylinderBetween(group, rail1Bottom, rail1Top, railRadius, material, 12);
-    addCylinderBetween(group, rail2Bottom, rail2Top, railRadius, material, 12);
+    addCylinderBetween(group, rail1Bottom, rail1Top, railRadius, material, 16);
+    addCylinderBetween(group, rail2Bottom, rail2Top, railRadius, material, 16);
 
-    const rungCount = Math.max(7, Math.floor(railHeight / Math.max(radius * 0.12, 0.45)));
+    const rungCount = Math.max(10, Math.floor(height / Math.max(radius * 0.10, 0.35)));
 
     for (let i = 1; i < rungCount; i++) {
-        const y = bottomY + (railHeight * i) / rungCount;
+        const y = bottomY + ((topY - bottomY) * i) / rungCount;
 
         const left = centerBase.clone().add(tangent.clone().multiplyScalar(-railDistance));
         left.y = y;
@@ -552,10 +554,50 @@ function addVerticalLadder(group, radius, height) {
         const right = centerBase.clone().add(tangent.clone().multiplyScalar(railDistance));
         right.y = y;
 
-        addCylinderBetween(group, left, right, rungRadius, material, 10);
+        addCylinderBetween(group, left, right, rungRadius, material, 12);
     }
+
+    addLadderCage(group, centerBase, tangent, bottomY, topY, railDistance, radius, material);
 }
 
+function addLadderCage(group, centerBase, tangent, bottomY, topY, railDistance, radius, material) {
+    const cageRadius = railDistance * 1.55;
+    const cageStartY = bottomY + (topY - bottomY) * 0.18;
+    const cageCount = 5;
+
+    for (let i = 0; i < cageCount; i++) {
+        const y = cageStartY + ((topY - cageStartY) * i) / Math.max(1, cageCount - 1);
+
+        const points = [];
+        const segments = 18;
+
+        for (let s = 0; s <= segments; s++) {
+            const a = Math.PI * (s / segments);
+
+            const lateral = Math.cos(a) * cageRadius;
+            const outward = Math.sin(a) * radius * 0.10;
+
+            const p = centerBase
+                .clone()
+                .add(tangent.clone().multiplyScalar(lateral));
+
+            p.y = y + outward;
+
+            points.push(p);
+        }
+
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+
+        group.add(new THREE.Line(
+            geometry,
+            new THREE.LineBasicMaterial({
+                color: 0xffea00,
+                transparent: true,
+                opacity: 0.95
+            })
+        ));
+    }
+}
 function addHelicalStair(group, radius, height) {
     const stairGroup = new THREE.Group();
 
