@@ -48,12 +48,17 @@ function createViewer(container, scale, metersPerUnit, tank) {
         ? `<br>Vigas radiales: <strong style="color:#fca5a5">${tank.vigasTechoConico.numeroVigas || 0}</strong>`
         : "";
 
+    const escalera = tank.escalera && tank.escalera.tipo
+        ? `<br>Escalera: ${tank.escalera.tipo}`
+        : "";
+
     const scaleBadge = document.createElement("div");
     scaleBadge.innerHTML = `
         <strong>Escala automática</strong><br>
         1 unidad 3D = ${metersPerUnit.toFixed(2)} m<br>
         Techo: ${normalizarTecho(tank.techo).label}
         ${vigas}
+        ${escalera}
     `;
     scaleBadge.style.position = "absolute";
     scaleBadge.style.left = "18px";
@@ -170,6 +175,7 @@ function buildTank(viewer, tank, rings, scale) {
     addRoof(viewer.group, radius, currentY, tank.techo, tank.vigasTechoConico, scale);
     addReferenceGrid(viewer.group, radius, currentY);
     addVerticalReference(viewer.group, radius, currentY);
+    addLadder(viewer.group, radius, currentY, tank.escalera);
 
     viewer.group.position.y = -currentY / 2;
     viewer.modelRadius = radius;
@@ -280,10 +286,14 @@ function addConeRoof(group, radius, height, vigasTechoConico, scale) {
 
     group.add(cone);
 
+    const numeroVigas = vigasTechoConico && vigasTechoConico.aplica === true
+        ? Number(vigasTechoConico.numeroVigas) || 0
+        : 0;
+
     addOpenTop(group, radius, height);
     addConeRoofPanels(group, radius, height, roofHeight);
     addConeRoofRafters(group, radius, height, roofHeight, vigasTechoConico);
-    addConeRoofCenterHub(group, height + roofHeight, radius);
+    addConeRoofCenterHub(group, height + roofHeight, radius, numeroVigas);
 }
 
 function addConeRoofPanels(group, radius, baseHeight, roofHeight) {
@@ -336,7 +346,8 @@ function addConeRoofRafters(group, radius, baseHeight, roofHeight, vigasTechoCon
         roughness: 0.24
     });
 
-    const startRadius = radius * 0.09;
+    const hubRadius = calcularRadioNucleoTecho(radius, numeroVigas);
+    const startRadius = hubRadius * 1.08;
     const endRadius = radius * 0.965;
     const beamRadius = Math.max(radius * 0.0065, 0.035);
     const offsetY = Math.max(radius * 0.012, 0.05);
@@ -355,42 +366,15 @@ function addConeRoofRafters(group, radius, baseHeight, roofHeight, vigasTechoCon
         const start = new THREE.Vector3(x1, y1, z1);
         const end = new THREE.Vector3(x2, y2, z2);
 
-        const direction = new THREE.Vector3().subVectors(end, start);
-        const length = direction.length();
-
-        const geometry = new THREE.CylinderGeometry(
-            beamRadius,
-            beamRadius,
-            length,
-            14,
-            1,
-            false
-        );
-
-        const beam = new THREE.Mesh(geometry, beamMaterial);
-
-        beam.position.copy(start).add(end).multiplyScalar(0.5);
-
-        const quaternion = new THREE.Quaternion();
-        quaternion.setFromUnitVectors(
-            new THREE.Vector3(0, 1, 0),
-            direction.clone().normalize()
-        );
-
-        beam.quaternion.copy(quaternion);
-
-        beam.castShadow = true;
-        beam.receiveShadow = true;
-
-        group.add(beam);
+        addCylinderBetween(group, start, end, beamRadius, beamMaterial, 14);
     }
 }
 
-function addConeRoofCenterHub(group, y, radius) {
-    const hubRadius = Math.max(radius * 0.07, 0.28);
-    const hubHeight = Math.max(radius * 0.022, 0.12);
+function addConeRoofCenterHub(group, y, radius, numeroVigas) {
+    const hubRadius = calcularRadioNucleoTecho(radius, numeroVigas);
+    const hubHeight = Math.max(radius * 0.026, 0.14);
 
-    const geometry = new THREE.CylinderGeometry(hubRadius, hubRadius, hubHeight, 48);
+    const geometry = new THREE.CylinderGeometry(hubRadius, hubRadius, hubHeight, 64);
     const material = new THREE.MeshStandardMaterial({
         color: 0x7f1d1d,
         emissive: new THREE.Color(0x450a0a),
@@ -405,6 +389,13 @@ function addConeRoofCenterHub(group, y, radius) {
     hub.receiveShadow = true;
 
     group.add(hub);
+}
+
+function calcularRadioNucleoTecho(radius, numeroVigas) {
+    const porTamanoTanque = radius * 0.085;
+    const porNumeroVigas = radius * Math.min(0.18, numeroVigas * 0.0032);
+
+    return Math.max(radius * 0.075, porTamanoTanque, porNumeroVigas, 0.32);
 }
 
 function addDomeRoof(group, radius, height) {
@@ -493,6 +484,164 @@ function addVerticalReference(group, radius, height) {
     });
 
     group.add(new THREE.Line(geometry, material));
+}
+
+function addLadder(group, radius, height, escalera) {
+    const tipo = String(escalera?.tipo || "").toUpperCase();
+    const numero = Number(escalera?.numeroEscaleras) || 0;
+
+    if (numero <= 0 || tipo.includes("SIN") || tipo.includes("NONE")) {
+        return;
+    }
+
+    if (tipo.includes("HELICOIDAL")) {
+        addHelicalStair(group, radius, height);
+        return;
+    }
+
+    if (tipo.includes("VERTICAL")) {
+        addVerticalLadder(group, radius, height);
+    }
+}
+
+function addVerticalLadder(group, radius, height) {
+    const material = new THREE.MeshStandardMaterial({
+        color: 0xf97316,
+        metalness: 0.7,
+        roughness: 0.28
+    });
+
+    const angle = -Math.PI / 5;
+    const radial = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
+    const tangent = new THREE.Vector3(-Math.sin(angle), 0, Math.cos(angle));
+
+    const ladderRadius = radius * 1.075;
+    const railDistance = Math.max(radius * 0.035, 0.22);
+    const railRadius = Math.max(radius * 0.005, 0.025);
+    const rungRadius = Math.max(radius * 0.004, 0.018);
+
+    const railHeight = height * 0.92;
+    const bottomY = height * 0.04;
+    const topY = bottomY + railHeight;
+
+    const centerBase = radial.clone().multiplyScalar(ladderRadius);
+
+    const rail1Bottom = centerBase.clone().add(tangent.clone().multiplyScalar(-railDistance));
+    rail1Bottom.y = bottomY;
+
+    const rail1Top = centerBase.clone().add(tangent.clone().multiplyScalar(-railDistance));
+    rail1Top.y = topY;
+
+    const rail2Bottom = centerBase.clone().add(tangent.clone().multiplyScalar(railDistance));
+    rail2Bottom.y = bottomY;
+
+    const rail2Top = centerBase.clone().add(tangent.clone().multiplyScalar(railDistance));
+    rail2Top.y = topY;
+
+    addCylinderBetween(group, rail1Bottom, rail1Top, railRadius, material, 12);
+    addCylinderBetween(group, rail2Bottom, rail2Top, railRadius, material, 12);
+
+    const rungCount = Math.max(7, Math.floor(railHeight / Math.max(radius * 0.12, 0.45)));
+
+    for (let i = 1; i < rungCount; i++) {
+        const y = bottomY + (railHeight * i) / rungCount;
+
+        const left = centerBase.clone().add(tangent.clone().multiplyScalar(-railDistance));
+        left.y = y;
+
+        const right = centerBase.clone().add(tangent.clone().multiplyScalar(railDistance));
+        right.y = y;
+
+        addCylinderBetween(group, left, right, rungRadius, material, 10);
+    }
+}
+
+function addHelicalStair(group, radius, height) {
+    const stairGroup = new THREE.Group();
+
+    const material = new THREE.MeshStandardMaterial({
+        color: 0xf97316,
+        metalness: 0.72,
+        roughness: 0.28
+    });
+
+    const stairRadius = radius * 1.12;
+    const turns = Math.max(1.2, height / Math.max(radius * 1.4, 1));
+    const steps = Math.max(24, Math.floor(turns * 28));
+
+    const stepWidth = Math.max(radius * 0.11, 0.35);
+    const stepDepth = Math.max(radius * 0.045, 0.16);
+    const stepHeight = Math.max(radius * 0.012, 0.045);
+
+    for (let i = 0; i < steps; i++) {
+        const t = i / (steps - 1);
+        const angle = -Math.PI / 2 + t * turns * Math.PI * 2;
+
+        const x = Math.cos(angle) * stairRadius;
+        const z = Math.sin(angle) * stairRadius;
+        const y = t * height;
+
+        const geometry = new THREE.BoxGeometry(stepWidth, stepHeight, stepDepth);
+        const step = new THREE.Mesh(geometry, material);
+
+        step.position.set(x, y, z);
+        step.rotation.y = -angle;
+
+        step.castShadow = true;
+        step.receiveShadow = true;
+
+        stairGroup.add(step);
+    }
+
+    const railMaterial = new THREE.LineBasicMaterial({
+        color: 0xea580c,
+        transparent: true,
+        opacity: 0.95
+    });
+
+    const railPoints = [];
+
+    for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const angle = -Math.PI / 2 + t * turns * Math.PI * 2;
+
+        railPoints.push(new THREE.Vector3(
+            Math.cos(angle) * (stairRadius + stepWidth * 0.45),
+            t * height + stepHeight * 5,
+            Math.sin(angle) * (stairRadius + stepWidth * 0.45)
+        ));
+    }
+
+    const railGeometry = new THREE.BufferGeometry().setFromPoints(railPoints);
+    stairGroup.add(new THREE.Line(railGeometry, railMaterial));
+
+    group.add(stairGroup);
+}
+
+function addCylinderBetween(group, start, end, radius, material, segments) {
+    const direction = new THREE.Vector3().subVectors(end, start);
+    const length = direction.length();
+
+    if (length <= 0) {
+        return;
+    }
+
+    const geometry = new THREE.CylinderGeometry(radius, radius, length, segments || 12, 1, false);
+    const mesh = new THREE.Mesh(geometry, material);
+
+    mesh.position.copy(start).add(end).multiplyScalar(0.5);
+
+    const quaternion = new THREE.Quaternion();
+    quaternion.setFromUnitVectors(
+        new THREE.Vector3(0, 1, 0),
+        direction.clone().normalize()
+    );
+
+    mesh.quaternion.copy(quaternion);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+
+    group.add(mesh);
 }
 
 function bindControls(viewer) {

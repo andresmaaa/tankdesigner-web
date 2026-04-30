@@ -9,8 +9,8 @@
             <h2>Modelo tridimensional del tanque</h2>
             <p>
                 Vista generada desde el resultado real del cálculo: diámetro, altura total,
-                anillos, espesores, materiales, configuración, rigidizador, techo aplicado
-                y vigas radiales en techos cónicos.
+                anillos, espesores, materiales, configuración, rigidizador, techo aplicado,
+                vigas radiales y escaleras.
             </p>
         </div>
 
@@ -33,12 +33,12 @@
 
             <div class="tank3d-info__row">
                 <span>Diámetro</span>
-                <strong>@FormatoNumero(Resultado?.Diametro) m</strong>
+                <strong>@FormatoMetros(Resultado?.Diametro) m</strong>
             </div>
 
             <div class="tank3d-info__row">
                 <span>Altura total</span>
-                <strong>@FormatoNumero(Resultado?.AlturaTotal) m</strong>
+                <strong>@FormatoMetros(Resultado?.AlturaTotal) m</strong>
             </div>
 
             <div class="tank3d-info__row">
@@ -70,7 +70,7 @@
 
                 <div class="tank3d-info__row">
                     <span>Longitud viga</span>
-                    <strong>@FormatoNumero(Resultado.VigasTechoConico.LongitudViga) m</strong>
+                    <strong>@FormatoMetros(Resultado.VigasTechoConico.LongitudViga) m</strong>
                 </div>
 
                 <div class="tank3d-info__row">
@@ -83,6 +83,11 @@
                     <strong>@Resultado.VigasTechoConico.PerfilSugerido</strong>
                 </div>
             }
+
+            <div class="tank3d-info__row">
+                <span>Escalera</span>
+                <strong>@TextoSeguro(LeerPropiedad(Instalacion, "TipoEscalera"), "Sin escalera")</strong>
+            </div>
 
             <div class="tank3d-info__row">
                 <span>Rigidizador</span>
@@ -200,6 +205,16 @@
                     perfilSugerido = resultado.VigasTechoConico.PerfilSugerido
                 },
 
+            escalera = new
+            {
+                tipo = LeerPropiedad(Instalacion, "TipoEscalera")
+                    ?? LeerPropiedad(Instalacion, "Escalera")
+                    ?? LeerPropiedad(Instalacion, "TipoDeEscalera")
+                    ?? "Sin escalera",
+
+                numeroEscaleras = LeerEntero(Instalacion, "NumeroEscaleras")
+            },
+
             anillos
         };
     }
@@ -278,6 +293,27 @@
         return propiedad.GetValue(origen)?.ToString();
     }
 
+    private static int LeerEntero(object? origen, string nombre)
+    {
+        if (origen is null)
+            return 0;
+
+        var propiedad = origen.GetType().GetProperty(nombre);
+
+        if (propiedad is null)
+            return 0;
+
+        var valor = propiedad.GetValue(origen);
+
+        if (valor is null)
+            return 0;
+
+        if (int.TryParse(valor.ToString(), out var numero))
+            return numero;
+
+        return 0;
+    }
+
     private static string? BuscarPropiedadQueContenga(object? origen, string texto)
     {
         if (origen is null)
@@ -324,6 +360,16 @@
             return "—";
 
         return valor.Value.ToString("0.###", System.Globalization.CultureInfo.CurrentCulture);
+    }
+
+    private static string FormatoMetros(double? valor)
+    {
+        if (!valor.HasValue || valor.Value <= 0)
+            return "—";
+
+        var metros = valor.Value > 100 ? valor.Value / 1000.0 : valor.Value;
+
+        return metros.ToString("0.###", System.Globalization.CultureInfo.CurrentCulture);
     }
 
     public ValueTask DisposeAsync()
