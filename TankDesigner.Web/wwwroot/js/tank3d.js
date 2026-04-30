@@ -44,11 +44,16 @@ function createViewer(container, scale, metersPerUnit, tank) {
     shell.style.overflow = "hidden";
     container.appendChild(shell);
 
+    const vigas = tank.vigasTechoConico && tank.vigasTechoConico.aplica === true
+        ? `<br>Vigas techo: ${tank.vigasTechoConico.numeroVigas || 0}`
+        : "";
+
     const scaleBadge = document.createElement("div");
     scaleBadge.innerHTML = `
         <strong>Escala automática</strong><br>
         1 unidad 3D = ${metersPerUnit.toFixed(2)} m<br>
         Techo: ${normalizarTecho(tank.techo).label}
+        ${vigas}
     `;
     scaleBadge.style.position = "absolute";
     scaleBadge.style.left = "18px";
@@ -162,7 +167,7 @@ function buildTank(viewer, tank, rings, scale) {
 
     addBottomDisc(viewer.group, radius);
     addTopStiffener(viewer.group, radius, currentY);
-    addRoof(viewer.group, radius, currentY, tank.techo);
+    addRoof(viewer.group, radius, currentY, tank.techo, tank.vigasTechoConico, scale);
     addReferenceGrid(viewer.group, radius, currentY);
     addVerticalReference(viewer.group, radius, currentY);
 
@@ -171,7 +176,7 @@ function buildTank(viewer, tank, rings, scale) {
     viewer.modelHeight = currentY;
 }
 
-function addRoof(group, radius, height, roofRaw) {
+function addRoof(group, radius, height, roofRaw, vigasTechoConico, scale) {
     const roof = normalizarTecho(roofRaw);
 
     if (roof.type === "none") {
@@ -185,7 +190,7 @@ function addRoof(group, radius, height, roofRaw) {
     }
 
     if (roof.type === "cone") {
-        addConeRoof(group, radius, height);
+        addConeRoof(group, radius, height, vigasTechoConico, scale);
         return;
     }
 
@@ -249,8 +254,14 @@ function addFlatRoof(group, radius, height) {
     addOpenTop(group, radius, height + radius * 0.015);
 }
 
-function addConeRoof(group, radius, height) {
-    const roofHeight = Math.max(radius * 0.16, 1.2);
+function addConeRoof(group, radius, height, vigasTechoConico, scale) {
+    const alturaConoReal = vigasTechoConico && Number(vigasTechoConico.alturaCono) > 0
+        ? Number(vigasTechoConico.alturaCono)
+        : 0;
+
+    const roofHeight = alturaConoReal > 0
+        ? alturaConoReal * scale
+        : Math.max(radius * 0.16, 1.2);
 
     const geometry = new THREE.ConeGeometry(radius * 1.01, roofHeight, 160, 1, false);
     const material = new THREE.MeshStandardMaterial({
@@ -258,7 +269,7 @@ function addConeRoof(group, radius, height) {
         metalness: 0.66,
         roughness: 0.30,
         transparent: true,
-        opacity: 0.94,
+        opacity: 0.72,
         side: THREE.DoubleSide
     });
 
@@ -268,7 +279,91 @@ function addConeRoof(group, radius, height) {
     cone.receiveShadow = true;
 
     group.add(cone);
+
     addOpenTop(group, radius, height);
+    addConeRoofRafters(group, radius, height, roofHeight, vigasTechoConico);
+    addIntermediateRoofRings(group, radius, height, roofHeight);
+    addConeRoofCenterHub(group, height + roofHeight);
+}
+
+function addConeRoofRafters(group, radius, baseHeight, roofHeight, vigasTechoConico) {
+    if (!vigasTechoConico || vigasTechoConico.aplica !== true) {
+        return;
+    }
+
+    const numeroVigas = Math.max(0, Number(vigasTechoConico.numeroVigas) || 0);
+
+    if (numeroVigas <= 0) {
+        return;
+    }
+
+    const material = new THREE.LineBasicMaterial({
+        color: 0x334155,
+        transparent: true,
+        opacity: 0.95
+    });
+
+    const centro = new THREE.Vector3(0, baseHeight + roofHeight, 0);
+
+    for (let i = 0; i < numeroVigas; i++) {
+        const angulo = (Math.PI * 2 * i) / numeroVigas;
+
+        const x = Math.cos(angulo) * radius * 0.985;
+        const z = Math.sin(angulo) * radius * 0.985;
+
+        const borde = new THREE.Vector3(x, baseHeight + 0.04, z);
+        const geometry = new THREE.BufferGeometry().setFromPoints([centro, borde]);
+        const line = new THREE.Line(geometry, material);
+
+        group.add(line);
+    }
+}
+
+function addIntermediateRoofRings(group, radius, baseHeight, roofHeight) {
+    const material = new THREE.LineBasicMaterial({
+        color: 0x475569,
+        transparent: true,
+        opacity: 0.55
+    });
+
+    const fractions = [0.33, 0.66];
+
+    fractions.forEach(f => {
+        const ringRadius = radius * f;
+        const y = baseHeight + roofHeight * (1 - f);
+
+        const curve = new THREE.EllipseCurve(
+            0,
+            0,
+            ringRadius,
+            ringRadius,
+            0,
+            Math.PI * 2,
+            false,
+            0
+        );
+
+        const points = curve.getPoints(180).map(p => new THREE.Vector3(p.x, y, p.y));
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+
+        group.add(new THREE.LineLoop(geometry, material));
+    });
+}
+
+function addConeRoofCenterHub(group, y) {
+    const geometry = new THREE.CylinderGeometry(0.35, 0.35, 0.16, 32);
+    const material = new THREE.MeshStandardMaterial({
+        color: 0x1e293b,
+        metalness: 0.75,
+        roughness: 0.24
+    });
+
+    const hub = new THREE.Mesh(geometry, material);
+    hub.position.y = y;
+    hub.castShadow = true;
+    hub.receiveShadow = true;
+
+    group.add(hub);
 }
 
 function addDomeRoof(group, radius, height) {

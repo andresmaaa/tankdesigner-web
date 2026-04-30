@@ -12,6 +12,7 @@ namespace TankDesigner.Web.Services
         private readonly CalculoInputAdapterService _inputAdapterService;
         private readonly CalculoGeometriaService _calculoGeometriaService;
         private readonly PresupuestoInstalacionExcelService _presupuestoInstalacionExcelService;
+        private readonly CalculoVigasTechoConicoService _calculoVigasTechoConicoService;
 
         public CalculoWebService()
         {
@@ -19,6 +20,7 @@ namespace TankDesigner.Web.Services
             _inputAdapterService = new CalculoInputAdapterService();
             _calculoGeometriaService = new CalculoGeometriaService();
             _presupuestoInstalacionExcelService = new PresupuestoInstalacionExcelService();
+            _calculoVigasTechoConicoService = new CalculoVigasTechoConicoService();
         }
 
         public ResultadoCalculoModel Calcular(
@@ -44,7 +46,8 @@ namespace TankDesigner.Web.Services
                 return new ResultadoCalculoModel
                 {
                     EsValido = false,
-                    Mensaje = "No se pudo construir la entrada de cálculo."
+                    Mensaje = "No se pudo construir la entrada de cálculo.",
+                    VigasTechoConico = _calculoVigasTechoConicoService.Calcular(tanque, cargas, null)
                 };
             }
 
@@ -53,7 +56,8 @@ namespace TankDesigner.Web.Services
                 return new ResultadoCalculoModel
                 {
                     EsValido = false,
-                    Mensaje = "La entrada de cálculo no tiene un número de anillos válido."
+                    Mensaje = "La entrada de cálculo no tiene un número de anillos válido.",
+                    VigasTechoConico = _calculoVigasTechoConicoService.Calcular(tanque, cargas, null)
                 };
             }
 
@@ -62,7 +66,8 @@ namespace TankDesigner.Web.Services
                 return new ResultadoCalculoModel
                 {
                     EsValido = false,
-                    Mensaje = "La entrada de cálculo no tiene un número de chapas por anillo válido."
+                    Mensaje = "La entrada de cálculo no tiene un número de chapas por anillo válido.",
+                    VigasTechoConico = _calculoVigasTechoConicoService.Calcular(tanque, cargas, null)
                 };
             }
 
@@ -71,7 +76,8 @@ namespace TankDesigner.Web.Services
                 return new ResultadoCalculoModel
                 {
                     EsValido = false,
-                    Mensaje = "La entrada de cálculo no tiene dimensiones geométricas válidas."
+                    Mensaje = "La entrada de cálculo no tiene dimensiones geométricas válidas.",
+                    VigasTechoConico = _calculoVigasTechoConicoService.Calcular(tanque, cargas, null)
                 };
             }
 
@@ -83,6 +89,11 @@ namespace TankDesigner.Web.Services
                 resultado.Anillos = new List<ResultadoAnilloModel>();
 
             resultado.PresupuestoInstalacion = CalcularPresupuestoInstalacion(proyecto, tanque, instalacion, resultado);
+
+            resultado.VigasTechoConico = _calculoVigasTechoConicoService.Calcular(
+                tanque,
+                cargas,
+                resultado);
 
             if (string.IsNullOrWhiteSpace(resultado.Mensaje))
             {

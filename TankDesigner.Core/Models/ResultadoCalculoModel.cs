@@ -98,5 +98,6 @@ namespace TankDesigner.Core.Models
         public double AwwaAi { get; set; }
         public double AwwaAc { get; set; }
         public double AwwaAv { get; set; }
+        public ResultadoVigasTechoConicoModel? VigasTechoConico { get; set; }
     }
 }

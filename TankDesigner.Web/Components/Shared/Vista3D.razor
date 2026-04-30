@@ -9,7 +9,8 @@
             <h2>Modelo tridimensional del tanque</h2>
             <p>
                 Vista generada desde el resultado real del cálculo: diámetro, altura total,
-                anillos, espesores, materiales, configuración, rigidizador y techo aplicado.
+                anillos, espesores, materiales, configuración, rigidizador, techo aplicado
+                y vigas radiales en techos cónicos.
             </p>
         </div>
 
@@ -59,6 +60,29 @@
                 <span>Techo</span>
                 <strong>@DetectarTecho()</strong>
             </div>
+
+            @if (Resultado?.VigasTechoConico?.Aplica == true)
+            {
+                <div class="tank3d-info__row">
+                    <span>Vigas radiales</span>
+                    <strong>@Resultado.VigasTechoConico.NumeroVigas</strong>
+                </div>
+
+                <div class="tank3d-info__row">
+                    <span>Longitud viga</span>
+                    <strong>@FormatoNumero(Resultado.VigasTechoConico.LongitudViga) m</strong>
+                </div>
+
+                <div class="tank3d-info__row">
+                    <span>Ángulo techo</span>
+                    <strong>@FormatoNumero(Resultado.VigasTechoConico.AnguloTechoGrados)°</strong>
+                </div>
+
+                <div class="tank3d-info__row">
+                    <span>Perfil sugerido</span>
+                    <strong>@Resultado.VigasTechoConico.PerfilSugerido</strong>
+                </div>
+            }
 
             <div class="tank3d-info__row">
                 <span>Rigidizador</span>
@@ -161,6 +185,21 @@
             configuracion = TextoSeguro(resultado.NombreConfiguracionCalculada, resultado.NombreConfiguracion),
             rigidizadorSuperior = TextoSeguro(resultado.NombreRigidizadorBase),
             techo = DetectarTecho(),
+
+            vigasTechoConico = resultado.VigasTechoConico is null
+                ? null
+                : new
+                {
+                    aplica = resultado.VigasTechoConico.Aplica,
+                    numeroVigas = resultado.VigasTechoConico.NumeroVigas,
+                    anguloTechoGrados = resultado.VigasTechoConico.AnguloTechoGrados,
+                    alturaCono = resultado.VigasTechoConico.AlturaCono,
+                    longitudViga = resultado.VigasTechoConico.LongitudViga,
+                    separacionPerimetral = resultado.VigasTechoConico.SeparacionPerimetral,
+                    cargaPorViga = resultado.VigasTechoConico.CargaPorViga,
+                    perfilSugerido = resultado.VigasTechoConico.PerfilSugerido
+                },
+
             anillos
         };
     }
