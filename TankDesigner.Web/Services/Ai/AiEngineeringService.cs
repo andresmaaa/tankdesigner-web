@@ -330,8 +330,8 @@ Responde de forma clara, técnica y centrada solo en este proyecto.
     }
 
     private static void FusionarHallazgosPrevios(
-        AiAnalisisResultadoDto resultadoDto,
-        AiProyectoTecnicoDto dtoTecnico)
+      AiAnalisisResultadoDto resultadoDto,
+      AiProyectoTecnicoDto dtoTecnico)
     {
         if (dtoTecnico.HallazgosPrevios.Count == 0)
             return;
