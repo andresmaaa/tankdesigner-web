@@ -551,17 +551,25 @@
 
     protected override void OnInitialized()
     {
-        EstadoProyecto.Proyecto ??= new ProyectoGeneralModel();
-        EstadoProyecto.Tanque ??= new TankModel();
-        EstadoProyecto.Cargas ??= new CargasModel();
-        EstadoProyecto.Instalacion ??= new InstalacionModel();
-        EstadoProyecto.Resultado ??= new ResultadoCalculoModel();
+        try
+        {
+            EstadoProyecto.Proyecto ??= new ProyectoGeneralModel();
+            EstadoProyecto.Tanque ??= new TankModel();
+            EstadoProyecto.Cargas ??= new CargasModel();
+            EstadoProyecto.Instalacion ??= new InstalacionModel();
+            EstadoProyecto.Resultado ??= new ResultadoCalculoModel();
 
-        if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.IdiomaInforme))
-            EstadoProyecto.Proyecto.IdiomaInforme = "ES";
+            if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.IdiomaInforme))
+                EstadoProyecto.Proyecto.IdiomaInforme = "ES";
 
-        AsegurarCalculoInicial();
-        GenerarHtmlActual();
+            AsegurarCalculoInicial();
+            GenerarHtmlActual();
+        }
+        catch (Exception ex)
+        {
+            _mensaje = $"Error al abrir el informe: {ex.Message}";
+            _htmlActual = CrearHtmlErrorInforme(ex.Message);
+        }
     }
 
     private void AsegurarCalculoInicial()
@@ -743,33 +751,75 @@
 
     private void GenerarHtmlActual()
     {
-        var resultado = ResultadoActual();
-
-        _htmlActual = _informeSeleccionado switch
+        try
         {
-            "presupuesto" => InformeHtmlService.GenerarInformePresupuesto(
-                EstadoProyecto.Proyecto,
-                EstadoProyecto.Tanque,
-                EstadoProyecto.Cargas,
-                EstadoProyecto.Instalacion,
-                resultado),
+            var resultado = ResultadoActual();
 
-            "materiales" => InformeHtmlService.GenerarInformeMateriales(
-                EstadoProyecto.Proyecto,
-                EstadoProyecto.Tanque,
-                EstadoProyecto.Cargas,
-                EstadoProyecto.Instalacion,
-                resultado),
+            _htmlActual = _informeSeleccionado switch
+            {
+                "presupuesto" => InformeHtmlService.GenerarInformePresupuesto(
+                    EstadoProyecto.Proyecto,
+                    EstadoProyecto.Tanque,
+                    EstadoProyecto.Cargas,
+                    EstadoProyecto.Instalacion,
+                    resultado),
 
-            _ => InformeHtmlService.GenerarInformeCalculo(
-                EstadoProyecto.Proyecto,
-                EstadoProyecto.Tanque,
-                EstadoProyecto.Cargas,
-                EstadoProyecto.Instalacion,
-                resultado)
-        };
+                "materiales" => InformeHtmlService.GenerarInformeMateriales(
+                    EstadoProyecto.Proyecto,
+                    EstadoProyecto.Tanque,
+                    EstadoProyecto.Cargas,
+                    EstadoProyecto.Instalacion,
+                    resultado),
+
+                _ => InformeHtmlService.GenerarInformeCalculo(
+                    EstadoProyecto.Proyecto,
+                    EstadoProyecto.Tanque,
+                    EstadoProyecto.Cargas,
+                    EstadoProyecto.Instalacion,
+                    resultado)
+            };
+        }
+        catch (Exception ex)
+        {
+            _mensaje = $"Error generando el HTML del informe: {ex.Message}";
+            _htmlActual = CrearHtmlErrorInforme(ex.Message);
+        }
     }
+    private static string CrearHtmlErrorInforme(string mensaje)
+    {
+        var mensajeSeguro = System.Net.WebUtility.HtmlEncode(mensaje);
 
+        return "<!DOCTYPE html>" +
+               "<html lang=\"es\">" +
+               "<head>" +
+               "<meta charset=\"utf-8\">" +
+               "<style>" +
+               "body {" +
+               "font-family: Arial, sans-serif;" +
+               "padding: 32px;" +
+               "color: #1f2937;" +
+               "}" +
+               ".box {" +
+               "border: 1px solid #fecaca;" +
+               "background: #fef2f2;" +
+               "color: #991b1b;" +
+               "padding: 20px;" +
+               "border-radius: 12px;" +
+               "}" +
+               "h1 {" +
+               "margin-top: 0;" +
+               "}" +
+               "</style>" +
+               "</head>" +
+               "<body>" +
+               "<div class=\"box\">" +
+               "<h1>No se pudo generar el informe</h1>" +
+               "<p>" + mensajeSeguro + "</p>" +
+               "<p>Recalcula el proyecto o revisa los datos de geometría, cargas e instalación.</p>" +
+               "</div>" +
+               "</body>" +
+               "</html>";
+    }
     private async Task VistaPreviaVentana()
     {
         try
@@ -980,3 +1030,5 @@
         return "Todavía faltan datos válidos o el cálculo debe revisarse.";
     }
 }
+
+       
