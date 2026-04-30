@@ -86,7 +86,7 @@
 
             <div class="tank3d-info__row">
                 <span>Escalera</span>
-                <strong>@TextoSeguro(LeerPropiedad(Instalacion, "TipoEscalera"), "Sin escalera")</strong>
+                <strong>@DetectarEscalera().Tipo</strong>
             </div>
 
             <div class="tank3d-info__row">
@@ -122,6 +122,12 @@
     private ElementReference _contenedor3d;
     private bool _renderInicialPendiente = true;
     private string? _mensaje;
+
+    private sealed class Escalera3DInfo
+    {
+        public string Tipo { get; set; } = "Sin escalera";
+        public int NumeroEscaleras { get; set; }
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -169,6 +175,7 @@
     private object CrearDto3D()
     {
         var resultado = Resultado!;
+        var escalera = DetectarEscalera();
 
         var anillos = AnillosOrdenados().Select(a => new
         {
@@ -207,39 +214,42 @@
 
             escalera = new
             {
-                tipo = LeerPropiedad(Instalacion, "TipoEscalera")
-                    ?? LeerPropiedad(Instalacion, "Escalera")
-                    ?? LeerPropiedad(Instalacion, "TipoDeEscalera")
-                    ?? "Sin escalera",
-
-                numeroEscaleras = LeerEntero(Instalacion, "NumeroEscaleras")
+                tipo = escalera.Tipo,
+                numeroEscaleras = escalera.NumeroEscaleras
             },
 
             anillos
         };
     }
 
+    private Escalera3DInfo DetectarEscalera()
+    {
+        var tipo = TextoSeguro(
+            LeerPropiedad(Instalacion, "TipoEscalera"),
+            LeerPropiedad(Instalacion, "Escalera"),
+            LeerPropiedad(Instalacion, "TipoDeEscalera"),
+            LeerPropiedad(Instalacion, "TipoEscaleraSeleccionada"));
+
+        var numero = LeerEntero(Instalacion, "NumeroEscaleras");
+
+        if (string.IsNullOrWhiteSpace(tipo) || tipo == "—")
+            tipo = "Sin escalera";
+
+        return new Escalera3DInfo
+        {
+            Tipo = tipo,
+            NumeroEscaleras = numero
+        };
+    }
+
     private string DetectarTecho()
     {
-        var fuentes = new object?[]
-        {
-            Cargas,
-            Tanque,
-            Instalacion,
-            Proyecto
-        };
+        var fuentes = new object?[] { Cargas, Tanque, Instalacion, Proyecto };
 
         var nombresExactos = new[]
         {
-            "TipoTecho",
-            "Techo",
-            "TipoCubierta",
-            "Cubierta",
-            "RoofType",
-            "Roof",
-            "TipoDeTecho",
-            "TipoCubiertaSeleccionada",
-            "TipoTechoSeleccionado"
+            "TipoTecho", "Techo", "TipoCubierta", "Cubierta", "RoofType", "Roof",
+            "TipoDeTecho", "TipoCubiertaSeleccionada", "TipoTechoSeleccionado"
         };
 
         foreach (var fuente in fuentes)
@@ -308,10 +318,7 @@
         if (valor is null)
             return 0;
 
-        if (int.TryParse(valor.ToString(), out var numero))
-            return numero;
-
-        return 0;
+        return int.TryParse(valor.ToString(), out var numero) ? numero : 0;
     }
 
     private static string? BuscarPropiedadQueContenga(object? origen, string texto)
@@ -319,9 +326,7 @@
         if (origen is null)
             return null;
 
-        var propiedades = origen.GetType().GetProperties();
-
-        foreach (var propiedad in propiedades)
+        foreach (var propiedad in origen.GetType().GetProperties())
         {
             if (!propiedad.Name.Contains(texto, StringComparison.OrdinalIgnoreCase))
                 continue;
