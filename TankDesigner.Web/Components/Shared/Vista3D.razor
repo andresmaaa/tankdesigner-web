@@ -65,7 +65,7 @@
             {
                 <div class="tank3d-info__row">
                     <span>Vigas radiales</span>
-                    <strong>@Resultado.VigasTechoConico.NumeroVigas</strong>
+                    <strong>@NumeroVigas3D()</strong>
                 </div>
 
                 <div class="tank3d-info__row">
@@ -124,6 +124,12 @@
     private string? _mensaje;
     private DotNetObjectReference<Vista3D>? _dotNetRef;
 
+    private int NumeroVigas3D()
+    {
+        return Cargas?.NumeroVigasTechoConico3D
+            ?? Resultado?.VigasTechoConico?.NumeroVigas
+            ?? 0;
+    }
     [JSInvokable]
     public async Task ActualizarConfiguracionTecho3D(int numeroVigas, double factorNucleo)
     {
