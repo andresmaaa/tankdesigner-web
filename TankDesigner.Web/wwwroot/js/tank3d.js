@@ -940,26 +940,26 @@ function addVerticalRestPlatforms(group, radius, height, radial, tangent, platfo
     }
 }
 function addVerticalLadderCage(group, radius, height, radial, tangent, centerBase, cageMaterial) {
-    const cageRadius = Math.max(radius * 0.075, 0.58);
-    const cageTubeRadius = Math.max(radius * 0.0048, 0.024);
-    const cageCenter = centerBase.clone().add(radial.clone().multiplyScalar(cageRadius * 0.62));
+    const cageRadius = Math.max(radius * 0.070, 0.52);
+    const cageTubeRadius = Math.max(radius * 0.0036, 0.018);
+    const cageCenter = centerBase.clone().add(radial.clone().multiplyScalar(cageRadius * 0.42));
 
     const cageStartY = Math.min(height * 0.18, 1.65);
     const cageEndY = height * 1.035;
     const cageHeight = Math.max(cageEndY - cageStartY, 0.1);
 
-    const ringSpacing = Math.max(radius * 0.075, 0.58);
-    const ringCount = Math.max(7, Math.floor(cageHeight / ringSpacing));
+    const ringSpacing = Math.max(radius * 0.11, 0.82);
+    const ringCount = Math.max(4, Math.floor(cageHeight / ringSpacing));
 
     for (let i = 0; i <= ringCount; i++) {
         const y = cageStartY + (cageHeight * i) / ringCount;
         addCageRing(group, cageCenter, radial, tangent, cageRadius, y, cageTubeRadius, cageMaterial);
     }
 
-    const barCount = 9;
+    const barCount = 5;
 
     for (let i = 0; i < barCount; i++) {
-        const a = -Math.PI * 0.76 + (Math.PI * 1.52 * i) / (barCount - 1);
+        const a = -Math.PI * 0.62 + (Math.PI * 1.24 * i) / (barCount - 1);
 
         const offset = radial.clone().multiplyScalar(Math.cos(a) * cageRadius)
             .add(tangent.clone().multiplyScalar(Math.sin(a) * cageRadius));
@@ -970,16 +970,16 @@ function addVerticalLadderCage(group, radius, height, radial, tangent, centerBas
         const top = cageCenter.clone().add(offset);
         top.y = cageEndY;
 
-        addCylinderBetween(group, bottom, top, cageTubeRadius, cageMaterial, 10);
+        addCylinderBetween(group, bottom, top, cageTubeRadius, cageMaterial, 8);
     }
 }
 
 function addCageRing(group, cageCenter, radial, tangent, cageRadius, y, tubeRadius, material) {
     const points = [];
-    const segments = 42;
+    const segments = 24;
 
     for (let i = 0; i <= segments; i++) {
-        const a = -Math.PI * 0.82 + (Math.PI * 1.64 * i) / segments;
+        const a = -Math.PI * 0.66 + (Math.PI * 1.32 * i) / segments;
 
         const point = cageCenter.clone()
             .add(radial.clone().multiplyScalar(Math.cos(a) * cageRadius))
@@ -990,7 +990,7 @@ function addCageRing(group, cageCenter, radial, tangent, cageRadius, y, tubeRadi
     }
 
     for (let i = 0; i < points.length - 1; i++) {
-        addCylinderBetween(group, points[i], points[i + 1], tubeRadius, material, 10);
+        addCylinderBetween(group, points[i], points[i + 1], tubeRadius, material, 8);
     }
 }
 
