@@ -226,7 +226,7 @@ function addDownloadPngButton(shell, renderer) {
 function buildTank(viewer, tank, rings, scale) {
     const diameter = (Number(tank.diametro) || 1) * scale;
     const radius = diameter / 2;
-    addNozzle(viewer.group, radius, currentY);
+
     let currentY = 0;
 
     rings.forEach((ring) => {
@@ -272,6 +272,7 @@ function buildTank(viewer, tank, rings, scale) {
     addBottomDisc(viewer.group, radius);
     addTopStiffener(viewer.group, radius, currentY);
     addRoof(viewer.group, radius, currentY, tank.techo, tank.vigasTechoConico, scale);
+    addNozzle(viewer.group, radius, currentY);
     addReferenceGrid(viewer.group, radius, currentY);
     addVerticalReference(viewer.group, radius, currentY);
     addLadder(viewer.group, radius, currentY, tank.escalera);
@@ -280,7 +281,6 @@ function buildTank(viewer, tank, rings, scale) {
     viewer.modelRadius = radius;
     viewer.modelHeight = currentY;
 }
-
 function addRoof(group, radius, height, roofRaw, vigasTechoConico, scale) {
     const roof = normalizarTecho(roofRaw);
 
