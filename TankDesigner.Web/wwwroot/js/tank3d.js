@@ -187,8 +187,6 @@ function addRoofControls(shell, container, tank, dotNetRef) {
         }
 
         renderTank3D(container, tank, dotNetRef);
-
-        renderTank3D(container, tank);
     };
 
     beamsInput.addEventListener("change", applyChanges);
@@ -278,6 +276,7 @@ function buildTank(viewer, tank, rings, scale) {
     addBottomDisc(viewer.group, radius);
     addTopStiffener(viewer.group, radius, currentY);
     addRoof(viewer.group, radius, currentY, tank.techo, tank.vigasTechoConico, scale);
+    addRoofGuardrail(viewer.group, radius, currentY, tank.techo);
     addTankConnections(viewer.group, radius, currentY);
     addManhole(viewer.group, radius, currentY);
     addRoofVent(viewer.group, radius, currentY, tank.techo);
@@ -288,6 +287,57 @@ function buildTank(viewer, tank, rings, scale) {
     viewer.group.position.y = -currentY / 2;
     viewer.modelRadius = radius;
     viewer.modelHeight = currentY;
+}
+
+function addRoofGuardrail(group, radius, height, roofRaw) {
+    const roof = normalizarTecho(roofRaw);
+    if (roof.type === "none") return;
+
+    const material = new THREE.MeshStandardMaterial({
+        color: 0xe2e8f0,
+        metalness: 0.72,
+        roughness: 0.22
+    });
+
+    const postRadius = Math.max(radius * 0.0045, 0.022);
+    const railRadius = Math.max(radius * 0.0055, 0.026);
+    const railHeight = Math.max(radius * 0.095, 0.78);
+    const lowerRailHeight = railHeight * 0.55;
+
+    const railRadiusPosition = radius * 1.045;
+    const postCount = Math.max(32, Math.min(72, Math.floor(radius * 5.5)));
+
+    for (let i = 0; i < postCount; i++) {
+        const angle = (Math.PI * 2 * i) / postCount;
+        const x = Math.cos(angle) * railRadiusPosition;
+        const z = Math.sin(angle) * railRadiusPosition;
+
+        const bottom = new THREE.Vector3(x, height, z);
+        const top = new THREE.Vector3(x, height + railHeight, z);
+
+        addCylinderBetween(group, bottom, top, postRadius, material, 8);
+    }
+
+    addCircularRail(group, railRadiusPosition, height + railHeight, railRadius, material);
+    addCircularRail(group, railRadiusPosition, height + lowerRailHeight, railRadius * 0.85, material);
+}
+
+function addCircularRail(group, radius, y, tubeRadius, material) {
+    const segments = 96;
+    const points = [];
+
+    for (let i = 0; i <= segments; i++) {
+        const angle = (Math.PI * 2 * i) / segments;
+        points.push(new THREE.Vector3(
+            Math.cos(angle) * radius,
+            y,
+            Math.sin(angle) * radius
+        ));
+    }
+
+    for (let i = 0; i < points.length - 1; i++) {
+        addCylinderBetween(group, points[i], points[i + 1], tubeRadius, material, 8);
+    }
 }
 function addRoof(group, radius, height, roofRaw, vigasTechoConico, scale) {
     const roof = normalizarTecho(roofRaw);
@@ -792,10 +842,61 @@ function addVerticalLadder(group, radius, height, angleOffset = 0) {
     }
 
     addVerticalLadderCage(group, radius, height, radial, tangent, centerBase, cageMaterial);
+    addVerticalRestPlatforms(group, radius, height, radial, tangent, platformMaterial, cageMaterial);
     addVerticalLadderPlatform(group, radius, height, radial, tangent, platformMaterial, cageMaterial);
     addLadderTankBrackets(group, radius, height, radial, tangent, centerBase, cageMaterial);
 }
+function addVerticalRestPlatforms(group, radius, height, radial, tangent, platformMaterial, railMaterial) {
+    if (height < 8) return;
 
+    const platformCount = Math.floor(height / 9);
+    const width = Math.max(radius * 0.20, 1.25);
+    const depth = Math.max(radius * 0.14, 0.95);
+    const thickness = Math.max(radius * 0.010, 0.055);
+    const railHeight = Math.max(radius * 0.075, 0.72);
+    const railRadius = Math.max(radius * 0.0048, 0.026);
+
+    for (let i = 1; i <= platformCount; i++) {
+        const y = Math.min(i * 9, height * 0.82);
+
+        const center = radial.clone().multiplyScalar(radius + depth * 0.42);
+        center.y = y;
+
+        const platform = new THREE.Mesh(
+            new THREE.BoxGeometry(width, thickness, depth),
+            platformMaterial
+        );
+
+        platform.position.copy(center);
+        platform.rotation.y = -Math.atan2(radial.z, radial.x) + Math.PI / 2;
+        platform.castShadow = true;
+        platform.receiveShadow = true;
+        group.add(platform);
+
+        const p1 = center.clone().add(tangent.clone().multiplyScalar(-width / 2)).add(radial.clone().multiplyScalar(depth / 2));
+        const p2 = center.clone().add(tangent.clone().multiplyScalar(width / 2)).add(radial.clone().multiplyScalar(depth / 2));
+        const p3 = center.clone().add(tangent.clone().multiplyScalar(-width / 2)).add(radial.clone().multiplyScalar(-depth / 2));
+        const p4 = center.clone().add(tangent.clone().multiplyScalar(width / 2)).add(radial.clone().multiplyScalar(-depth / 2));
+
+        const posts = [p1, p2, p3, p4];
+        const tops = [];
+
+        posts.forEach(p => {
+            const bottom = p.clone();
+            bottom.y = y + thickness;
+
+            const top = p.clone();
+            top.y = bottom.y + railHeight;
+            tops.push(top);
+
+            addCylinderBetween(group, bottom, top, railRadius, railMaterial, 8);
+        });
+
+        addCylinderBetween(group, tops[0], tops[1], railRadius, railMaterial, 8);
+        addCylinderBetween(group, tops[0], tops[2], railRadius, railMaterial, 8);
+        addCylinderBetween(group, tops[1], tops[3], railRadius, railMaterial, 8);
+    }
+}
 function addVerticalLadderCage(group, radius, height, radial, tangent, centerBase, cageMaterial) {
     const cageRadius = Math.max(radius * 0.075, 0.58);
     const cageTubeRadius = Math.max(radius * 0.0048, 0.024);
@@ -940,8 +1041,8 @@ function addHelicalStair(group, radius, height, angleOffset = 0) {
     const innerRadius = stairRadius - Math.max(radius * 0.055, 0.34);
     const midRadius = (outerRadius + innerRadius) / 2;
 
-    const turns = Math.max(1.45, height / Math.max(radius * 1.08, 1));
-    const steps = Math.max(56, Math.floor(turns * 62));
+    const turns = Math.max(1.15, height / Math.max(radius * 1.35, 1));
+    const steps = Math.max(48, Math.floor(turns * 56));
 
     const stepWidth = Math.max(radius * 0.155, 0.90);
     const stepDepth = Math.max(radius * 0.060, 0.30);
