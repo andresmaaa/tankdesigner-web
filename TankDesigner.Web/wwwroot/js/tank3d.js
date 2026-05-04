@@ -273,6 +273,8 @@ function buildTank(viewer, tank, rings, scale) {
     addTopStiffener(viewer.group, radius, currentY);
     addRoof(viewer.group, radius, currentY, tank.techo, tank.vigasTechoConico, scale);
     addTankConnections(viewer.group, radius, currentY);
+    addManhole(viewer.group, radius, currentY);
+    addRoofVent(viewer.group, radius, currentY, tank.techo);
     addReferenceGrid(viewer.group, radius, currentY);
     addVerticalReference(viewer.group, radius, currentY);
     addLadder(viewer.group, radius, currentY, tank.escalera);
@@ -301,7 +303,114 @@ function addRoof(group, radius, height, roofRaw, vigasTechoConico, scale) {
 
     addFlatRoof(group, radius, height);
 }
+function addManhole(group, radius, height) {
+    const angle = Math.PI * 1.82;
+    const y = height * 0.22;
 
+    const radial = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
+    const tangent = new THREE.Vector3(-Math.sin(angle), 0, Math.cos(angle));
+    const vertical = new THREE.Vector3(0, 1, 0);
+
+    const manholeRadius = Math.max(radius * 0.105, 0.42);
+    const coverThickness = Math.max(radius * 0.018, 0.06);
+    const boltRadius = Math.max(radius * 0.006, 0.022);
+
+    const materialCover = new THREE.MeshStandardMaterial({
+        color: 0x94a3b8,
+        metalness: 0.72,
+        roughness: 0.26
+    });
+
+    const materialFrame = new THREE.MeshStandardMaterial({
+        color: 0x475569,
+        metalness: 0.78,
+        roughness: 0.24
+    });
+
+    const center = radial.clone().multiplyScalar(radius + coverThickness * 0.7);
+    center.y = y;
+
+    const quaternion = new THREE.Quaternion();
+    quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), radial.clone().normalize());
+
+    const cover = new THREE.Mesh(
+        new THREE.CylinderGeometry(manholeRadius, manholeRadius, coverThickness, 54),
+        materialCover
+    );
+
+    cover.position.copy(center);
+    cover.quaternion.copy(quaternion);
+    cover.castShadow = true;
+    cover.receiveShadow = true;
+    group.add(cover);
+
+    const frame = new THREE.Mesh(
+        new THREE.TorusGeometry(manholeRadius * 1.08, Math.max(radius * 0.010, 0.035), 12, 64),
+        materialFrame
+    );
+
+    frame.position.copy(center.clone().add(radial.clone().multiplyScalar(coverThickness * 0.9)));
+    frame.quaternion.copy(quaternion);
+    frame.castShadow = true;
+    frame.receiveShadow = true;
+    group.add(frame);
+
+    const boltCount = 16;
+
+    for (let i = 0; i < boltCount; i++) {
+        const a = (Math.PI * 2 * i) / boltCount;
+
+        const boltPos = center.clone()
+            .add(tangent.clone().multiplyScalar(Math.cos(a) * manholeRadius * 0.86))
+            .add(vertical.clone().multiplyScalar(Math.sin(a) * manholeRadius * 0.86))
+            .add(radial.clone().multiplyScalar(coverThickness));
+
+        const bolt = new THREE.Mesh(
+            new THREE.CylinderGeometry(boltRadius, boltRadius, coverThickness * 1.35, 8),
+            materialFrame
+        );
+
+        bolt.position.copy(boltPos);
+        bolt.quaternion.copy(quaternion);
+        bolt.castShadow = true;
+        bolt.receiveShadow = true;
+        group.add(bolt);
+    }
+}
+
+function addRoofVent(group, radius, height, roofRaw) {
+    const roof = normalizarTecho(roofRaw);
+    if (roof.type === "none") return;
+
+    const ventRadius = Math.max(radius * 0.045, 0.22);
+    const ventHeight = Math.max(radius * 0.10, 0.45);
+
+    const material = new THREE.MeshStandardMaterial({
+        color: 0x64748b,
+        metalness: 0.72,
+        roughness: 0.26
+    });
+
+    const vent = new THREE.Mesh(
+        new THREE.CylinderGeometry(ventRadius, ventRadius, ventHeight, 32),
+        material
+    );
+
+    vent.position.set(radius * 0.32, height + ventHeight * 0.65, -radius * 0.18);
+    vent.castShadow = true;
+    vent.receiveShadow = true;
+    group.add(vent);
+
+    const cap = new THREE.Mesh(
+        new THREE.CylinderGeometry(ventRadius * 1.45, ventRadius * 1.45, ventHeight * 0.18, 32),
+        material
+    );
+
+    cap.position.set(vent.position.x, vent.position.y + ventHeight * 0.55, vent.position.z);
+    cap.castShadow = true;
+    cap.receiveShadow = true;
+    group.add(cap);
+}
 function normalizarTecho(value) {
     const text = String(value || "None").trim();
     const t = text.toUpperCase();
