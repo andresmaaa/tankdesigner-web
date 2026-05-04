@@ -272,7 +272,7 @@ function buildTank(viewer, tank, rings, scale) {
     addBottomDisc(viewer.group, radius);
     addTopStiffener(viewer.group, radius, currentY);
     addRoof(viewer.group, radius, currentY, tank.techo, tank.vigasTechoConico, scale);
-    addNozzle(viewer.group, radius, currentY);
+    addTankConnections(viewer.group, radius, currentY);
     addReferenceGrid(viewer.group, radius, currentY);
     addVerticalReference(viewer.group, radius, currentY);
     addLadder(viewer.group, radius, currentY, tank.escalera);
@@ -935,77 +935,115 @@ function connectPath(group, points, radius, material, segments) {
     }
 }
 
-function addNozzle(group, radius, height) {
-    const angle = Math.PI / 4;
-    const y = height * 0.35;
+function addTankConnections(group, radius, height) {
+    addNozzle(group, radius, height, {
+        angle: Math.PI * 1.18,
+        y: height * 0.12,
+        size: 0.75,
+        label: "drain"
+    });
 
-    const nozzleLength = Math.max(radius * 0.25, 0.6);
-    const nozzleRadius = Math.max(radius * 0.06, 0.25);
+    addNozzle(group, radius, height, {
+        angle: Math.PI * 1.32,
+        y: height * 0.34,
+        size: 1.0,
+        label: "outlet"
+    });
 
-    const flangeRadius = nozzleRadius * 1.6;
-    const flangeThickness = nozzleRadius * 0.35;
+    addNozzle(group, radius, height, {
+        angle: Math.PI * 1.46,
+        y: height * 0.72,
+        size: 0.8,
+        label: "inlet"
+    });
 
-    const boltRadius = nozzleRadius * 0.08;
+    addNozzle(group, radius, height, {
+        angle: Math.PI * 1.62,
+        y: height * 0.88,
+        size: 0.55,
+        label: "overflow"
+    });
+}
 
-    const baseX = Math.cos(angle) * radius;
-    const baseZ = Math.sin(angle) * radius;
+function addNozzle(group, radius, height, options) {
+    const angle = options.angle;
+    const y = options.y;
+    const size = options.size || 1;
 
-    const nozzle = new THREE.Mesh(
-        new THREE.CylinderGeometry(nozzleRadius, nozzleRadius, nozzleLength, 32),
-        new THREE.MeshStandardMaterial({
-            color: 0x9ca3af,
-            metalness: 0.7,
-            roughness: 0.3
-        })
-    );
+    const radial = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
 
-    nozzle.rotation.z = Math.PI / 2;
-    nozzle.position.set(
-        baseX + Math.cos(angle) * nozzleLength / 2,
-        y,
-        baseZ + Math.sin(angle) * nozzleLength / 2
-    );
+    const nozzleLength = Math.max(radius * 0.18 * size, 0.42);
+    const nozzleRadius = Math.max(radius * 0.045 * size, 0.18);
 
-    group.add(nozzle);
+    const flangeRadius = nozzleRadius * 1.65;
+    const flangeThickness = Math.max(nozzleRadius * 0.32, 0.08);
+    const boltRadius = Math.max(nozzleRadius * 0.08, 0.025);
+
+    const materialNozzle = new THREE.MeshStandardMaterial({
+        color: 0xb6beca,
+        metalness: 0.76,
+        roughness: 0.24
+    });
+
+    const materialFlange = new THREE.MeshStandardMaterial({
+        color: 0x475569,
+        metalness: 0.82,
+        roughness: 0.22
+    });
+
+    const materialBolt = new THREE.MeshStandardMaterial({
+        color: 0x111827,
+        metalness: 0.75,
+        roughness: 0.25
+    });
+
+    const base = radial.clone().multiplyScalar(radius * 1.01);
+    base.y = y;
+
+    const end = radial.clone().multiplyScalar(radius + nozzleLength);
+    end.y = y;
+
+    addCylinderBetween(group, base, end, nozzleRadius, materialNozzle, 32);
+
+    const flangeCenter = radial.clone().multiplyScalar(radius + nozzleLength + flangeThickness * 0.25);
+    flangeCenter.y = y;
 
     const flange = new THREE.Mesh(
-        new THREE.CylinderGeometry(flangeRadius, flangeRadius, flangeThickness, 40),
-        new THREE.MeshStandardMaterial({
-            color: 0x6b7280,
-            metalness: 0.8,
-            roughness: 0.25
-        })
+        new THREE.CylinderGeometry(flangeRadius, flangeRadius, flangeThickness, 48),
+        materialFlange
     );
 
-    flange.rotation.z = Math.PI / 2;
-    flange.position.set(
-        baseX + Math.cos(angle) * nozzleLength,
-        y,
-        baseZ + Math.sin(angle) * nozzleLength
-    );
+    flange.position.copy(flangeCenter);
 
+    const quaternion = new THREE.Quaternion();
+    quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), radial.clone().normalize());
+    flange.quaternion.copy(quaternion);
+
+    flange.castShadow = true;
+    flange.receiveShadow = true;
     group.add(flange);
+
+    const tangent = new THREE.Vector3(-Math.sin(angle), 0, Math.cos(angle));
+    const vertical = new THREE.Vector3(0, 1, 0);
 
     const boltCount = 12;
 
     for (let i = 0; i < boltCount; i++) {
         const a = (Math.PI * 2 * i) / boltCount;
 
-        const bx = Math.cos(a) * (flangeRadius * 0.8);
-        const by = Math.sin(a) * (flangeRadius * 0.8);
+        const boltPos = flangeCenter.clone()
+            .add(tangent.clone().multiplyScalar(Math.cos(a) * flangeRadius * 0.72))
+            .add(vertical.clone().multiplyScalar(Math.sin(a) * flangeRadius * 0.72));
 
         const bolt = new THREE.Mesh(
-            new THREE.CylinderGeometry(boltRadius, boltRadius, flangeThickness * 1.2, 8),
-            new THREE.MeshStandardMaterial({ color: 0x111827 })
+            new THREE.CylinderGeometry(boltRadius, boltRadius, flangeThickness * 1.25, 10),
+            materialBolt
         );
 
-        bolt.rotation.z = Math.PI / 2;
-
-        bolt.position.set(
-            flange.position.x + Math.cos(angle) * 0,
-            y + by,
-            flange.position.z + bx
-        );
+        bolt.position.copy(boltPos);
+        bolt.quaternion.copy(quaternion);
+        bolt.castShadow = true;
+        bolt.receiveShadow = true;
 
         group.add(bolt);
     }
