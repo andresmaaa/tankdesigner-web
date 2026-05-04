@@ -113,16 +113,32 @@
 
 @code {
     [Parameter] public ResultadoCalculoModel? Resultado { get; set; }
-
     [Parameter] public object? Tanque { get; set; }
-    [Parameter] public object? Cargas { get; set; }
-    [Parameter] public object? Instalacion { get; set; }
+    [Parameter] public CargasModel? Cargas { get; set; }
+    [Parameter] public InstalacionModel? Instalacion { get; set; }
     [Parameter] public object? Proyecto { get; set; }
+    [Parameter] public EventCallback OnConfiguracion3DChanged { get; set; }
 
     private ElementReference _contenedor3d;
     private bool _renderInicialPendiente = true;
     private string? _mensaje;
 
+
+    [JSInvokable]
+    public async Task ActualizarConfiguracionTecho3D(int numeroVigas, double factorNucleo)
+    {
+        if (Cargas is null)
+            return;
+
+        Cargas.NumeroVigasTechoConico3D = numeroVigas;
+        Cargas.FactorNucleoTechoConico3D = factorNucleo;
+
+        if (Resultado?.VigasTechoConico is not null)
+            Resultado.VigasTechoConico.NumeroVigas = numeroVigas;
+
+        if (OnConfiguracion3DChanged.HasDelegate)
+            await OnConfiguracion3DChanged.InvokeAsync();
+    }
     private sealed class Escalera3DInfo
     {
         public string Tipo { get; set; } = "Sin escalera";
@@ -203,7 +219,13 @@
                 : new
                 {
                     aplica = resultado.VigasTechoConico.Aplica,
-                    numeroVigas = resultado.VigasTechoConico.NumeroVigas,
+
+                    numeroVigas = Cargas?.NumeroVigasTechoConico3D
+                        ?? resultado.VigasTechoConico.NumeroVigas,
+
+                    factorNucleo3D = Cargas?.FactorNucleoTechoConico3D
+                        ?? 0.16,
+
                     anguloTechoGrados = resultado.VigasTechoConico.AnguloTechoGrados,
                     alturaCono = resultado.VigasTechoConico.AlturaCono,
                     longitudViga = resultado.VigasTechoConico.LongitudViga,

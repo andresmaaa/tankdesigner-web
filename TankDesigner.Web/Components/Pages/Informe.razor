@@ -11,7 +11,7 @@
 @using TankDesigner.Web.Data
 @using TankDesigner.Web.Services.Ai
 @using TankDesigner.Web.Components.Shared
-
+@inject ProyectoState EstadoProyecto
 @inject IJSRuntime JS
 @inject AiEngineeringService AiEngineeringService
 @inject UserManager<ApplicationUser> UserManager
@@ -26,6 +26,7 @@
 @inject PdfRenderService PdfRenderService
 
 <PageTitle>Informe</PageTitle>
+
 
 <div class="informes-page">
     <div class="page-header">
@@ -227,12 +228,12 @@
                 ×
             </button>
         </div>
-
         <Vista3D Resultado="EstadoProyecto.Resultado"
                  Tanque="EstadoProyecto.Tanque"
                  Cargas="EstadoProyecto.Cargas"
                  Instalacion="EstadoProyecto.Instalacion"
-                 Proyecto="EstadoProyecto.Proyecto" />
+                 Proyecto="EstadoProyecto.Proyecto"
+                 OnConfiguracion3DChanged="GuardarConfiguracion3D" />
     </section>
 }
 
@@ -402,6 +403,11 @@
     private string _preguntaIa = string.Empty;
     private string? _respuestaIa;
 
+
+    private async Task GuardarConfiguracion3D()
+    {
+        await GuardarProyecto();
+    }
     private async Task AbrirVista3D()
     {
         _mensaje = "HAS PULSADO EL BOTÓN 3D";

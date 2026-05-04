@@ -411,6 +411,7 @@ function addRoofVent(group, radius, height, roofRaw) {
     cap.receiveShadow = true;
     group.add(cap);
 }
+
 function normalizarTecho(value) {
     const text = String(value || "None").trim();
     const t = text.toUpperCase();

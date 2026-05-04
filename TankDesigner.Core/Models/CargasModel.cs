@@ -9,7 +9,9 @@
 
         // Control de normativa (NO se asigna valor por defecto)
         public string NormativaAplicada { get; set; }
-
+        // Configuración persistente de la visualización 3D del techo cónico
+        public int? NumeroVigasTechoConico3D { get; set; }
+        public double? FactorNucleoTechoConico3D { get; set; }
         // AWWA - Techo
         public string RoofAngle { get; set; } = "0°";
 
