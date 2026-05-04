@@ -925,7 +925,8 @@ function addHelicalStair(group, radius, height, angleOffset = 0) {
     connectPath(group, lowerStringer, stringerRadius, supportMaterial, 10);
     connectPath(group, innerStringer, stringerRadius * 0.85, supportMaterial, 10);
 
-    addHelicalTopPlatform(group, radius, height, angleOffset + turns * Math.PI * 2, supportMaterial, railMaterial);
+    const finalAngle = -Math.PI / 2 + angleOffset + turns * Math.PI * 2;
+    addHelicalTopPlatform(group, radius, height, finalAngle, supportMaterial, railMaterial);
 }
 
 function connectPath(group, points, radius, material, segments) {
