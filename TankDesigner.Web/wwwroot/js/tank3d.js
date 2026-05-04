@@ -27,7 +27,8 @@ function renderTank3D(container, tank) {
 
     const viewer = createViewer(container, scale, metersPerUnit, tank);
     viewers.set(container, viewer);
-
+    renderer.__tank3dScene = scene;
+    renderer.__tank3dCamera = camera;
     buildTank(viewer, tank, rings, scale);
     fitCamera(viewer);
 
@@ -58,7 +59,7 @@ function createViewer(container, scale, metersPerUnit, tank) {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     shell.appendChild(renderer.domElement);
-
+    addDownloadPngButton(shell, renderer);
     const group = new THREE.Group();
     scene.add(group);
 
@@ -191,7 +192,36 @@ function addRoofControls(shell, container, tank) {
 
     shell.appendChild(panel);
 }
+function addDownloadPngButton(shell, renderer) {
+    const button = document.createElement("button");
 
+    button.type = "button";
+    button.textContent = "Descargar PNG";
+
+    button.style.position = "absolute";
+    button.style.right = "18px";
+    button.style.top = "18px";
+    button.style.zIndex = "8";
+    button.style.border = "0";
+    button.style.borderRadius = "14px";
+    button.style.padding = "10px 14px";
+    button.style.background = "#2563eb";
+    button.style.color = "#ffffff";
+    button.style.font = "700 13px Arial";
+    button.style.cursor = "pointer";
+    button.style.boxShadow = "0 12px 28px rgba(37,99,235,0.32)";
+
+    button.addEventListener("click", () => {
+        renderer.render(renderer.__tank3dScene, renderer.__tank3dCamera);
+
+        const link = document.createElement("a");
+        link.download = `tank-3d-${new Date().toISOString().slice(0, 10)}.png`;
+        link.href = renderer.domElement.toDataURL("image/png");
+        link.click();
+    });
+
+    shell.appendChild(button);
+}
 function buildTank(viewer, tank, rings, scale) {
     const diameter = (Number(tank.diametro) || 1) * scale;
     const radius = diameter / 2;
