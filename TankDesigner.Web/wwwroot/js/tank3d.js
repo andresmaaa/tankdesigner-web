@@ -27,8 +27,7 @@ function renderTank3D(container, tank) {
 
     const viewer = createViewer(container, scale, metersPerUnit, tank);
     viewers.set(container, viewer);
-    renderer.__tank3dScene = scene;
-    renderer.__tank3dCamera = camera;
+
     buildTank(viewer, tank, rings, scale);
     fitCamera(viewer);
 
@@ -89,6 +88,8 @@ function createViewer(container, scale, metersPerUnit, tank) {
         lastX: 0,
         lastY: 0
     };
+    renderer.__tank3dScene = scene;
+    renderer.__tank3dCamera = camera;
 
     bindControls(viewer);
     resize(viewer);
