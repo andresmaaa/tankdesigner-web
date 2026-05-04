@@ -122,7 +122,7 @@
     private ElementReference _contenedor3d;
     private bool _renderInicialPendiente = true;
     private string? _mensaje;
-
+    private DotNetObjectReference<Vista3D>? _dotNetRef;
 
     [JSInvokable]
     public async Task ActualizarConfiguracionTecho3D(int numeroVigas, double factorNucleo)
@@ -138,6 +138,8 @@
 
         if (OnConfiguracion3DChanged.HasDelegate)
             await OnConfiguracion3DChanged.InvokeAsync();
+
+        StateHasChanged();
     }
     private sealed class Escalera3DInfo
     {
@@ -171,7 +173,13 @@
                 return;
             }
 
-            await JS.InvokeVoidAsync("tank3d.renderTank3D", _contenedor3d, CrearDto3D());
+            _dotNetRef ??= DotNetObjectReference.Create(this);
+
+            await JS.InvokeVoidAsync(
+                "tank3d.renderTank3D",
+                _contenedor3d,
+                CrearDto3D(),
+                _dotNetRef);
         }
         catch (Exception ex)
         {
@@ -401,6 +409,7 @@
 
     public ValueTask DisposeAsync()
     {
+        _dotNetRef?.Dispose();
         return ValueTask.CompletedTask;
     }
 }

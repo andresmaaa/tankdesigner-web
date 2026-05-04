@@ -1,6 +1,6 @@
 ﻿const viewers = new WeakMap();
 
-function renderTank3D(container, tank) {
+function renderTank3D(container, tank, dotNetRef) {
     if (!container) return;
 
     container.innerHTML = "";
@@ -25,7 +25,7 @@ function renderTank3D(container, tank) {
     const scale = targetModelSize / maxRealSize;
     const metersPerUnit = 1 / scale;
 
-    const viewer = createViewer(container, scale, metersPerUnit, tank);
+    const viewer = createViewer(container, scale, metersPerUnit, tank, dotNetRef);
     viewers.set(container, viewer);
 
     buildTank(viewer, tank, rings, scale);
@@ -34,7 +34,7 @@ function renderTank3D(container, tank) {
     viewer.renderer.render(viewer.scene, viewer.camera);
 }
 
-function createViewer(container, scale, metersPerUnit, tank) {
+function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
     const shell = document.createElement("div");
     shell.style.position = "relative";
     shell.style.width = "100%";
@@ -45,14 +45,14 @@ function createViewer(container, scale, metersPerUnit, tank) {
     container.appendChild(shell);
 
     addScaleBadge(shell, metersPerUnit, tank);
-    addRoofControls(shell, container, tank);
+    addRoofControls(shell, container, tank, dotNetRef);
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xf8fafc);
 
     const camera = new THREE.PerspectiveCamera(42, 1, 0.01, 10000);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -131,7 +131,7 @@ function addScaleBadge(shell, metersPerUnit, tank) {
     shell.appendChild(scaleBadge);
 }
 
-function addRoofControls(shell, container, tank) {
+function addRoofControls(shell, container, tank, dotNetRef) {
     const roof = normalizarTecho(tank.techo);
     if (roof.type !== "cone") return;
 
@@ -181,6 +181,12 @@ function addRoofControls(shell, container, tank) {
         tank.vigasTechoConico.numeroVigas = beams;
         tank.vigasTechoConico.factorNucleo3D = hubPercent / 100;
         hubLabel.textContent = `${hubPercent}%`;
+
+        if (dotNetRef) {
+            dotNetRef.invokeMethodAsync("ActualizarConfiguracionTecho3D", beams, hubPercent / 100);
+        }
+
+        renderTank3D(container, tank, dotNetRef);
 
         renderTank3D(container, tank);
     };
