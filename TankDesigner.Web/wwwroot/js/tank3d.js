@@ -226,7 +226,7 @@ function addDownloadPngButton(shell, renderer) {
 function buildTank(viewer, tank, rings, scale) {
     const diameter = (Number(tank.diametro) || 1) * scale;
     const radius = diameter / 2;
-
+    addNozzle(viewer.group, radius, currentY);
     let currentY = 0;
 
     rings.forEach((ring) => {
@@ -935,6 +935,81 @@ function connectPath(group, points, radius, material, segments) {
     }
 }
 
+function addNozzle(group, radius, height) {
+    const angle = Math.PI / 4;
+    const y = height * 0.35;
+
+    const nozzleLength = Math.max(radius * 0.25, 0.6);
+    const nozzleRadius = Math.max(radius * 0.06, 0.25);
+
+    const flangeRadius = nozzleRadius * 1.6;
+    const flangeThickness = nozzleRadius * 0.35;
+
+    const boltRadius = nozzleRadius * 0.08;
+
+    const baseX = Math.cos(angle) * radius;
+    const baseZ = Math.sin(angle) * radius;
+
+    const nozzle = new THREE.Mesh(
+        new THREE.CylinderGeometry(nozzleRadius, nozzleRadius, nozzleLength, 32),
+        new THREE.MeshStandardMaterial({
+            color: 0x9ca3af,
+            metalness: 0.7,
+            roughness: 0.3
+        })
+    );
+
+    nozzle.rotation.z = Math.PI / 2;
+    nozzle.position.set(
+        baseX + Math.cos(angle) * nozzleLength / 2,
+        y,
+        baseZ + Math.sin(angle) * nozzleLength / 2
+    );
+
+    group.add(nozzle);
+
+    const flange = new THREE.Mesh(
+        new THREE.CylinderGeometry(flangeRadius, flangeRadius, flangeThickness, 40),
+        new THREE.MeshStandardMaterial({
+            color: 0x6b7280,
+            metalness: 0.8,
+            roughness: 0.25
+        })
+    );
+
+    flange.rotation.z = Math.PI / 2;
+    flange.position.set(
+        baseX + Math.cos(angle) * nozzleLength,
+        y,
+        baseZ + Math.sin(angle) * nozzleLength
+    );
+
+    group.add(flange);
+
+    const boltCount = 12;
+
+    for (let i = 0; i < boltCount; i++) {
+        const a = (Math.PI * 2 * i) / boltCount;
+
+        const bx = Math.cos(a) * (flangeRadius * 0.8);
+        const by = Math.sin(a) * (flangeRadius * 0.8);
+
+        const bolt = new THREE.Mesh(
+            new THREE.CylinderGeometry(boltRadius, boltRadius, flangeThickness * 1.2, 8),
+            new THREE.MeshStandardMaterial({ color: 0x111827 })
+        );
+
+        bolt.rotation.z = Math.PI / 2;
+
+        bolt.position.set(
+            flange.position.x + Math.cos(angle) * 0,
+            y + by,
+            flange.position.z + bx
+        );
+
+        group.add(bolt);
+    }
+}
 function addHelicalTopPlatform(group, radius, height, angle, platformMaterial, railMaterial) {
     const radial = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
     const tangent = new THREE.Vector3(-Math.sin(angle), 0, Math.cos(angle));
