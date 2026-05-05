@@ -1011,41 +1011,74 @@ function addVerticalRestPlatforms(group, radius, height, radial, tangent, platfo
 
     const platformCount = Math.floor(realHeight / intervalMeters);
 
-    const width = Math.max(radius * 0.14, 0.85);
-    const depth = Math.max(radius * 0.10, 0.65);
-    const thickness = Math.max(radius * 0.006, 0.035);
+    // Plataforma de descanso tipo industrial como la foto:
+    // sale hacia fuera del tanque, centrada en la escalera,
+    // no son dos paneles laterales ni una pared gris.
+    const width = Math.max(radius * 0.34, 1.85);
+    const depth = Math.max(radius * 0.24, 1.35);
+    const thickness = Math.max(radius * 0.010, 0.055);
 
-    const railHeight = Math.max(radius * 0.070, 0.65);
-    const railRadius = Math.max(radius * 0.003, 0.018);
+    const railHeight = Math.max(radius * 0.085, 0.78);
+    const railRadius = Math.max(radius * 0.0042, 0.022);
+    const postRadius = railRadius;
 
     for (let i = 1; i <= platformCount; i++) {
         const y = i * intervalMeters * scale;
+
         if (y >= height * 0.92) continue;
 
-        const side = i % 2 === 0 ? 1 : -1;
-        const lateralOffset = side * (railHalfWidth * 1.25);
-
-        const center = centerBase.clone()
-            .add(radial.clone().multiplyScalar(depth * 0.25))
-            .add(tangent.clone().multiplyScalar(lateralOffset));
-
+        const center = centerBase.clone().add(radial.clone().multiplyScalar(depth * 0.55));
         center.y = y;
 
-        const platform = new THREE.Mesh(
+        const deck = new THREE.Mesh(
             new THREE.BoxGeometry(width, thickness, depth),
             platformMaterial
         );
 
-        platform.position.copy(center);
-        platform.rotation.y = -Math.atan2(radial.z, radial.x) + Math.PI / 2;
-        platform.castShadow = true;
-        platform.receiveShadow = true;
-        group.add(platform);
+        deck.position.copy(center);
+        deck.rotation.y = -Math.atan2(radial.z, radial.x) + Math.PI / 2;
+        deck.castShadow = true;
+        deck.receiveShadow = true;
+        group.add(deck);
 
+        // Barandilla como plataforma real: laterales y frente cerrados,
+        // parte trasera abierta para conectar con la escalera.
         addPlatformRails(group, center, radial, tangent, width, depth, y, thickness, railHeight, railRadius, railMaterial, {
             openBack: true,
-            openFront: true
+            openFront: false
         });
+
+        // Dos postes interiores junto a la escalera, como acceso a plataforma.
+        const leftPostBottom = centerBase.clone().add(tangent.clone().multiplyScalar(-railHalfWidth * 1.25));
+        leftPostBottom.y = y + thickness;
+
+        const leftPostTop = leftPostBottom.clone();
+        leftPostTop.y += railHeight;
+
+        const rightPostBottom = centerBase.clone().add(tangent.clone().multiplyScalar(railHalfWidth * 1.25));
+        rightPostBottom.y = y + thickness;
+
+        const rightPostTop = rightPostBottom.clone();
+        rightPostTop.y += railHeight;
+
+        addCylinderBetween(group, leftPostBottom, leftPostTop, postRadius, railMaterial, 8);
+        addCylinderBetween(group, rightPostBottom, rightPostTop, postRadius, railMaterial, 8);
+
+        // Pequeñas uniones desde la escalera hasta el suelo de la plataforma.
+        const leftDeck = center.clone().add(tangent.clone().multiplyScalar(-railHalfWidth * 1.25)).add(radial.clone().multiplyScalar(-depth * 0.36));
+        leftDeck.y = y + thickness * 1.4;
+
+        const rightDeck = center.clone().add(tangent.clone().multiplyScalar(railHalfWidth * 1.25)).add(radial.clone().multiplyScalar(-depth * 0.36));
+        rightDeck.y = y + thickness * 1.4;
+
+        const leftStart = centerBase.clone().add(tangent.clone().multiplyScalar(-railHalfWidth));
+        leftStart.y = leftDeck.y;
+
+        const rightStart = centerBase.clone().add(tangent.clone().multiplyScalar(railHalfWidth));
+        rightStart.y = rightDeck.y;
+
+        addCylinderBetween(group, leftStart, leftDeck, railRadius * 0.75, railMaterial, 8);
+        addCylinderBetween(group, rightStart, rightDeck, railRadius * 0.75, railMaterial, 8);
     }
 }
 
