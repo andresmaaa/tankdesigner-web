@@ -825,9 +825,9 @@ function addVerticalLadder(group, radius, height, angleOffset = 0, scale) {
     });
 
     const platformMaterial = new THREE.MeshStandardMaterial({
-        color: 0x334155,
-        metalness: 0.72,
-        roughness: 0.26
+        color: 0x1f2937,
+        metalness: 0.68,
+        roughness: 0.32
     });
 
     const angle = -Math.PI / 4 + angleOffset;
@@ -1330,12 +1330,12 @@ function addVerticalRestPlatforms(group, radius, height, radial, tangent, platfo
 
     const platformCount = Math.floor(realHeight / intervalMeters);
 
-    const width = Math.max(radius * 0.30, 1.65);
-    const depth = Math.max(radius * 0.20, 1.10);
-    const thickness = Math.max(radius * 0.010, 0.055);
+    const width = Math.max(radius * 0.16, 0.95);
+    const depth = Math.max(radius * 0.13, 0.78);
+    const thickness = Math.max(radius * 0.008, 0.04);
 
-    const railHeight = Math.max(radius * 0.075, 0.72);
-    const railRadius = Math.max(radius * 0.0048, 0.026);
+    const railHeight = Math.max(radius * 0.055, 0.45);
+    const railRadius = Math.max(radius * 0.0035, 0.018);
 
     for (let i = 1; i <= platformCount; i++) {
         const y = i * intervalMeters * scale;
@@ -1345,8 +1345,8 @@ function addVerticalRestPlatforms(group, radius, height, radial, tangent, platfo
         const side = i % 2 === 0 ? -1 : 1;
 
         const center = radial.clone()
-            .multiplyScalar(radius + depth * 0.32)
-            .add(tangent.clone().multiplyScalar(side * width * 0.52));
+            .multiplyScalar(radius + depth * 0.55)
+            .add(tangent.clone().multiplyScalar(side * width * 0.42));
 
         center.y = y;
 
@@ -1361,7 +1361,19 @@ function addVerticalRestPlatforms(group, radius, height, radial, tangent, platfo
         platform.receiveShadow = true;
         group.add(platform);
 
-        addPlatformRails(group, center, radial, tangent, width, depth, y, thickness, railHeight, railRadius, railMaterial);
+        addPlatformRails(
+            group,
+            center,
+            radial,
+            tangent,
+            width,
+            depth,
+            y,
+            thickness,
+            railHeight,
+            railRadius,
+            railMaterial
+        );
     }
 }
 
