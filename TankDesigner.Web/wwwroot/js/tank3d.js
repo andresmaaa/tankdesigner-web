@@ -834,7 +834,7 @@ function addVerticalLadder(group, radius, height, angleOffset = 0, scale) {
     const radial = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
     const tangent = new THREE.Vector3(-Math.sin(angle), 0, Math.cos(angle));
 
-    const ladderGap = Math.max(radius * 0.010, 0.07);
+    const ladderGap = Math.max(radius * 0.012, 0.08);
     const ladderRadius = radius + ladderGap;
 
     const railHalfWidth = Math.max(radius * 0.035, 0.34);
@@ -876,65 +876,36 @@ function addVerticalLadder(group, radius, height, angleOffset = 0, scale) {
         addCylinderBetween(group, left, right, rungRadius, ladderMaterial, 12);
     }
 
-    addOpenVerticalSafetyHoops(group, radius, height, radial, tangent, centerBase, safetyMaterial);
+    addVerticalLadderSideHandrails(group, radius, height, radial, tangent, centerBase, safetyMaterial);
     addVerticalRestPlatforms(group, radius, height, radial, tangent, platformMaterial, safetyMaterial, scale);
     addVerticalLadderPlatform(group, radius, height, radial, tangent, platformMaterial, safetyMaterial);
     addLadderTankBrackets(group, radius, height, radial, tangent, centerBase, safetyMaterial);
-}   
+}
+function addVerticalLadderSideHandrails(group, radius, height, radial, tangent, centerBase, material) {
+    const railRadius = Math.max(radius * 0.0042, 0.020);
+    const offset = Math.max(radius * 0.065, 0.50);
+    const separation = Math.max(radius * 0.055, 0.42);
 
-function addOpenVerticalSafetyHoops(group, radius, height, radial, tangent, centerBase, material) {
-    const hoopRadius = Math.max(radius * 0.075, 0.55);
-    const tubeRadius = Math.max(radius * 0.0032, 0.016);
+    const leftBottom = centerBase.clone()
+        .add(tangent.clone().multiplyScalar(-separation))
+        .add(radial.clone().multiplyScalar(offset));
+    leftBottom.y = height * 0.16;
 
-    const cageCenter = centerBase.clone().add(radial.clone().multiplyScalar(hoopRadius * 0.42));
+    const leftTop = leftBottom.clone();
+    leftTop.y = height * 1.03;
 
-    const startY = Math.min(height * 0.20, 1.65);
-    const endY = height * 1.035;
-    const spacing = Math.max(radius * 0.22, 1.25);
-    const count = Math.max(3, Math.floor((endY - startY) / spacing));
+    const rightBottom = centerBase.clone()
+        .add(tangent.clone().multiplyScalar(separation))
+        .add(radial.clone().multiplyScalar(offset));
+    rightBottom.y = height * 0.16;
 
-    for (let i = 0; i <= count; i++) {
-        const y = startY + ((endY - startY) * i) / count;
-        addOpenHoop(group, cageCenter, radial, tangent, hoopRadius, y, tubeRadius, material);
-    }
+    const rightTop = rightBottom.clone();
+    rightTop.y = height * 1.03;
 
-    const sideOffset = hoopRadius * 0.72;
-
-    const leftBottom = cageCenter.clone().add(tangent.clone().multiplyScalar(-sideOffset));
-    leftBottom.y = startY;
-
-    const leftTop = cageCenter.clone().add(tangent.clone().multiplyScalar(-sideOffset));
-    leftTop.y = endY;
-
-    const rightBottom = cageCenter.clone().add(tangent.clone().multiplyScalar(sideOffset));
-    rightBottom.y = startY;
-
-    const rightTop = cageCenter.clone().add(tangent.clone().multiplyScalar(sideOffset));
-    rightTop.y = endY;
-
-    addCylinderBetween(group, leftBottom, leftTop, tubeRadius, material, 8);
-    addCylinderBetween(group, rightBottom, rightTop, tubeRadius, material, 8);
+    addCylinderBetween(group, leftBottom, leftTop, railRadius, material, 8);
+    addCylinderBetween(group, rightBottom, rightTop, railRadius, material, 8);
 }
 
-function addOpenHoop(group, cageCenter, radial, tangent, hoopRadius, y, tubeRadius, material) {
-    const points = [];
-    const segments = 14;
-
-    for (let i = 0; i <= segments; i++) {
-        const a = -Math.PI * 0.58 + (Math.PI * 1.16 * i) / segments;
-
-        const point = cageCenter.clone()
-            .add(radial.clone().multiplyScalar(Math.cos(a) * hoopRadius))
-            .add(tangent.clone().multiplyScalar(Math.sin(a) * hoopRadius));
-
-        point.y = y;
-        points.push(point);
-    }
-
-    for (let i = 0; i < points.length - 1; i++) {
-        addCylinderBetween(group, points[i], points[i + 1], tubeRadius, material, 8);
-    }
-}
 
 function addCageRing(group, cageCenter, radial, tangent, cageRadius, y, tubeRadius, material) {
     const points = [];
