@@ -818,10 +818,10 @@ function addVerticalLadder(group, radius, height, angleOffset = 0, scale) {
         roughness: 0.22
     });
 
-    const cageMaterial = new THREE.MeshStandardMaterial({
-        color: 0xe2e8f0,
-        metalness: 0.7,
-        roughness: 0.22
+    const safetyMaterial = new THREE.MeshStandardMaterial({
+        color: 0x94a3b8,
+        metalness: 0.65,
+        roughness: 0.26
     });
 
     const platformMaterial = new THREE.MeshStandardMaterial({
@@ -834,12 +834,12 @@ function addVerticalLadder(group, radius, height, angleOffset = 0, scale) {
     const radial = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
     const tangent = new THREE.Vector3(-Math.sin(angle), 0, Math.cos(angle));
 
-    const ladderGap = Math.max(radius * 0.004, 0.025);
+    const ladderGap = Math.max(radius * 0.010, 0.07);
     const ladderRadius = radius + ladderGap;
 
-    const railHalfWidth = Math.max(radius * 0.036, 0.36);
-    const railRadius = Math.max(radius * 0.0062, 0.032);
-    const rungRadius = Math.max(radius * 0.0052, 0.027);
+    const railHalfWidth = Math.max(radius * 0.035, 0.34);
+    const railRadius = Math.max(radius * 0.006, 0.030);
+    const rungRadius = Math.max(radius * 0.005, 0.025);
 
     const bottomY = height * 0.012;
     const topY = height * 1.04;
@@ -876,11 +876,11 @@ function addVerticalLadder(group, radius, height, angleOffset = 0, scale) {
         addCylinderBetween(group, left, right, rungRadius, ladderMaterial, 12);
     }
 
-    addVerticalLadderCage(group, radius, height, radial, tangent, centerBase, cageMaterial);
-    addVerticalRestPlatforms(group, radius, height, radial, tangent, platformMaterial, cageMaterial, scale);
-    addVerticalLadderPlatform(group, radius, height, radial, tangent, platformMaterial, cageMaterial);
-    addLadderTankBrackets(group, radius, height, radial, tangent, centerBase, cageMaterial);
-}
+    addOpenVerticalSafetyHoops(group, radius, height, radial, tangent, centerBase, safetyMaterial);
+    addVerticalRestPlatforms(group, radius, height, radial, tangent, platformMaterial, safetyMaterial, scale);
+    addVerticalLadderPlatform(group, radius, height, radial, tangent, platformMaterial, safetyMaterial);
+    addLadderTankBrackets(group, radius, height, radial, tangent, centerBase, safetyMaterial);
+}   
 function addVerticalRestPlatforms(group, radius, height, radial, tangent, platformMaterial, railMaterial, scale) {
     if (!scale || scale <= 0) return;
 
@@ -939,38 +939,57 @@ function addVerticalRestPlatforms(group, radius, height, radial, tangent, platfo
         addCylinderBetween(group, tops[1], tops[3], railRadius, railMaterial, 8);
     }
 }
-function addVerticalLadderCage(group, radius, height, radial, tangent, centerBase, cageMaterial) {
-    const cageRadius = Math.max(radius * 0.070, 0.52);
-    const cageTubeRadius = Math.max(radius * 0.0036, 0.018);
-    const cageCenter = centerBase.clone().add(radial.clone().multiplyScalar(cageRadius * 0.42));
+function addOpenVerticalSafetyHoops(group, radius, height, radial, tangent, centerBase, material) {
+    const hoopRadius = Math.max(radius * 0.075, 0.55);
+    const tubeRadius = Math.max(radius * 0.0032, 0.016);
 
-    const cageStartY = Math.min(height * 0.18, 1.65);
-    const cageEndY = height * 1.035;
-    const cageHeight = Math.max(cageEndY - cageStartY, 0.1);
+    const cageCenter = centerBase.clone().add(radial.clone().multiplyScalar(hoopRadius * 0.42));
 
-    const ringSpacing = Math.max(radius * 0.11, 0.82);
-    const ringCount = Math.max(4, Math.floor(cageHeight / ringSpacing));
+    const startY = Math.min(height * 0.20, 1.65);
+    const endY = height * 1.035;
+    const spacing = Math.max(radius * 0.22, 1.25);
+    const count = Math.max(3, Math.floor((endY - startY) / spacing));
 
-    for (let i = 0; i <= ringCount; i++) {
-        const y = cageStartY + (cageHeight * i) / ringCount;
-        addCageRing(group, cageCenter, radial, tangent, cageRadius, y, cageTubeRadius, cageMaterial);
+    for (let i = 0; i <= count; i++) {
+        const y = startY + ((endY - startY) * i) / count;
+        addOpenHoop(group, cageCenter, radial, tangent, hoopRadius, y, tubeRadius, material);
     }
 
-    const barCount = 5;
+    const sideOffset = hoopRadius * 0.72;
 
-    for (let i = 0; i < barCount; i++) {
-        const a = -Math.PI * 0.62 + (Math.PI * 1.24 * i) / (barCount - 1);
+    const leftBottom = cageCenter.clone().add(tangent.clone().multiplyScalar(-sideOffset));
+    leftBottom.y = startY;
 
-        const offset = radial.clone().multiplyScalar(Math.cos(a) * cageRadius)
-            .add(tangent.clone().multiplyScalar(Math.sin(a) * cageRadius));
+    const leftTop = cageCenter.clone().add(tangent.clone().multiplyScalar(-sideOffset));
+    leftTop.y = endY;
 
-        const bottom = cageCenter.clone().add(offset);
-        bottom.y = cageStartY;
+    const rightBottom = cageCenter.clone().add(tangent.clone().multiplyScalar(sideOffset));
+    rightBottom.y = startY;
 
-        const top = cageCenter.clone().add(offset);
-        top.y = cageEndY;
+    const rightTop = cageCenter.clone().add(tangent.clone().multiplyScalar(sideOffset));
+    rightTop.y = endY;
 
-        addCylinderBetween(group, bottom, top, cageTubeRadius, cageMaterial, 8);
+    addCylinderBetween(group, leftBottom, leftTop, tubeRadius, material, 8);
+    addCylinderBetween(group, rightBottom, rightTop, tubeRadius, material, 8);
+}
+
+function addOpenHoop(group, cageCenter, radial, tangent, hoopRadius, y, tubeRadius, material) {
+    const points = [];
+    const segments = 14;
+
+    for (let i = 0; i <= segments; i++) {
+        const a = -Math.PI * 0.58 + (Math.PI * 1.16 * i) / segments;
+
+        const point = cageCenter.clone()
+            .add(radial.clone().multiplyScalar(Math.cos(a) * hoopRadius))
+            .add(tangent.clone().multiplyScalar(Math.sin(a) * hoopRadius));
+
+        point.y = y;
+        points.push(point);
+    }
+
+    for (let i = 0; i < points.length - 1; i++) {
+        addCylinderBetween(group, points[i], points[i + 1], tubeRadius, material, 8);
     }
 }
 
