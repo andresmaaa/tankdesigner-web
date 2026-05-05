@@ -881,68 +881,7 @@ function addVerticalLadder(group, radius, height, angleOffset = 0, scale) {
     addVerticalLadderPlatform(group, radius, height, radial, tangent, platformMaterial, safetyMaterial);
     addLadderTankBrackets(group, radius, height, radial, tangent, centerBase, safetyMaterial);
 }   
-function addVerticalRestPlatforms(group, radius, height, radial, tangent, platformMaterial, railMaterial, scale) {
-    if (!scale || scale <= 0) return;
 
-    const realHeight = height / scale;
-    const intervalMeters = 9;
-
-    if (realHeight <= intervalMeters) return;
-
-    const platformCount = Math.floor(realHeight / intervalMeters);
-
-    const width = Math.max(radius * 0.13, 0.85);
-    const depth = Math.max(radius * 0.09, 0.62);
-    const thickness = Math.max(radius * 0.008, 0.04);
-    const railHeight = Math.max(radius * 0.060, 0.55);
-    const railRadius = Math.max(radius * 0.0038, 0.020);
-
-    for (let i = 1; i <= platformCount; i++) {
-        const y = i * intervalMeters * scale;
-
-        if (y >= height * 0.88) continue;
-
-        const center = radial.clone().multiplyScalar(radius + depth * 0.26)
-            .add(tangent.clone().multiplyScalar(width * 0.92));
-
-        center.y = y;
-
-        const platform = new THREE.Mesh(
-            new THREE.BoxGeometry(width, thickness, depth),
-            platformMaterial
-        );
-
-        platform.position.copy(center);
-        platform.rotation.y = -Math.atan2(radial.z, radial.x) + Math.PI / 2;
-        platform.castShadow = true;
-        platform.receiveShadow = true;
-        group.add(platform);
-
-        const p1 = center.clone().add(tangent.clone().multiplyScalar(-width / 2)).add(radial.clone().multiplyScalar(depth / 2));
-        const p2 = center.clone().add(tangent.clone().multiplyScalar(width / 2)).add(radial.clone().multiplyScalar(depth / 2));
-        const p3 = center.clone().add(tangent.clone().multiplyScalar(-width / 2)).add(radial.clone().multiplyScalar(-depth / 2));
-        const p4 = center.clone().add(tangent.clone().multiplyScalar(width / 2)).add(radial.clone().multiplyScalar(-depth / 2));
-
-        const posts = [p1, p2, p3, p4];
-        const tops = [];
-
-        posts.forEach(p => {
-            const bottom = p.clone();
-            bottom.y = y + thickness;
-
-            const top = p.clone();
-            top.y = bottom.y + railHeight;
-            tops.push(top);
-
-            addCylinderBetween(group, bottom, top, railRadius, railMaterial, 8);
-        });
-
-        addCylinderBetween(group, tops[0], tops[1], railRadius, railMaterial, 8);
-        addCylinderBetween(group, tops[2], tops[3], railRadius, railMaterial, 8);
-        addCylinderBetween(group, tops[0], tops[2], railRadius, railMaterial, 8);
-        addCylinderBetween(group, tops[1], tops[3], railRadius, railMaterial, 8);
-    }
-}
 function addOpenVerticalSafetyHoops(group, radius, height, radial, tangent, centerBase, material) {
     const hoopRadius = Math.max(radius * 0.075, 0.55);
     const tubeRadius = Math.max(radius * 0.0032, 0.016);
@@ -1018,11 +957,11 @@ function addCageRing(group, cageCenter, radial, tangent, cageRadius, y, tubeRadi
 }
 
 function addVerticalLadderPlatform(group, radius, height, radial, tangent, platformMaterial, railMaterial) {
-    const platformWidth = Math.max(radius * 0.22, 1.35);
-    const platformDepth = Math.max(radius * 0.16, 1.05);
-    const platformThickness = Math.max(radius * 0.011, 0.06);
+    const platformWidth = Math.max(radius * 0.18, 1.05);
+    const platformDepth = Math.max(radius * 0.11, 0.75);
+    const platformThickness = Math.max(radius * 0.008, 0.045);
 
-    const center = radial.clone().multiplyScalar(radius + platformDepth * 0.40);
+    const center = radial.clone().multiplyScalar(radius + platformDepth * 0.28);
     center.y = height + platformThickness * 1.5;
 
     const platform = new THREE.Mesh(
@@ -1036,8 +975,8 @@ function addVerticalLadderPlatform(group, radius, height, radial, tangent, platf
     platform.receiveShadow = true;
     group.add(platform);
 
-    const railHeight = Math.max(radius * 0.075, 0.72);
-    const railRadius = Math.max(radius * 0.0048, 0.026);
+    const railHeight = Math.max(radius * 0.065, 0.62);
+    const railRadius = Math.max(radius * 0.0045, 0.024);
 
     const p1 = center.clone().add(tangent.clone().multiplyScalar(-platformWidth / 2)).add(radial.clone().multiplyScalar(platformDepth / 2));
     const p2 = center.clone().add(tangent.clone().multiplyScalar(platformWidth / 2)).add(radial.clone().multiplyScalar(platformDepth / 2));
@@ -1059,6 +998,7 @@ function addVerticalLadderPlatform(group, radius, height, radial, tangent, platf
     });
 
     addCylinderBetween(group, tops[0], tops[1], railRadius, railMaterial, 10);
+    addCylinderBetween(group, tops[2], tops[3], railRadius, railMaterial, 10);
     addCylinderBetween(group, tops[0], tops[2], railRadius, railMaterial, 10);
     addCylinderBetween(group, tops[1], tops[3], railRadius, railMaterial, 10);
 }
