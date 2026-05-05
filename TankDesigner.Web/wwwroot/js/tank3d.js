@@ -1014,8 +1014,10 @@ function addVerticalRestPlatforms(group, radius, height, radial, tangent, platfo
     // Plataforma de descanso tipo industrial como la foto:
     // sale hacia fuera del tanque, centrada en la escalera,
     // no son dos paneles laterales ni una pared gris.
-    const width = Math.max(radius * 0.34, 1.85);
-    const depth = Math.max(radius * 0.24, 1.35);
+    // IMPORTANTE: la plataforma NO recorre todo el tanque.
+    // Solo ocupa el ancho de la escalera (como en la vida real)
+    const width = Math.max(radius * 0.18, 1.1); // antes demasiado grande
+    const depth = Math.max(radius * 0.22, 1.25);
     const thickness = Math.max(radius * 0.010, 0.055);
 
     const railHeight = Math.max(radius * 0.085, 0.78);
