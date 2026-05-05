@@ -928,28 +928,27 @@ function addVerticalLadder(group, radius, height, angleOffset = 0, scale) {
 }
 
 function addCircularLadderCage(group, radius, height, radial, tangent, centerBase, material, scale) {
-    // Jaula industrial real:
-    // - Aros tubulares
-    // - Montantes verticales
-    // - Abierta por el lado exterior para entrada/salida
-    // - Sin paneles, sin chapas, sin cajas grises
+    // Jaula tipo industrial como la referencia:
+    // aros semicirculares exteriores, pegados a la escalera,
+    // abiertos por el lado del tanque y sin ningún panel gris.
 
-    const cageRadius = Math.max(radius * 0.055, 0.42);
-    const tubeRadius = Math.max(radius * 0.0026, 0.014);
+    const cageRadius = Math.max(radius * 0.075, 0.52);
+    const tubeRadius = Math.max(radius * 0.0032, 0.016);
 
-    const cageCenter = centerBase.clone().add(radial.clone().multiplyScalar(cageRadius * 0.55));
+    // Centro de la jaula desplazado hacia fuera del tanque.
+    const cageCenter = centerBase.clone().add(radial.clone().multiplyScalar(cageRadius * 0.82));
 
     const startY = scale && scale > 0
         ? Math.min(2.20 * scale, height * 0.22)
         : height * 0.18;
 
-    const endY = height + Math.max(radius * 0.06, 0.45);
+    const endY = height + Math.max(radius * 0.08, 0.60);
 
     if (endY <= startY) return;
 
     const ringSpacing = scale && scale > 0
-        ? Math.max(0.45, Math.min(0.90 * scale, 0.95))
-        : Math.max(radius * 0.09, 0.55);
+        ? Math.max(0.46, Math.min(0.90 * scale, 0.95))
+        : Math.max(radius * 0.09, 0.58);
 
     const ringCount = Math.max(6, Math.ceil((endY - startY) / ringSpacing));
 
@@ -958,17 +957,129 @@ function addCircularLadderCage(group, radius, height, radial, tangent, centerBas
         addCageOpenHoop(group, cageCenter, radial, tangent, cageRadius, y, tubeRadius, material);
     }
 
-    // Montantes solo laterales y traseros. No cierro la parte frontal.
-    const verticalAngles = [
-        -Math.PI * 0.62,
-        -Math.PI * 0.38,
+    // Barras verticales exteriores de la jaula.
+    // Quedan como en la foto: laterales + parte exterior, no una caja.
+    const barAngles = [
+        -Math.PI * 0.72,
+        -Math.PI * 0.48,
+        -Math.PI * 0.24,
         0,
-        Math.PI * 0.38,
-        Math.PI * 0.62
+        Math.PI * 0.24,
+        Math.PI * 0.48,
+        Math.PI * 0.72
     ];
 
-    verticalAngles.forEach(a => {
-        const offset = radial.clone().multiplyScalar(-Math.cos(a) * cageRadius)
+    barAngles.forEach(a => {
+        const offset = radial.clone().multiplyScalar(Math.cos(a) * cageRadius)
+            .add(tangent.clone().multiplyScalar(Math.sin(a) * cageRadius));
+
+        const bottom = cageCenter.clone().add(offset);
+        bottom.y = startY;
+
+        const top = cageCenter.clone().add(offset);
+        top.y = endY;
+
+        addCylinderBetween(group, bottom, top, tubeRadius, material, 8);
+    });
+} function addCircularLadderCage(group, radius, height, radial, tangent, centerBase, material, scale) {
+    // Jaula tipo industrial como la referencia:
+    // aros semicirculares exteriores, pegados a la escalera,
+    // abiertos por el lado del tanque y sin ningún panel gris.
+
+    const cageRadius = Math.max(radius * 0.075, 0.52);
+    const tubeRadius = Math.max(radius * 0.0032, 0.016);
+
+    // Centro de la jaula desplazado hacia fuera del tanque.
+    const cageCenter = centerBase.clone().add(radial.clone().multiplyScalar(cageRadius * 0.82));
+
+    const startY = scale && scale > 0
+        ? Math.min(2.20 * scale, height * 0.22)
+        : height * 0.18;
+
+    const endY = height + Math.max(radius * 0.08, 0.60);
+
+    if (endY <= startY) return;
+
+    const ringSpacing = scale && scale > 0
+        ? Math.max(0.46, Math.min(0.90 * scale, 0.95))
+        : Math.max(radius * 0.09, 0.58);
+
+    const ringCount = Math.max(6, Math.ceil((endY - startY) / ringSpacing));
+
+    for (let i = 0; i <= ringCount; i++) {
+        const y = startY + ((endY - startY) * i) / ringCount;
+        addCageOpenHoop(group, cageCenter, radial, tangent, cageRadius, y, tubeRadius, material);
+    }
+
+    // Barras verticales exteriores de la jaula.
+    // Quedan como en la foto: laterales + parte exterior, no una caja.
+    const barAngles = [
+        -Math.PI * 0.72,
+        -Math.PI * 0.48,
+        -Math.PI * 0.24,
+        0,
+        Math.PI * 0.24,
+        Math.PI * 0.48,
+        Math.PI * 0.72
+    ];
+
+    barAngles.forEach(a => {
+        const offset = radial.clone().multiplyScalar(Math.cos(a) * cageRadius)
+            .add(tangent.clone().multiplyScalar(Math.sin(a) * cageRadius));
+
+        const bottom = cageCenter.clone().add(offset);
+        bottom.y = startY;
+
+        const top = cageCenter.clone().add(offset);
+        top.y = endY;
+
+        addCylinderBetween(group, bottom, top, tubeRadius, material, 8);
+    });
+}
+function addCircularLadderCage(group, radius, height, radial, tangent, centerBase, material, scale) {
+    // Jaula tipo industrial como la referencia:
+    // aros semicirculares exteriores, pegados a la escalera,
+    // abiertos por el lado del tanque y sin ningún panel gris.
+
+    const cageRadius = Math.max(radius * 0.075, 0.52);
+    const tubeRadius = Math.max(radius * 0.0032, 0.016);
+
+    // Centro de la jaula desplazado hacia fuera del tanque.
+    const cageCenter = centerBase.clone().add(radial.clone().multiplyScalar(cageRadius * 0.82));
+
+    const startY = scale && scale > 0
+        ? Math.min(2.20 * scale, height * 0.22)
+        : height * 0.18;
+
+    const endY = height + Math.max(radius * 0.08, 0.60);
+
+    if (endY <= startY) return;
+
+    const ringSpacing = scale && scale > 0
+        ? Math.max(0.46, Math.min(0.90 * scale, 0.95))
+        : Math.max(radius * 0.09, 0.58);
+
+    const ringCount = Math.max(6, Math.ceil((endY - startY) / ringSpacing));
+
+    for (let i = 0; i <= ringCount; i++) {
+        const y = startY + ((endY - startY) * i) / ringCount;
+        addCageOpenHoop(group, cageCenter, radial, tangent, cageRadius, y, tubeRadius, material);
+    }
+
+    // Barras verticales exteriores de la jaula.
+    // Quedan como en la foto: laterales + parte exterior, no una caja.
+    const barAngles = [
+        -Math.PI * 0.72,
+        -Math.PI * 0.48,
+        -Math.PI * 0.24,
+        0,
+        Math.PI * 0.24,
+        Math.PI * 0.48,
+        Math.PI * 0.72
+    ];
+
+    barAngles.forEach(a => {
+        const offset = radial.clone().multiplyScalar(Math.cos(a) * cageRadius)
             .add(tangent.clone().multiplyScalar(Math.sin(a) * cageRadius));
 
         const bottom = cageCenter.clone().add(offset);
@@ -982,18 +1093,18 @@ function addCircularLadderCage(group, radius, height, radial, tangent, centerBas
 }
 function addCageOpenHoop(group, cageCenter, radial, tangent, cageRadius, y, tubeRadius, material) {
     const points = [];
-    const segments = 36;
+    const segments = 44;
 
-    // Arco trasero de seguridad, abierto por delante.
-    // Así rodea al operario pero no aparece como una pared lateral.
-    const startAngle = -Math.PI * 0.68;
-    const endAngle = Math.PI * 0.68;
+    // Semicírculo exterior.
+    // Abierto hacia el tanque, como la escalera real de la imagen.
+    const startAngle = -Math.PI * 0.78;
+    const endAngle = Math.PI * 0.78;
 
     for (let i = 0; i <= segments; i++) {
         const a = startAngle + ((endAngle - startAngle) * i) / segments;
 
         const point = cageCenter.clone()
-            .add(radial.clone().multiplyScalar(-Math.cos(a) * cageRadius))
+            .add(radial.clone().multiplyScalar(Math.cos(a) * cageRadius))
             .add(tangent.clone().multiplyScalar(Math.sin(a) * cageRadius));
 
         point.y = y;
