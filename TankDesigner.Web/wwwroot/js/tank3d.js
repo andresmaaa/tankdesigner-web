@@ -918,7 +918,7 @@ function addVerticalLadder(group, radius, height, angleOffset = 0, scale) {
     }
 
     addCircularLadderCage(group, radius, height, radial, tangent, centerBase, cageMaterial, scale);
-    addVerticalRestPlatforms(group, radius, height, radial, tangent, platformMaterial, cageMaterial, scale, centerBase, railHalfWidth);
+    //addVerticalRestPlatforms(group, radius, height, radial, tangent, platformMaterial, cageMaterial, scale, centerBase, railHalfWidth);
     addCircularLadderCage(group, radius, height, radial, tangent, centerBase, cageMaterial, scale);
     addVerticalRestPlatforms(group, radius, height, radial, tangent, platformMaterial, cageMaterial, scale, centerBase, railHalfWidth);
     addVerticalLadderTopPlatform(group, radius, height, radial, tangent, platformMaterial, cageMaterial, centerBase, railHalfWidth);
