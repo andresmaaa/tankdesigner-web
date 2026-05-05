@@ -890,18 +890,21 @@ function addVerticalRestPlatforms(group, radius, height, radial, tangent, platfo
     if (realHeight <= intervalMeters) return;
 
     const platformCount = Math.floor(realHeight / intervalMeters);
-    const width = Math.max(radius * 0.20, 1.25);
-    const depth = Math.max(radius * 0.14, 0.95);
-    const thickness = Math.max(radius * 0.010, 0.055);
-    const railHeight = Math.max(radius * 0.075, 0.72);
-    const railRadius = Math.max(radius * 0.0048, 0.026);
+
+    const width = Math.max(radius * 0.13, 0.85);
+    const depth = Math.max(radius * 0.09, 0.62);
+    const thickness = Math.max(radius * 0.008, 0.04);
+    const railHeight = Math.max(radius * 0.060, 0.55);
+    const railRadius = Math.max(radius * 0.0038, 0.020);
 
     for (let i = 1; i <= platformCount; i++) {
         const y = i * intervalMeters * scale;
 
-        if (y >= height * 0.92) continue;
+        if (y >= height * 0.88) continue;
 
-        const center = radial.clone().multiplyScalar(radius + depth * 0.42);
+        const center = radial.clone().multiplyScalar(radius + depth * 0.26)
+            .add(tangent.clone().multiplyScalar(width * 0.92));
+
         center.y = y;
 
         const platform = new THREE.Mesh(
@@ -935,6 +938,7 @@ function addVerticalRestPlatforms(group, radius, height, radial, tangent, platfo
         });
 
         addCylinderBetween(group, tops[0], tops[1], railRadius, railMaterial, 8);
+        addCylinderBetween(group, tops[2], tops[3], railRadius, railMaterial, 8);
         addCylinderBetween(group, tops[0], tops[2], railRadius, railMaterial, 8);
         addCylinderBetween(group, tops[1], tops[3], railRadius, railMaterial, 8);
     }
