@@ -1320,7 +1320,76 @@ function addHelicalTopPlatform(group, radius, height, angle, platformMaterial, r
     addCylinderBetween(group, tops[0], tops[2], railRadius, railMaterial, 10);
     addCylinderBetween(group, tops[1], tops[3], railRadius, railMaterial, 10);
 }
+function addVerticalRestPlatforms(group, radius, height, radial, tangent, platformMaterial, railMaterial, scale) {
+    if (!scale || scale <= 0) return;
 
+    const realHeight = height / scale;
+    const intervalMeters = 9;
+
+    if (realHeight <= intervalMeters) return;
+
+    const platformCount = Math.floor(realHeight / intervalMeters);
+
+    const width = Math.max(radius * 0.30, 1.65);
+    const depth = Math.max(radius * 0.20, 1.10);
+    const thickness = Math.max(radius * 0.010, 0.055);
+
+    const railHeight = Math.max(radius * 0.075, 0.72);
+    const railRadius = Math.max(radius * 0.0048, 0.026);
+
+    for (let i = 1; i <= platformCount; i++) {
+        const y = i * intervalMeters * scale;
+
+        if (y >= height * 0.90) continue;
+
+        const side = i % 2 === 0 ? -1 : 1;
+
+        const center = radial.clone()
+            .multiplyScalar(radius + depth * 0.32)
+            .add(tangent.clone().multiplyScalar(side * width * 0.52));
+
+        center.y = y;
+
+        const platform = new THREE.Mesh(
+            new THREE.BoxGeometry(width, thickness, depth),
+            platformMaterial
+        );
+
+        platform.position.copy(center);
+        platform.rotation.y = -Math.atan2(radial.z, radial.x) + Math.PI / 2;
+        platform.castShadow = true;
+        platform.receiveShadow = true;
+        group.add(platform);
+
+        addPlatformRails(group, center, radial, tangent, width, depth, y, thickness, railHeight, railRadius, railMaterial);
+    }
+}
+
+function addPlatformRails(group, center, radial, tangent, width, depth, y, thickness, railHeight, railRadius, material) {
+    const p1 = center.clone().add(tangent.clone().multiplyScalar(-width / 2)).add(radial.clone().multiplyScalar(depth / 2));
+    const p2 = center.clone().add(tangent.clone().multiplyScalar(width / 2)).add(radial.clone().multiplyScalar(depth / 2));
+    const p3 = center.clone().add(tangent.clone().multiplyScalar(-width / 2)).add(radial.clone().multiplyScalar(-depth / 2));
+    const p4 = center.clone().add(tangent.clone().multiplyScalar(width / 2)).add(radial.clone().multiplyScalar(-depth / 2));
+
+    const posts = [p1, p2, p3, p4];
+    const tops = [];
+
+    posts.forEach(p => {
+        const bottom = p.clone();
+        bottom.y = y + thickness;
+
+        const top = p.clone();
+        top.y = bottom.y + railHeight;
+        tops.push(top);
+
+        addCylinderBetween(group, bottom, top, railRadius, material, 8);
+    });
+
+    addCylinderBetween(group, tops[0], tops[1], railRadius, material, 8);
+    addCylinderBetween(group, tops[2], tops[3], railRadius, material, 8);
+    addCylinderBetween(group, tops[0], tops[2], railRadius, material, 8);
+    addCylinderBetween(group, tops[1], tops[3], railRadius, material, 8);
+}
 function addCylinderBetween(group, start, end, radius, material, segments) {
     const direction = new THREE.Vector3().subVectors(end, start);
     const length = direction.length();
@@ -1409,8 +1478,11 @@ function fitCamera(viewer) {
     const radius = viewer.modelRadius || 20;
     const maxSize = Math.max(height, radius * 2, 1);
 
-    viewer.distance = maxSize * 2.25;
+    viewer.distance = maxSize * 3.25;
     viewer.target.set(0, 0, 0);
+    viewer.pitch = 0.34;
+    viewer.yaw = 0.85;
+
     updateCamera(viewer);
 }
 
