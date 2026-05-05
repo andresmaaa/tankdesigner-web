@@ -928,35 +928,47 @@ function addVerticalLadder(group, radius, height, angleOffset = 0, scale) {
 }
 
 function addCircularLadderCage(group, radius, height, radial, tangent, centerBase, material, scale) {
-    // Jaula industrial tubular: solo aros y montantes, abierta por delante.
-    // No se crea ningún BoxGeometry ni recubrimiento rectangular alrededor de la escalera.
-    const cageRadius = Math.max(radius * 0.070, 0.54);
-    const tubeRadius = Math.max(radius * 0.0034, 0.017);
-    const cageCenter = centerBase.clone().add(radial.clone().multiplyScalar(cageRadius * 0.58));
+    // Jaula industrial real:
+    // - Aros tubulares
+    // - Montantes verticales
+    // - Abierta por el lado exterior para entrada/salida
+    // - Sin paneles, sin chapas, sin cajas grises
 
-    const startY = Math.min(Math.max(2.20 * (scale || 1), height * 0.16), height * 0.28);
-    const endY = height + Math.max(radius * 0.075, 0.55);
+    const cageRadius = Math.max(radius * 0.055, 0.42);
+    const tubeRadius = Math.max(radius * 0.0026, 0.014);
+
+    const cageCenter = centerBase.clone().add(radial.clone().multiplyScalar(cageRadius * 0.55));
+
+    const startY = scale && scale > 0
+        ? Math.min(2.20 * scale, height * 0.22)
+        : height * 0.18;
+
+    const endY = height + Math.max(radius * 0.06, 0.45);
 
     if (endY <= startY) return;
 
-    const realRingSpacingMeters = 0.90;
-    const modelRingSpacing = scale && scale > 0
-        ? realRingSpacingMeters * scale
-        : Math.max(radius * 0.10, 0.78);
+    const ringSpacing = scale && scale > 0
+        ? Math.max(0.45, Math.min(0.90 * scale, 0.95))
+        : Math.max(radius * 0.09, 0.55);
 
-    const ringSpacing = Math.max(Math.min(modelRingSpacing, 1.10), 0.52);
-    const ringCount = Math.max(5, Math.ceil((endY - startY) / ringSpacing));
+    const ringCount = Math.max(6, Math.ceil((endY - startY) / ringSpacing));
 
     for (let i = 0; i <= ringCount; i++) {
         const y = startY + ((endY - startY) * i) / ringCount;
         addCageOpenHoop(group, cageCenter, radial, tangent, cageRadius, y, tubeRadius, material);
     }
 
-    // Montantes traseros y laterales. Se evita la zona frontal para dejar entrada/salida libre.
-    const barAngles = [-Math.PI * 0.72, -Math.PI * 0.38, 0, Math.PI * 0.38, Math.PI * 0.72];
+    // Montantes solo laterales y traseros. No cierro la parte frontal.
+    const verticalAngles = [
+        -Math.PI * 0.62,
+        -Math.PI * 0.38,
+        0,
+        Math.PI * 0.38,
+        Math.PI * 0.62
+    ];
 
-    barAngles.forEach(a => {
-        const offset = radial.clone().multiplyScalar(Math.cos(a) * cageRadius)
+    verticalAngles.forEach(a => {
+        const offset = radial.clone().multiplyScalar(-Math.cos(a) * cageRadius)
             .add(tangent.clone().multiplyScalar(Math.sin(a) * cageRadius));
 
         const bottom = cageCenter.clone().add(offset);
@@ -968,19 +980,20 @@ function addCircularLadderCage(group, radius, height, radial, tangent, centerBas
         addCylinderBetween(group, bottom, top, tubeRadius, material, 8);
     });
 }
-
 function addCageOpenHoop(group, cageCenter, radial, tangent, cageRadius, y, tubeRadius, material) {
     const points = [];
-    const segments = 44;
+    const segments = 36;
 
-    // Arco de 260º aproximadamente. La abertura queda hacia la escalera/persona, no cerrada.
-    const startAngle = -Math.PI * 0.72;
-    const endAngle = Math.PI * 0.72;
+    // Arco trasero de seguridad, abierto por delante.
+    // Así rodea al operario pero no aparece como una pared lateral.
+    const startAngle = -Math.PI * 0.68;
+    const endAngle = Math.PI * 0.68;
 
     for (let i = 0; i <= segments; i++) {
         const a = startAngle + ((endAngle - startAngle) * i) / segments;
+
         const point = cageCenter.clone()
-            .add(radial.clone().multiplyScalar(Math.cos(a) * cageRadius))
+            .add(radial.clone().multiplyScalar(-Math.cos(a) * cageRadius))
             .add(tangent.clone().multiplyScalar(Math.sin(a) * cageRadius));
 
         point.y = y;
@@ -1415,24 +1428,28 @@ function addVerticalRestPlatforms(group, radius, height, radial, tangent, platfo
 
     const platformCount = Math.floor(realHeight / intervalMeters);
 
-    const width = Math.max(radius * 0.24, 1.45);
-    const depth = Math.max(radius * 0.17, 1.05);
-    const thickness = Math.max(radius * 0.010, 0.05);
+    const width = Math.max(radius * 0.20, 1.15);
+    const depth = Math.max(radius * 0.14, 0.85);
+    const thickness = Math.max(radius * 0.008, 0.04);
 
-    const railHeight = Math.max(radius * 0.075, 0.72);
-    const railRadius = Math.max(radius * 0.0045, 0.024);
+    const railHeight = Math.max(radius * 0.070, 0.68);
+    const railRadius = Math.max(radius * 0.0038, 0.020);
 
     for (let i = 1; i <= platformCount; i++) {
         const y = i * intervalMeters * scale;
 
         if (y >= height * 0.92) continue;
 
+        // Plataforma de descanso real cada 9 m.
+        // Va a un lado de la escalera, no como pared vertical.
         const side = i % 2 === 0 ? 1 : -1;
-        const lateralOffset = side * (width * 0.58 + Math.max(railHalfWidth || 0, radius * 0.02));
 
-        // Plataforma lateral alternada: no ocupa el hueco central de subida.
-        const center = radial.clone().multiplyScalar(radius + depth * 0.47)
+        const lateralOffset = side * (width * 0.62 + (railHalfWidth || radius * 0.03));
+
+        const center = centerBase.clone()
+            .add(radial.clone().multiplyScalar(depth * 0.35))
             .add(tangent.clone().multiplyScalar(lateralOffset));
+
         center.y = y;
 
         const platform = new THREE.Mesh(
@@ -1446,20 +1463,20 @@ function addVerticalRestPlatforms(group, radius, height, radial, tangent, platfo
         platform.receiveShadow = true;
         group.add(platform);
 
+        // Barandilla de la plataforma, dejando abierto el lado de acceso desde escalera.
         addPlatformRails(group, center, radial, tangent, width, depth, y, thickness, railHeight, railRadius, railMaterial, {
             openBack: true,
             openFront: false
         });
 
-        if (centerBase) {
-            const bridgeStart = centerBase.clone().add(tangent.clone().multiplyScalar(side * (railHalfWidth || radius * 0.035)));
-            bridgeStart.y = y + thickness * 1.4;
+        // Paso corto desde la escalera hasta la plataforma.
+        const bridgeStart = centerBase.clone().add(tangent.clone().multiplyScalar(side * (railHalfWidth || radius * 0.035)));
+        bridgeStart.y = y + thickness * 1.8;
 
-            const bridgeEnd = center.clone().add(tangent.clone().multiplyScalar(-side * width * 0.35));
-            bridgeEnd.y = bridgeStart.y;
+        const bridgeEnd = center.clone().add(tangent.clone().multiplyScalar(-side * width * 0.38));
+        bridgeEnd.y = bridgeStart.y;
 
-            addCylinderBetween(group, bridgeStart, bridgeEnd, railRadius * 0.80, railMaterial, 8);
-        }
+        addCylinderBetween(group, bridgeStart, bridgeEnd, railRadius * 0.80, railMaterial, 8);
     }
 }
 
