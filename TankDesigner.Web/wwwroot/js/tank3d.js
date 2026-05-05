@@ -941,7 +941,7 @@ function addVerticalLadderPlatform(group, radius, height, radial, tangent, platf
     );
 
     platform.position.copy(center);
-    platform.rotation.y = -Math.atan2(radial.z, radial.x) + Math.PI / 2;
+    platform.rotation.y = -angleFromRadial(radial);
     platform.castShadow = true;
     platform.receiveShadow = true;
     group.add(platform);
@@ -974,6 +974,9 @@ function addVerticalLadderPlatform(group, radius, height, radial, tangent, platf
     addCylinderBetween(group, tops[1], tops[3], railRadius, railMaterial, 10);
 }
 
+function angleFromRadial(radial) {
+    return Math.atan2(radial.z, radial.x);
+}
 function addLadderTankBrackets(group, radius, height, radial, tangent, centerBase, material) {
     const bracketRadius = Math.max(radius * 0.0042, 0.02);
     const bracketWidth = Math.max(radius * 0.030, 0.30);
