@@ -49,19 +49,6 @@
 
                         <div class="form-grid">
                             <div class="field">
-                                <label>Tipo de techo</label>
-                                <InputSelect class="td-input td-select"
-                                             @bind-Value="EstadoProyecto.Cargas.RoofType"
-                                             @bind-Value:after="OnRoofTypeChanged">
-                                    @foreach (var item in _roofTypes)
-                                    {
-                                        <option value="@item">@item</option>
-                                    }
-                                </InputSelect>
-                                <small>Si el techo es None, todas las cargas de cubierta se guardan a 0.</small>
-                            </div>
-
-                            <div class="field">
                                 <label>Ángulo superior</label>
                                 <InputSelect class="td-input td-select"
                                              @bind-Value="EstadoProyecto.Cargas.AnguloSuperior"
@@ -233,10 +220,6 @@
                         <div class="summary-row">
                             <span class="summary-row__label">Carga de nieve</span>
                             <span class="summary-row__value">@ValorNumero(ObtenerCargaNieveVisible())</span>
-                        </div>
-                        <div class="summary-row">
-                            <span class="summary-row__label">Tipo de techo</span>
-                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Cargas.RoofType)</span>
                         </div>
                         <div class="summary-row">
                             <span class="summary-row__label">Ángulo superior</span>
