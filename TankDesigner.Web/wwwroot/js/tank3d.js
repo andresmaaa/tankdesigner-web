@@ -871,7 +871,9 @@ function addVerticalLadder(group, radius, height, angleOffset = 0, scale) {
     const cageMaterial = new THREE.MeshStandardMaterial({
         color: 0xcbd5e1,
         metalness: 0.78,
-        roughness: 0.20
+        roughness: 0.20,
+        transparent: true,
+        opacity: 0.48
     });
 
     const platformMaterial = new THREE.MeshStandardMaterial({
@@ -937,8 +939,8 @@ function addVerticalLadder(group, radius, height, angleOffset = 0, scale) {
 }
 
 function addCircularLadderCage(group, radius, height, radial, tangent, centerBase, material, scale) {
-    const cageRadius = Math.max(radius * 0.070, 0.52);
-    const tubeRadius = Math.max(radius * 0.0028, 0.014);
+    const cageRadius = Math.max(radius * 0.068, 0.50);
+    const tubeRadius = Math.max(radius * 0.0019, 0.010);
     const cageCenter = centerBase.clone().add(radial.clone().multiplyScalar(cageRadius * 0.78));
 
     const startY = scale && scale > 0
@@ -949,24 +951,25 @@ function addCircularLadderCage(group, radius, height, radial, tangent, centerBas
     if (endY <= startY) return;
 
     const ringSpacing = scale && scale > 0
-        ? Math.max(0.45, Math.min(0.90 * scale, 0.95))
-        : Math.max(radius * 0.09, 0.58);
+        ? Math.max(0.52, Math.min(0.90 * scale, 1.05))
+        : Math.max(radius * 0.10, 0.62);
 
-    const ringCount = Math.max(6, Math.ceil((endY - startY) / ringSpacing));
+    const ringCount = Math.max(5, Math.ceil((endY - startY) / ringSpacing));
 
     for (let i = 0; i <= ringCount; i++) {
         const y = startY + ((endY - startY) * i) / ringCount;
         addCageOpenHoop(group, cageCenter, radial, tangent, cageRadius, y, tubeRadius, material);
     }
 
+    // Quito el montante central delantero porque tapaba la escalera naranja.
+    // Dejo solo barras laterales/exteriores para que se vea la escalera.
     const barAngles = [
-        -Math.PI * 0.70,
-        -Math.PI * 0.46,
-        -Math.PI * 0.23,
-        0,
-        Math.PI * 0.23,
-        Math.PI * 0.46,
-        Math.PI * 0.70
+        -Math.PI * 0.68,
+        -Math.PI * 0.42,
+        -Math.PI * 0.22,
+        Math.PI * 0.22,
+        Math.PI * 0.42,
+        Math.PI * 0.68
     ];
 
     barAngles.forEach(a => {
@@ -984,26 +987,33 @@ function addCircularLadderCage(group, radius, height, radial, tangent, centerBas
 }
 
 function addCageOpenHoop(group, cageCenter, radial, tangent, cageRadius, y, tubeRadius, material) {
-    const points = [];
-    const segments = 44;
+    const segments = 18;
 
-    const startAngle = -Math.PI * 0.78;
-    const endAngle = Math.PI * 0.78;
+    // No dibujo el tramo frontal central del aro, porque visualmente tapaba los peldaños.
+    // Dibujo dos medias curvas laterales: mantiene la sensación de jaula circular sin ocultar la escalera.
+    const arcs = [
+        [-Math.PI * 0.78, -Math.PI * 0.18],
+        [Math.PI * 0.18, Math.PI * 0.78]
+    ];
 
-    for (let i = 0; i <= segments; i++) {
-        const a = startAngle + ((endAngle - startAngle) * i) / segments;
+    arcs.forEach(([startAngle, endAngle]) => {
+        const points = [];
 
-        const point = cageCenter.clone()
-            .add(radial.clone().multiplyScalar(Math.cos(a) * cageRadius))
-            .add(tangent.clone().multiplyScalar(Math.sin(a) * cageRadius));
+        for (let i = 0; i <= segments; i++) {
+            const a = startAngle + ((endAngle - startAngle) * i) / segments;
 
-        point.y = y;
-        points.push(point);
-    }
+            const point = cageCenter.clone()
+                .add(radial.clone().multiplyScalar(Math.cos(a) * cageRadius))
+                .add(tangent.clone().multiplyScalar(Math.sin(a) * cageRadius));
 
-    for (let i = 0; i < points.length - 1; i++) {
-        addCylinderBetween(group, points[i], points[i + 1], tubeRadius, material, 8);
-    }
+            point.y = y;
+            points.push(point);
+        }
+
+        for (let i = 0; i < points.length - 1; i++) {
+            addCylinderBetween(group, points[i], points[i + 1], tubeRadius, material, 8);
+        }
+    });
 }
 
 function addSimpleRestPlatforms(group, radius, height, radial, tangent, centerBase, platformMaterial, railMaterial, scale, railHalfWidth) {
