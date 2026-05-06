@@ -928,14 +928,15 @@ function calcularRadioNucleoTecho(radius, numeroVigas, vigasTechoConico, scale) 
 
 function addDomeRoof(group, radius, height) {
     const domeHeight = Math.max(radius * 0.42, 1.35);
+
     const geometry = new THREE.SphereGeometry(
-        radius * 1.01,
+        radius * 1.09,
         128,
-        28,
+        32,
         0,
         Math.PI * 2,
         0,
-        Math.PI / 2.55
+        Math.PI / 2
     );
 
     const material = new THREE.MeshStandardMaterial({
@@ -950,16 +951,47 @@ function addDomeRoof(group, radius, height) {
     const dome = new THREE.Mesh(geometry, material);
 
     dome.scale.y = domeHeight / radius;
-    dome.position.y = height;
+    dome.position.y = height - radius * 0.01;
     dome.castShadow = true;
     dome.receiveShadow = true;
 
+    dome.userData = {
+        tipo: "Techo domo geodésico",
+        material: "Aluminio / acero",
+        altura: formatTechnicalValue(domeHeight, "u.3D"),
+        espesor: "—",
+        diametro: formatTechnicalValue(radius * 2, "u.3D")
+    };
+
     group.add(dome);
 
-    addDomeRoofRibs(group, radius, height, domeHeight);
-    addOpenTop(group, radius, height);
+    addDomeRoofRibs(group, radius * 1.04, height, domeHeight);
+    addDomeSkirtRing(group, radius, height);
 }
+function addDomeSkirtRing(group, radius, height) {
+    const material = new THREE.MeshStandardMaterial({
+        color: 0xd1d5db,
+        metalness: 0.72,
+        roughness: 0.24
+    });
 
+    const skirtHeight = Math.max(radius * 0.09, 0.38);
+    const skirtThickness = Math.max(radius * 0.016, 0.05);
+
+    const skirt = new THREE.Mesh(
+        new THREE.CylinderGeometry(radius * 1.045, radius * 1.045, skirtHeight, 128, 1, true),
+        material
+    );
+
+    skirt.position.y = height + skirtHeight / 2 - radius * 0.025;
+    skirt.castShadow = true;
+    skirt.receiveShadow = true;
+
+    group.add(skirt);
+
+    addCircularRail(group, radius * 1.055, height + skirtHeight, skirtThickness, material);
+    addCircularRail(group, radius * 1.055, height, skirtThickness * 0.8, material);
+}
 function addDomeRoofRibs(group, radius, height, domeHeight) {
     const material = new THREE.MeshStandardMaterial({
         color: 0xcbd5e1,
