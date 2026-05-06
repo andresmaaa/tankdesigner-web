@@ -932,7 +932,7 @@ function addVerticalLadder(group, radius, height, angleOffset = 0, scale) {
     addCircularLadderCage(group, radius, height, radial, tangent, centerBase, cageMaterial, scale);
 
     // Plataformas pequeñas cada 9 m. Son balconcillos, no jaulas ni paneles.
-   // addSimpleRestPlatforms(group, radius, height, radial, tangent, centerBase, platformMaterial, cageMaterial, scale, railHalfWidth);
+   /addSimpleRestPlatforms(group, radius, height, radial, tangent, centerBase, platformMaterial, cageMaterial, scale, railHalfWidth);
 
     addVerticalLadderTopPlatform(group, radius, height, radial, tangent, platformMaterial, cageMaterial, centerBase, railHalfWidth);
     addLadderTankBrackets(group, radius, height, radial, tangent, centerBase, cageMaterial);
@@ -1017,7 +1017,62 @@ function addCageOpenHoop(group, cageCenter, radial, tangent, cageRadius, y, tube
 }
 
 function addSimpleRestPlatforms(group, radius, height, radial, tangent, centerBase, platformMaterial, railMaterial, scale, railHalfWidth) {
-    return;
+    if (!scale || scale <= 0) return;
+
+    const realHeight = height / scale;
+    const intervalMeters = 9;
+
+    if (realHeight <= intervalMeters) return;
+
+    const platformCount = Math.floor(realHeight / intervalMeters);
+
+    const width = Math.max(railHalfWidth * 3.4, 1.15);
+    const depth = Math.max(railHalfWidth * 2.4, 0.90);
+    const thickness = Math.max(radius * 0.006, 0.04);
+
+    const railHeight = Math.max(radius * 0.07, 0.65);
+    const railRadius = Math.max(radius * 0.0034, 0.018);
+
+    for (let i = 1; i <= platformCount; i++) {
+        const y = i * intervalMeters * scale;
+
+        if (y >= height * 0.92) continue;
+
+        const center = centerBase.clone()
+            .add(radial.clone().multiplyScalar(depth * 0.58));
+
+        center.y = y;
+
+        const deck = new THREE.Mesh(
+            new THREE.BoxGeometry(width, thickness, depth),
+            platformMaterial
+        );
+
+        deck.position.copy(center);
+        deck.rotation.y = -Math.atan2(radial.z, radial.x) + Math.PI / 2;
+        deck.castShadow = true;
+        deck.receiveShadow = true;
+        group.add(deck);
+
+        addPlatformRails(
+            group,
+            center,
+            radial,
+            tangent,
+            width,
+            depth,
+            y,
+            thickness,
+            railHeight,
+            railRadius,
+            railMaterial,
+            {
+                openBack: true,
+                openFront: false
+            }
+        );
+    }
+}    return;
 }
 function addVerticalRestPlatforms(group, radius, height, radial, tangent, platformMaterial, railMaterial, scale, centerBase, railHalfWidth) {
     return;
