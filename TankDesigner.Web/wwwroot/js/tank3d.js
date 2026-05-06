@@ -12,6 +12,7 @@ const technicalViewState = {
 function renderTank3D(container, tank, dotNetRef) {
     if (!container) return;
 
+    disposeViewer(container);
     container.innerHTML = "";
 
     if (!window.THREE) {
@@ -43,6 +44,38 @@ function renderTank3D(container, tank, dotNetRef) {
     viewer.renderer.render(viewer.scene, viewer.camera);
 }
 
+function disposeViewer(container) {
+    const oldViewer = viewers.get(container);
+    if (!oldViewer) return;
+
+    if (oldViewer.animationId) {
+        cancelAnimationFrame(oldViewer.animationId);
+    }
+
+    if (oldViewer.resizeObserver) {
+        oldViewer.resizeObserver.disconnect();
+    }
+
+    oldViewer.scene.traverse(obj => {
+        if (obj.geometry) obj.geometry.dispose();
+
+        if (obj.material) {
+            if (Array.isArray(obj.material)) {
+                obj.material.forEach(m => m.dispose());
+            } else {
+                obj.material.dispose();
+            }
+        }
+    });
+
+    oldViewer.renderer.dispose();
+
+    if (oldViewer.renderer.domElement && oldViewer.renderer.domElement.parentNode) {
+        oldViewer.renderer.domElement.parentNode.removeChild(oldViewer.renderer.domElement);
+    }
+
+    viewers.delete(container);
+}
 function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
     const shell = document.createElement("div");
     shell.style.position = "relative";
@@ -110,6 +143,7 @@ function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
 
     const resizeObserver = new ResizeObserver(() => resize(viewer));
     resizeObserver.observe(container);
+    viewer.resizeObserver = resizeObserver;
 
     animate(viewer);
     return viewer;
@@ -893,8 +927,7 @@ function calcularRadioNucleoTecho(radius, numeroVigas, vigasTechoConico, scale) 
 }
 
 function addDomeRoof(group, radius, height) {
-    const domeHeight = Math.max(radius * 0.28, 0.95);
-
+    const domeHeight = Math.max(radius * 0.42, 1.35);
     const geometry = new THREE.SphereGeometry(
         radius * 1.01,
         128,
@@ -1772,7 +1805,10 @@ function resize(viewer) {
 }
 
 function animate(viewer) {
-    requestAnimationFrame(() => animate(viewer));
+    viewer.animationId = requestAnimationFrame(() => animate(viewer));
+
+    if (!viewer.renderer || !viewer.scene || !viewer.camera) return;
+
     viewer.renderer.render(viewer.scene, viewer.camera);
 }
 
