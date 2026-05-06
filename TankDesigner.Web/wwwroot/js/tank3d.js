@@ -893,22 +893,20 @@ function calcularRadioNucleoTecho(radius, numeroVigas, vigasTechoConico, scale) 
 }
 
 function addDomeRoof(group, radius, height) {
-    const domeHeight = Math.max(radius * 0.22, 0.65);
+    const domeHeight = Math.max(radius * 0.28, 0.95);
 
     const geometry = new THREE.SphereGeometry(
         radius * 1.01,
         128,
-        24,
+        28,
         0,
         Math.PI * 2,
         0,
-        Math.PI / 2
+        Math.PI / 2.55
     );
 
-    geometry.scale(1, domeHeight / radius, 1);
-
     const material = new THREE.MeshStandardMaterial({
-        color: 0xdbeafe,
+        color: 0xe5e7eb,
         metalness: 0.58,
         roughness: 0.30,
         transparent: true,
@@ -917,53 +915,48 @@ function addDomeRoof(group, radius, height) {
     });
 
     const dome = new THREE.Mesh(geometry, material);
+
+    dome.scale.y = domeHeight / radius;
     dome.position.y = height;
     dome.castShadow = true;
     dome.receiveShadow = true;
-    dome.userData = {
-        tipo: "Techo domo geodésico bajo",
-        material: "Panel curvo",
-        altura: "Coronación",
-        espesor: "—",
-        diametro: "—"
-    };
 
     group.add(dome);
 
-    const ribMaterial = new THREE.MeshStandardMaterial({
-        color: 0xf8fafc,
+    addDomeRoofRibs(group, radius, height, domeHeight);
+    addOpenTop(group, radius, height);
+}
+
+function addDomeRoofRibs(group, radius, height, domeHeight) {
+    const material = new THREE.MeshStandardMaterial({
+        color: 0xcbd5e1,
         metalness: 0.72,
         roughness: 0.24
     });
 
-    const ribCount = 18;
-    const ribRadius = Math.max(radius * 0.0055, 0.022);
+    const ribRadius = Math.max(radius * 0.0045, 0.020);
+    const ribCount = 24;
 
     for (let i = 0; i < ribCount; i++) {
         const angle = (Math.PI * 2 * i) / ribCount;
 
         const start = new THREE.Vector3(
-            Math.cos(angle) * radius * 0.05,
-            height + domeHeight * 0.98,
-            Math.sin(angle) * radius * 0.05
+            Math.cos(angle) * radius * 0.96,
+            height + radius * 0.015,
+            Math.sin(angle) * radius * 0.96
         );
 
-        const end = new THREE.Vector3(
-            Math.cos(angle) * radius * 0.97,
-            height + domeHeight * 0.04,
-            Math.sin(angle) * radius * 0.97
-        );
+        const end = new THREE.Vector3(0, height + domeHeight, 0);
 
-        addCylinderBetween(group, start, end, ribRadius, ribMaterial, 10);
+        addCylinderBetween(group, start, end, ribRadius, material, 8);
     }
 
     [0.35, 0.62, 0.84].forEach(f => {
         const ringRadius = radius * f;
-        const y = height + domeHeight * Math.sqrt(Math.max(0, 1 - f * f));
-        addCircularRail(group, ringRadius, y, ribRadius * 0.7, ribMaterial);
-    });
+        const y = height + domeHeight * (1 - f * 0.72);
 
-    addOpenTop(group, radius, height);
+        addCircularRail(group, ringRadius, y, ribRadius * 0.85, material);
+    });
 }
 
 function addWaterLevelIfAvailable(group, radius, height, tank, scale) {
@@ -1349,7 +1342,7 @@ function addHelicalStair(group, radius, height, angleOffset = 0) {
     const innerRadius = stairRadius - Math.max(radius * 0.055, 0.34);
     const midRadius = (outerRadius + innerRadius) / 2;
 
-    const turns = Math.max(0.55, height / Math.max(radius * 4.25, 1));
+    const turns = Math.max(0.55, height / Math.max(radius * 6.25, 1));
     const steps = Math.max(48, Math.floor(turns * 56));
 
     const stepWidth = Math.max(radius * 0.155, 0.90);
