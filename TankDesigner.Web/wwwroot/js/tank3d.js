@@ -1025,57 +1025,90 @@ function addSimpleRestPlatforms(group, radius, height, radial, tangent, centerBa
 
     const platformCount = Math.floor(realHeight / intervalMeters);
 
-    const gapCenter = railHalfWidth * 2.15;
-    const sideWidth = Math.max(railHalfWidth * 1.35, 0.42);
-    const depth = Math.max(railHalfWidth * 2.25, 0.78);
-    const thickness = Math.max(radius * 0.0035, 0.025);
-
-    const railHeight = Math.max(radius * 0.055, 0.52);
-    const railRadius = Math.max(radius * 0.0028, 0.014);
+    const width = Math.max(railHalfWidth * 3.6, 1.25);
+    const depth = Math.max(railHalfWidth * 3.0, 1.05);
+    const railHeight = Math.max(radius * 0.07, 0.65);
+    const railRadius = Math.max(radius * 0.0032, 0.016);
 
     for (let i = 1; i <= platformCount; i++) {
         const y = i * intervalMeters * scale;
         if (y >= height * 0.92) continue;
 
-        [-1, 1].forEach(side => {
-            const center = centerBase.clone()
-                .add(radial.clone().multiplyScalar(depth * 0.55))
-                .add(tangent.clone().multiplyScalar(side * (gapCenter / 2 + sideWidth / 2)));
+        const platformCenter = centerBase.clone().add(radial.clone().multiplyScalar(depth * 0.55));
+        platformCenter.y = y;
 
-            center.y = y;
+        addRoundedRestPlatform(group, platformCenter, radial, tangent, width, depth, railHeight, railRadius, platformMaterial, railMaterial);
+    }
+}
 
-            const deck = new THREE.Mesh(
-                new THREE.BoxGeometry(sideWidth, thickness, depth),
-                platformMaterial
-            );
+function addRoundedRestPlatform(group, center, radial, tangent, width, depth, railHeight, railRadius, platformMaterial, railMaterial) {
+    const points = [];
+    const arcSegments = 20;
 
-            deck.position.copy(center);
-            deck.rotation.y = -Math.atan2(radial.z, radial.x) + Math.PI / 2;
-            deck.castShadow = true;
-            deck.receiveShadow = true;
-            group.add(deck);
+    points.push({ x: -width / 2, z: -depth * 0.35 });
+    points.push({ x: width / 2, z: -depth * 0.35 });
 
-            addPlatformRails(
-                group,
-                center,
-                radial,
-                tangent,
-                sideWidth,
-                depth,
-                y,
-                thickness,
-                railHeight,
-                railRadius,
-                railMaterial,
-                {
-                    openBack: true,
-                    openFront: false
-                }
-            );
+    for (let i = 0; i <= arcSegments; i++) {
+        const a = Math.PI * (i / arcSegments);
+        points.push({
+            x: Math.cos(a) * width / 2,
+            z: Math.sin(a) * depth * 0.85
         });
     }
-} function addVerticalRestPlatforms(group, radius, height, radial, tangent, platformMaterial, railMaterial, scale, centerBase, railHalfWidth) {
-    return;
+
+    const vertices = [];
+    const centerIndex = 0;
+
+    vertices.push(center.x, center.y, center.z);
+
+    points.forEach(p => {
+        const world = center.clone()
+            .add(tangent.clone().multiplyScalar(p.x))
+            .add(radial.clone().multiplyScalar(p.z));
+
+        vertices.push(world.x, world.y, world.z);
+    });
+
+    const indices = [];
+    for (let i = 1; i < points.length; i++) {
+        indices.push(centerIndex, i, i + 1);
+    }
+    indices.push(centerIndex, points.length, 1);
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+
+    const deck = new THREE.Mesh(geometry, platformMaterial);
+    deck.castShadow = true;
+    deck.receiveShadow = true;
+    group.add(deck);
+
+    const railPoints = points.slice(1);
+
+    for (let i = 0; i < railPoints.length; i++) {
+        const p = railPoints[i];
+
+        const bottom = center.clone()
+            .add(tangent.clone().multiplyScalar(p.x))
+            .add(radial.clone().multiplyScalar(p.z));
+
+        const top = bottom.clone();
+        top.y += railHeight;
+
+        addCylinderBetween(group, bottom, top, railRadius, railMaterial, 8);
+
+        const next = railPoints[(i + 1) % railPoints.length];
+
+        const nextTop = center.clone()
+            .add(tangent.clone().multiplyScalar(next.x))
+            .add(radial.clone().multiplyScalar(next.z));
+
+        nextTop.y += railHeight;
+
+        addCylinderBetween(group, top, nextTop, railRadius, railMaterial, 8);
+    }
 }
 
 function addCageCircle(group, cageCenter, radial, tangent, cageRadius, y, tubeRadius, material) {
