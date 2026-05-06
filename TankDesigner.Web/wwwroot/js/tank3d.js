@@ -940,12 +940,12 @@ function addVerticalLadder(group, radius, height, angleOffset = 0, scale) {
 
 function addCircularLadderCage(group, radius, height, radial, tangent, centerBase, material, scale) {
     const cageRadius = Math.max(radius * 0.068, 0.50);
-    const tubeRadius = Math.max(radius * 0.0019, 0.010);
+    const tubeRadius = Math.max(radius * 0.0024, 0.012);
     const cageCenter = centerBase.clone().add(radial.clone().multiplyScalar(cageRadius * 0.78));
 
     const startY = scale && scale > 0
-        ? Math.max(1.40 * scale, height * 0.08)
-        : height * 0.12;
+        ? Math.max(2.20 * scale, height * 0.10)
+        : height * 0.14;
 
     const endY = height + Math.max(radius * 0.075, 0.55);
     if (endY <= startY) return;
@@ -1176,14 +1176,15 @@ function addHelicalStair(group, radius, height, angleOffset = 0) {
     const innerRadius = stairRadius - Math.max(radius * 0.055, 0.34);
     const midRadius = (outerRadius + innerRadius) / 2;
 
-    const turns = Math.max(1.15, height / Math.max(radius * 1.35, 1));
+    const turns = Math.max(0.85, height / Math.max(radius * 2.15, 1));
     const steps = Math.max(48, Math.floor(turns * 56));
 
     const stepWidth = Math.max(radius * 0.155, 0.90);
     const stepDepth = Math.max(radius * 0.060, 0.30);
     const stepHeight = Math.max(radius * 0.012, 0.055);
 
-    const railHeight = Math.max(radius * 0.090, 0.82);
+    // Barandilla algo más alta y doble pasamanos.
+    const railHeight = Math.max(radius * 0.105, 0.95);
     const midRailHeight = railHeight * 0.52;
     const railRadius = Math.max(radius * 0.0052, 0.028);
     const postRadius = Math.max(radius * 0.0058, 0.03);
