@@ -1,5 +1,14 @@
 ﻿const viewers = new WeakMap();
 
+const technicalViewState = {
+    showRoof: true,
+    showGuardrail: true,
+    showConnections: true,
+    showLadder: true,
+    showReferences: false,
+    showWater: true
+};
+
 function renderTank3D(container, tank, dotNetRef) {
     if (!container) return;
 
@@ -46,6 +55,8 @@ function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
 
     addScaleBadge(shell, metersPerUnit, tank);
     addRoofControls(shell, container, tank, dotNetRef);
+    addTechnicalControls(shell, container, tank, dotNetRef);
+    addTechnicalInfoOverlay(shell);
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xf8fafc);
@@ -94,6 +105,7 @@ function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
     renderer.__tank3dCamera = camera;
 
     bindControls(viewer);
+    bindTechnicalHover(viewer);
     resize(viewer);
 
     const resizeObserver = new ResizeObserver(() => resize(viewer));
@@ -200,6 +212,74 @@ function addRoofControls(shell, container, tank, dotNetRef) {
     shell.appendChild(panel);
 }
 
+function addTechnicalControls(shell, container, tank, dotNetRef) {
+    const panel = document.createElement("div");
+
+    panel.style.position = "absolute";
+    panel.style.left = "18px";
+    panel.style.bottom = "18px";
+    panel.style.zIndex = "9";
+    panel.style.width = "220px";
+    panel.style.padding = "14px";
+    panel.style.borderRadius = "16px";
+    panel.style.background = "rgba(15,23,42,0.92)";
+    panel.style.color = "white";
+    panel.style.font = "13px Arial";
+    panel.style.boxShadow = "0 18px 45px rgba(15,23,42,0.28)";
+
+    panel.innerHTML = `
+        <div style="font-size:14px;font-weight:700;margin-bottom:12px;">
+            Vista técnica 3D
+        </div>
+
+        ${createTechnicalCheckbox("Techo", "showRoof")}
+        ${createTechnicalCheckbox("Barandilla", "showGuardrail")}
+        ${createTechnicalCheckbox("Conexiones", "showConnections")}
+        ${createTechnicalCheckbox("Escalera", "showLadder")}
+        ${createTechnicalCheckbox("Agua", "showWater")}
+        ${createTechnicalCheckbox("Referencias", "showReferences")}
+    `;
+
+    panel.querySelectorAll("input[type='checkbox']").forEach(input => {
+        input.addEventListener("change", () => {
+            technicalViewState[input.dataset.key] = input.checked;
+            renderTank3D(container, tank, dotNetRef);
+        });
+    });
+
+    shell.appendChild(panel);
+}
+
+function createTechnicalCheckbox(label, key) {
+    return `
+        <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer;">
+            <input type="checkbox" data-key="${key}" ${technicalViewState[key] ? "checked" : ""}>
+            <span>${label}</span>
+        </label>
+    `;
+}
+
+function addTechnicalInfoOverlay(shell) {
+    const overlay = document.createElement("div");
+
+    overlay.id = "tank3d-tech-overlay";
+    overlay.style.position = "absolute";
+    overlay.style.left = "50%";
+    overlay.style.top = "18px";
+    overlay.style.transform = "translateX(-50%)";
+    overlay.style.padding = "10px 14px";
+    overlay.style.borderRadius = "14px";
+    overlay.style.background = "rgba(15,23,42,0.88)";
+    overlay.style.color = "white";
+    overlay.style.font = "13px Arial";
+    overlay.style.zIndex = "20";
+    overlay.style.pointerEvents = "none";
+    overlay.style.display = "none";
+    overlay.style.lineHeight = "1.45";
+
+    shell.appendChild(overlay);
+}
+
 function addDownloadPngButton(shell, renderer) {
     const button = document.createElement("button");
 
@@ -237,12 +317,12 @@ function buildTank(viewer, tank, rings, scale) {
 
     let currentY = 0;
 
-    rings.forEach((ring) => {
+    rings.forEach((ring, index) => {
         const height = Number(ring.altura) * scale;
         const materialName = ring.material || tank.materialPrincipal || "material";
         const color = colorForMaterial(materialName);
 
-        const shellGeometry = new THREE.CylinderGeometry(radius, radius, height, 160, 1, true);
+        const shellGeometry = new THREE.CylinderGeometry(radius, radius, height, 96, 1, true);
         const shellMaterial = new THREE.MeshStandardMaterial({
             color,
             metalness: 0.72,
@@ -256,6 +336,14 @@ function buildTank(viewer, tank, rings, scale) {
         shell.position.y = currentY + height / 2;
         shell.castShadow = true;
         shell.receiveShadow = true;
+        shell.userData = {
+            tipo: `Anillo ${index + 1}`,
+            material: materialName,
+            altura: formatTechnicalValue(ring.altura, "m"),
+            espesor: formatTechnicalValue(ring.espesor, "mm"),
+            diametro: formatTechnicalValue(tank.diametro, "m")
+        };
+
         viewer.group.add(shell);
 
         const edgeGeometry = new THREE.EdgesGeometry(shellGeometry, 18);
@@ -278,20 +366,46 @@ function buildTank(viewer, tank, rings, scale) {
     });
 
     addBottomDisc(viewer.group, radius);
-    addWaterLevelIfAvailable(viewer.group, radius, currentY, tank, scale);
+
+    if (technicalViewState.showWater) {
+        addWaterLevelIfAvailable(viewer.group, radius, currentY, tank, scale);
+    }
+
     addTopStiffener(viewer.group, radius, currentY);
-    addRoof(viewer.group, radius, currentY, tank.techo, tank.vigasTechoConico, scale);
-    addRoofGuardrail(viewer.group, radius, currentY, tank.techo);
-    addTankConnections(viewer.group, radius, currentY);
+
+    if (technicalViewState.showRoof) {
+        addRoof(viewer.group, radius, currentY, tank.techo, tank.vigasTechoConico, scale);
+    }
+
+    if (technicalViewState.showGuardrail) {
+        addRoofGuardrail(viewer.group, radius, currentY, tank.techo);
+    }
+
+    if (technicalViewState.showConnections) {
+        addTankConnections(viewer.group, radius, currentY);
+    }
+
     addManhole(viewer.group, radius, currentY);
     addRoofVent(viewer.group, radius, currentY, tank.techo);
-    addReferenceGrid(viewer.group, radius, currentY);
-    addVerticalReference(viewer.group, radius, currentY);
-    addLadder(viewer.group, radius, currentY, tank.escalera, scale);
+
+    if (technicalViewState.showReferences) {
+        addReferenceGrid(viewer.group, radius, currentY);
+        addVerticalReference(viewer.group, radius, currentY);
+    }
+
+    if (technicalViewState.showLadder) {
+        addLadder(viewer.group, radius, currentY, tank.escalera, scale);
+    }
 
     viewer.group.position.y = -currentY / 2;
     viewer.modelRadius = radius;
     viewer.modelHeight = currentY;
+}
+
+function formatTechnicalValue(value, suffix) {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n <= 0) return "—";
+    return `${n} ${suffix}`;
 }
 
 function addRoofGuardrail(group, radius, height, roofRaw) {
@@ -444,6 +558,13 @@ function addManhole(group, radius, height) {
     cover.quaternion.copy(quaternion);
     cover.castShadow = true;
     cover.receiveShadow = true;
+    cover.userData = {
+        tipo: "Manhole",
+        material: "Acero",
+        altura: formatTechnicalValue(y, "u.3D"),
+        espesor: formatTechnicalValue(coverThickness, "u.3D"),
+        diametro: formatTechnicalValue(manholeRadius * 2, "u.3D")
+    };
     group.add(cover);
 
     const frame = new THREE.Mesh(
@@ -501,6 +622,13 @@ function addRoofVent(group, radius, height, roofRaw) {
     vent.position.set(radius * 0.32, height + ventHeight * 0.65, -radius * 0.18);
     vent.castShadow = true;
     vent.receiveShadow = true;
+    vent.userData = {
+        tipo: "Ventilación de techo",
+        material: "Acero",
+        altura: "Techo",
+        espesor: "—",
+        diametro: formatTechnicalValue(ventRadius * 2, "u.3D")
+    };
     group.add(vent);
 
     const cap = new THREE.Mesh(
@@ -553,7 +681,7 @@ function addOpenTop(group, radius, height) {
 }
 
 function addFlatRoof(group, radius, height) {
-    const geometry = new THREE.CircleGeometry(radius * 0.985, 160);
+    const geometry = new THREE.CircleGeometry(radius * 0.985, 96);
     const material = new THREE.MeshStandardMaterial({
         color: 0xcbd5e1,
         metalness: 0.62,
@@ -566,6 +694,13 @@ function addFlatRoof(group, radius, height) {
     roof.position.y = height + radius * 0.015;
     roof.castShadow = true;
     roof.receiveShadow = true;
+    roof.userData = {
+        tipo: "Techo plano",
+        material: "Acero",
+        altura: "Coronación",
+        espesor: "—",
+        diametro: "—"
+    };
 
     group.add(roof);
     addOpenTop(group, radius, height + radius * 0.015);
@@ -580,7 +715,7 @@ function addConeRoof(group, radius, height, vigasTechoConico, scale) {
         ? alturaConoReal * scale
         : Math.max(radius * 0.16, 1.2);
 
-    const geometry = new THREE.ConeGeometry(radius * 1.01, roofHeight, 160, 1, false);
+    const geometry = new THREE.ConeGeometry(radius * 1.01, roofHeight, 96, 1, false);
     const material = new THREE.MeshStandardMaterial({
         color: 0xe5e7eb,
         metalness: 0.52,
@@ -594,6 +729,13 @@ function addConeRoof(group, radius, height, vigasTechoConico, scale) {
     cone.position.y = height + roofHeight / 2;
     cone.castShadow = true;
     cone.receiveShadow = true;
+    cone.userData = {
+        tipo: "Techo cónico",
+        material: "Acero",
+        altura: alturaConoReal > 0 ? `${alturaConoReal} m` : "Auto 3D",
+        espesor: "—",
+        diametro: "—"
+    };
 
     group.add(cone);
 
@@ -619,7 +761,7 @@ function addConeRoofPanels(group, radius, baseHeight, roofHeight) {
         const y = baseHeight + roofHeight * (1 - f);
 
         const curve = new THREE.EllipseCurve(0, 0, ringRadius, ringRadius, 0, Math.PI * 2, false, 0);
-        const points = curve.getPoints(180).map(p => new THREE.Vector3(p.x, y, p.y));
+        const points = curve.getPoints(120).map(p => new THREE.Vector3(p.x, y, p.y));
         const geometry = new THREE.BufferGeometry().setFromPoints(points);
 
         group.add(new THREE.LineLoop(geometry, material));
@@ -709,7 +851,7 @@ function calcularRadioNucleoTecho(radius, numeroVigas, vigasTechoConico, scale) 
 }
 
 function addDomeRoof(group, radius, height) {
-    const geometry = new THREE.SphereGeometry(radius * 1.01, 160, 32, 0, Math.PI * 2, 0, Math.PI / 2);
+    const geometry = new THREE.SphereGeometry(radius * 1.01, 96, 24, 0, Math.PI * 2, 0, Math.PI / 2);
     const material = new THREE.MeshStandardMaterial({
         color: 0xcbd5e1,
         metalness: 0.62,
@@ -723,6 +865,13 @@ function addDomeRoof(group, radius, height) {
     dome.position.y = height;
     dome.castShadow = true;
     dome.receiveShadow = true;
+    dome.userData = {
+        tipo: "Techo domo",
+        material: "Acero",
+        altura: "Coronación",
+        espesor: "—",
+        diametro: "—"
+    };
 
     group.add(dome);
     addOpenTop(group, radius, height);
@@ -749,10 +898,17 @@ function addWaterLevelIfAvailable(group, radius, height, tank, scale) {
         side: THREE.DoubleSide
     });
 
-    const disc = new THREE.Mesh(new THREE.CircleGeometry(radius * 0.96, 128), material);
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(radius * 0.96, 96), material);
     disc.rotation.x = -Math.PI / 2;
     disc.position.y = y;
     disc.receiveShadow = true;
+    disc.userData = {
+        tipo: "Nivel de agua",
+        material: "Agua",
+        altura: `${rawLevel} m`,
+        espesor: "—",
+        diametro: "—"
+    };
     group.add(disc);
 
     const lineMaterial = new THREE.LineBasicMaterial({
@@ -762,13 +918,13 @@ function addWaterLevelIfAvailable(group, radius, height, tank, scale) {
     });
 
     const curve = new THREE.EllipseCurve(0, 0, radius * 0.965, radius * 0.965, 0, Math.PI * 2, false, 0);
-    const points = curve.getPoints(180).map(p => new THREE.Vector3(p.x, y + 0.01, p.y));
+    const points = curve.getPoints(120).map(p => new THREE.Vector3(p.x, y + 0.01, p.y));
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
     group.add(new THREE.LineLoop(geometry, lineMaterial));
 }
 
 function addTopStiffener(group, radius, height) {
-    const geometry = new THREE.TorusGeometry(radius * 1.015, Math.max(radius * 0.018, 0.045), 14, 180);
+    const geometry = new THREE.TorusGeometry(radius * 1.015, Math.max(radius * 0.018, 0.045), 14, 120);
     const material = new THREE.MeshStandardMaterial({
         color: 0x1e293b,
         metalness: 0.72,
@@ -778,13 +934,20 @@ function addTopStiffener(group, radius, height) {
     const stiffener = new THREE.Mesh(geometry, material);
     stiffener.rotation.x = Math.PI / 2;
     stiffener.position.y = height;
+    stiffener.userData = {
+        tipo: "Rigidizador superior",
+        material: "Acero",
+        altura: "Coronación",
+        espesor: "—",
+        diametro: "—"
+    };
 
     group.add(stiffener);
 }
 
 function addRingSeam(group, radius, y) {
     const curve = new THREE.EllipseCurve(0, 0, radius * 1.006, radius * 1.006, 0, Math.PI * 2, false, 0);
-    const points = curve.getPoints(180).map(p => new THREE.Vector3(p.x, y, p.y));
+    const points = curve.getPoints(120).map(p => new THREE.Vector3(p.x, y, p.y));
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
 
     group.add(new THREE.LineLoop(
@@ -798,7 +961,7 @@ function addRingSeam(group, radius, y) {
 }
 
 function addBottomDisc(group, radius) {
-    const geometry = new THREE.CircleGeometry(radius, 160);
+    const geometry = new THREE.CircleGeometry(radius, 96);
     const material = new THREE.MeshStandardMaterial({
         color: 0xe2e8f0,
         metalness: 0.42,
@@ -896,7 +1059,6 @@ function addVerticalLadder(group, radius, height, angleOffset = 0, scale) {
     const bottomY = Math.max(height * 0.010, 0.05);
     const topY = height + Math.max(radius * 0.10, 0.75);
 
-    // Escalera continua. No la parto ni la desplazo, porque eso generaba jaulas raras.
     const leftRailBottom = centerBase.clone().add(tangent.clone().multiplyScalar(-railHalfWidth));
     leftRailBottom.y = bottomY;
 
@@ -928,12 +1090,7 @@ function addVerticalLadder(group, radius, height, angleOffset = 0, scale) {
         addCylinderBetween(group, left, right, rungRadius, ladderMaterial, 10);
     }
 
-    // Jaula circular continua, abierta por delante y con hueco inferior de acceso.
     addCircularLadderCage(group, radius, height, radial, tangent, centerBase, cageMaterial, scale);
-
-    // Plataformas pequeñas cada 9 m. Son balconcillos, no jaulas ni paneles.
-    //addSimpleRestPlatforms(group, radius, height, radial, tangent, centerBase, platformMaterial, cageMaterial, scale, railHalfWidth);
-
     addVerticalLadderTopPlatform(group, radius, height, radial, tangent, platformMaterial, cageMaterial, centerBase, railHalfWidth);
     addLadderTankBrackets(group, radius, height, radial, tangent, centerBase, cageMaterial);
 }
@@ -961,8 +1118,6 @@ function addCircularLadderCage(group, radius, height, radial, tangent, centerBas
         addCageOpenHoop(group, cageCenter, radial, tangent, cageRadius, y, tubeRadius, material);
     }
 
-    // Quito el montante central delantero porque tapaba la escalera naranja.
-    // Dejo solo barras laterales/exteriores para que se vea la escalera.
     const barAngles = [
         -Math.PI * 0.68,
         -Math.PI * 0.42,
@@ -989,8 +1144,6 @@ function addCircularLadderCage(group, radius, height, radial, tangent, centerBas
 function addCageOpenHoop(group, cageCenter, radial, tangent, cageRadius, y, tubeRadius, material) {
     const segments = 18;
 
-    // No dibujo el tramo frontal central del aro, porque visualmente tapaba los peldaños.
-    // Dibujo dos medias curvas laterales: mantiene la sensación de jaula circular sin ocultar la escalera.
     const arcs = [
         [-Math.PI * 0.78, -Math.PI * 0.18],
         [Math.PI * 0.18, Math.PI * 0.78]
@@ -1018,75 +1171,6 @@ function addCageOpenHoop(group, cageCenter, radial, tangent, cageRadius, y, tube
 
 function addSimpleRestPlatforms(group, radius, height, radial, tangent, centerBase, platformMaterial, railMaterial, scale, railHalfWidth) {
     return;
-}
-function addRoundedRestPlatform(group, center, radial, tangent, width, depth, railHeight, railRadius, platformMaterial, railMaterial) {
-    const points = [];
-    const arcSegments = 20;
-
-    points.push({ x: -width / 2, z: -depth * 0.35 });
-    points.push({ x: width / 2, z: -depth * 0.35 });
-
-    for (let i = 0; i <= arcSegments; i++) {
-        const a = Math.PI * (i / arcSegments);
-        points.push({
-            x: Math.cos(a) * width / 2,
-            z: Math.sin(a) * depth * 0.85
-        });
-    }
-
-    const vertices = [];
-    const centerIndex = 0;
-
-    vertices.push(center.x, center.y, center.z);
-
-    points.forEach(p => {
-        const world = center.clone()
-            .add(tangent.clone().multiplyScalar(p.x))
-            .add(radial.clone().multiplyScalar(p.z));
-
-        vertices.push(world.x, world.y, world.z);
-    });
-
-    const indices = [];
-    for (let i = 1; i < points.length; i++) {
-        indices.push(centerIndex, i, i + 1);
-    }
-    indices.push(centerIndex, points.length, 1);
-
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
-    geometry.setIndex(indices);
-    geometry.computeVertexNormals();
-
-    const deck = new THREE.Mesh(geometry, platformMaterial);
-    deck.castShadow = true;
-    deck.receiveShadow = true;
-    group.add(deck);
-
-    const railPoints = points.slice(1);
-
-    for (let i = 0; i < railPoints.length; i++) {
-        const p = railPoints[i];
-
-        const bottom = center.clone()
-            .add(tangent.clone().multiplyScalar(p.x))
-            .add(radial.clone().multiplyScalar(p.z));
-
-        const top = bottom.clone();
-        top.y += railHeight;
-
-        addCylinderBetween(group, bottom, top, railRadius, railMaterial, 8);
-
-        const next = railPoints[(i + 1) % railPoints.length];
-
-        const nextTop = center.clone()
-            .add(tangent.clone().multiplyScalar(next.x))
-            .add(radial.clone().multiplyScalar(next.z));
-
-        nextTop.y += railHeight;
-
-        addCylinderBetween(group, top, nextTop, railRadius, railMaterial, 8);
-    }
 }
 
 function addCageCircle(group, cageCenter, radial, tangent, cageRadius, y, tubeRadius, material) {
@@ -1183,7 +1267,6 @@ function addHelicalStair(group, radius, height, angleOffset = 0) {
     const stepDepth = Math.max(radius * 0.060, 0.30);
     const stepHeight = Math.max(radius * 0.012, 0.055);
 
-    // Barandilla algo más alta y doble pasamanos.
     const railHeight = Math.max(radius * 0.105, 0.95);
     const midRailHeight = railHeight * 0.52;
     const railRadius = Math.max(radius * 0.0052, 0.028);
@@ -1293,28 +1376,28 @@ function addTankConnections(group, radius, height) {
         angle: Math.PI * 1.18,
         y: height * 0.12,
         size: 0.75,
-        label: "drain"
+        label: "Drenaje"
     });
 
     addNozzle(group, radius, height, {
         angle: Math.PI * 1.32,
         y: height * 0.34,
         size: 1.0,
-        label: "outlet"
+        label: "Salida"
     });
 
     addNozzle(group, radius, height, {
         angle: Math.PI * 1.46,
         y: height * 0.72,
         size: 0.8,
-        label: "inlet"
+        label: "Entrada"
     });
 
     addNozzle(group, radius, height, {
         angle: Math.PI * 1.62,
         y: height * 0.88,
         size: 0.55,
-        label: "overflow"
+        label: "Rebosadero"
     });
 }
 
@@ -1374,6 +1457,13 @@ function addNozzle(group, radius, height, options) {
 
     flange.castShadow = true;
     flange.receiveShadow = true;
+    flange.userData = {
+        tipo: options.label || "Boquilla",
+        material: "Acero",
+        altura: formatTechnicalValue(y, "u.3D"),
+        espesor: "—",
+        diametro: formatTechnicalValue(nozzleRadius * 2, "u.3D")
+    };
     group.add(flange);
 
     const tangent = new THREE.Vector3(-Math.sin(angle), 0, Math.cos(angle));
@@ -1502,6 +1592,47 @@ function addCylinderBetween(group, start, end, radius, material, segments) {
     mesh.receiveShadow = true;
 
     group.add(mesh);
+}
+
+function bindTechnicalHover(viewer) {
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    const overlay = viewer.shell.querySelector("#tank3d-tech-overlay");
+
+    if (!overlay) return;
+
+    viewer.renderer.domElement.addEventListener("mousemove", event => {
+        const rect = viewer.renderer.domElement.getBoundingClientRect();
+
+        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, viewer.camera);
+
+        const intersects = raycaster.intersectObjects(viewer.group.children, true);
+        const valid = intersects.find(x => x.object.userData && x.object.userData.tipo);
+
+        if (!valid) {
+            overlay.style.display = "none";
+            return;
+        }
+
+        const data = valid.object.userData;
+
+        overlay.innerHTML = `
+            <strong>${data.tipo}</strong><br>
+            Material: ${data.material || "—"}<br>
+            Altura: ${data.altura || "—"}<br>
+            Espesor: ${data.espesor || "—"}<br>
+            Diámetro: ${data.diametro || "—"}
+        `;
+
+        overlay.style.display = "block";
+    });
+
+    viewer.renderer.domElement.addEventListener("mouseleave", () => {
+        overlay.style.display = "none";
+    });
 }
 
 function bindControls(viewer) {
