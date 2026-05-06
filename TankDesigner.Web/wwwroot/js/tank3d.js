@@ -681,58 +681,68 @@ function addOpenTop(group, radius, height) {
 }
 
 function addFlatRoof(group, radius, height) {
-    const roofMaterial = new THREE.MeshStandardMaterial({
-        color: 0xcbd5e1,
-        metalness: 0.66,
+    const baseMaterial = new THREE.MeshStandardMaterial({
+        color: 0xdbe3ec,
+        metalness: 0.58,
         roughness: 0.34,
         side: THREE.DoubleSide
     });
 
-    const ribMaterial = new THREE.MeshStandardMaterial({
-        color: 0x94a3b8,
-        metalness: 0.74,
-        roughness: 0.26
-    });
-
     const roof = new THREE.Mesh(
-        new THREE.CircleGeometry(radius * 0.99, 128),
-        roofMaterial
+        new THREE.CircleGeometry(radius * 0.985, 128),
+        baseMaterial
     );
 
     roof.rotation.x = -Math.PI / 2;
     roof.position.y = height + radius * 0.012;
     roof.castShadow = true;
     roof.receiveShadow = true;
-    roof.userData = {
-        tipo: "Techo plano de chapa nervada",
-        material: "Chapa perfilada",
-        altura: "Coronación",
-        espesor: "—",
-        diametro: "—"
-    };
-
     group.add(roof);
 
-    const ribCount = Math.max(10, Math.floor(radius * 2.6));
-    const ribWidth = Math.max(radius * 0.022, 0.045);
-    const ribHeight = Math.max(radius * 0.018, 0.045);
-    const ribDepth = radius * 1.88;
+    const sheetMaterial = new THREE.MeshStandardMaterial({
+        color: 0xf1f5f9,
+        metalness: 0.68,
+        roughness: 0.26
+    });
 
-    for (let i = 0; i < ribCount; i++) {
-        const x = -radius * 0.88 + (radius * 1.76 * i) / Math.max(1, ribCount - 1);
-        const maxZ = Math.sqrt(Math.max(0, radius * radius - x * x));
+    const ribMaterial = new THREE.MeshStandardMaterial({
+        color: 0x94a3b8,
+        metalness: 0.72,
+        roughness: 0.24
+    });
 
-        if (maxZ <= 0) continue;
+    const sheetCount = Math.max(10, Math.min(22, Math.floor(radius * 1.8)));
+    const sheetWidth = (radius * 2) / sheetCount;
+    const ribHeight = Math.max(radius * 0.012, 0.035);
+    const ribWidth = Math.max(radius * 0.010, 0.030);
 
-        const rib = new THREE.Mesh(
-            new THREE.BoxGeometry(ribWidth, ribHeight, Math.min(ribDepth, maxZ * 2)),
-            ribMaterial
+    for (let i = 0; i < sheetCount; i++) {
+        const x = -radius + sheetWidth * (i + 0.5);
+        const halfLength = Math.sqrt(Math.max(0, radius * radius - x * x));
+
+        if (halfLength <= 0.1) continue;
+
+        const sheet = new THREE.Mesh(
+            new THREE.BoxGeometry(sheetWidth * 0.92, ribHeight * 0.45, halfLength * 2),
+            sheetMaterial
         );
 
-        rib.position.set(x, height + radius * 0.028, 0);
-        rib.castShadow = true;
-        rib.receiveShadow = true;
-        group.add(rib);
+        sheet.position.set(x, height + radius * 0.018, 0);
+        sheet.castShadow = true;
+        sheet.receiveShadow = true;
+        group.add(sheet);
+
+        [-0.28, 0.28].forEach(offset => {
+            const rib = new THREE.Mesh(
+                new THREE.BoxGeometry(ribWidth, ribHeight, halfLength * 2),
+                ribMaterial
+            );
+
+            rib.position.set(x + sheetWidth * offset, height + radius * 0.030, 0);
+            rib.castShadow = true;
+            rib.receiveShadow = true;
+            group.add(rib);
+        });
     }
 
     addOpenTop(group, radius, height + radius * 0.015);
@@ -883,19 +893,20 @@ function calcularRadioNucleoTecho(radius, numeroVigas, vigasTechoConico, scale) 
 }
 
 function addDomeRoof(group, radius, height) {
-    const domeHeight = Math.max(radius * 0.18, 0.55);
+    const domeHeight = Math.max(radius * 0.22, 0.65);
 
-    const points = [];
-    const segments = 18;
+    const geometry = new THREE.SphereGeometry(
+        radius * 1.01,
+        128,
+        24,
+        0,
+        Math.PI * 2,
+        0,
+        Math.PI / 2
+    );
 
-    for (let i = 0; i <= segments; i++) {
-        const t = i / segments;
-        const x = radius * t;
-        const y = domeHeight * Math.sin(t * Math.PI / 2);
-        points.push(new THREE.Vector2(x, y));
-    }
+    geometry.scale(1, domeHeight / radius, 1);
 
-    const geometry = new THREE.LatheGeometry(points, 128);
     const material = new THREE.MeshStandardMaterial({
         color: 0xdbeafe,
         metalness: 0.58,
@@ -910,8 +921,8 @@ function addDomeRoof(group, radius, height) {
     dome.castShadow = true;
     dome.receiveShadow = true;
     dome.userData = {
-        tipo: "Techo domo bajo",
-        material: "Chapa / panel curvo",
+        tipo: "Techo domo geodésico bajo",
+        material: "Panel curvo",
         altura: "Coronación",
         espesor: "—",
         diametro: "—"
@@ -926,23 +937,30 @@ function addDomeRoof(group, radius, height) {
     });
 
     const ribCount = 18;
-    const ribRadius = Math.max(radius * 0.006, 0.025);
+    const ribRadius = Math.max(radius * 0.0055, 0.022);
 
     for (let i = 0; i < ribCount; i++) {
         const angle = (Math.PI * 2 * i) / ribCount;
-        const start = new THREE.Vector3(Math.cos(angle) * radius * 0.08, height + domeHeight * 0.95, Math.sin(angle) * radius * 0.08);
-        const end = new THREE.Vector3(Math.cos(angle) * radius * 0.96, height + domeHeight * 0.04, Math.sin(angle) * radius * 0.96);
+
+        const start = new THREE.Vector3(
+            Math.cos(angle) * radius * 0.05,
+            height + domeHeight * 0.98,
+            Math.sin(angle) * radius * 0.05
+        );
+
+        const end = new THREE.Vector3(
+            Math.cos(angle) * radius * 0.97,
+            height + domeHeight * 0.04,
+            Math.sin(angle) * radius * 0.97
+        );
 
         addCylinderBetween(group, start, end, ribRadius, ribMaterial, 10);
     }
 
-    const ringLevels = [0.35, 0.62, 0.84];
-
-    ringLevels.forEach(f => {
+    [0.35, 0.62, 0.84].forEach(f => {
         const ringRadius = radius * f;
-        const y = height + domeHeight * Math.sin(f * Math.PI / 2);
-
-        addCircularRail(group, ringRadius, y, ribRadius * 0.75, ribMaterial);
+        const y = height + domeHeight * Math.sqrt(Math.max(0, 1 - f * f));
+        addCircularRail(group, ringRadius, y, ribRadius * 0.7, ribMaterial);
     });
 
     addOpenTop(group, radius, height);
@@ -1331,7 +1349,7 @@ function addHelicalStair(group, radius, height, angleOffset = 0) {
     const innerRadius = stairRadius - Math.max(radius * 0.055, 0.34);
     const midRadius = (outerRadius + innerRadius) / 2;
 
-    const turns = Math.max(0.85, height / Math.max(radius * 2.15, 1));
+    const turns = Math.max(0.55, height / Math.max(radius * 4.25, 1));
     const steps = Math.max(48, Math.floor(turns * 56));
 
     const stepWidth = Math.max(radius * 0.155, 0.90);
