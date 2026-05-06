@@ -932,7 +932,7 @@ function addVerticalLadder(group, radius, height, angleOffset = 0, scale) {
     addCircularLadderCage(group, radius, height, radial, tangent, centerBase, cageMaterial, scale);
 
     // Plataformas pequeñas cada 9 m. Son balconcillos, no jaulas ni paneles.
-   addSimpleRestPlatforms(group, radius, height, radial, tangent, centerBase, platformMaterial, cageMaterial, scale, railHalfWidth);
+    //addSimpleRestPlatforms(group, radius, height, radial, tangent, centerBase, platformMaterial, cageMaterial, scale, railHalfWidth);
 
     addVerticalLadderTopPlatform(group, radius, height, radial, tangent, platformMaterial, cageMaterial, centerBase, railHalfWidth);
     addLadderTankBrackets(group, radius, height, radial, tangent, centerBase, cageMaterial);
@@ -1017,30 +1017,8 @@ function addCageOpenHoop(group, cageCenter, radial, tangent, cageRadius, y, tube
 }
 
 function addSimpleRestPlatforms(group, radius, height, radial, tangent, centerBase, platformMaterial, railMaterial, scale, railHalfWidth) {
-    if (!scale || scale <= 0) return;
-
-    const realHeight = height / scale;
-    const intervalMeters = 9;
-    if (realHeight <= intervalMeters) return;
-
-    const platformCount = Math.floor(realHeight / intervalMeters);
-
-    const width = Math.max(railHalfWidth * 3.6, 1.25);
-    const depth = Math.max(railHalfWidth * 3.0, 1.05);
-    const railHeight = Math.max(radius * 0.07, 0.65);
-    const railRadius = Math.max(radius * 0.0032, 0.016);
-
-    for (let i = 1; i <= platformCount; i++) {
-        const y = i * intervalMeters * scale;
-        if (y >= height * 0.92) continue;
-
-        const platformCenter = centerBase.clone().add(radial.clone().multiplyScalar(depth * 0.55));
-        platformCenter.y = y;
-
-        addRoundedRestPlatform(group, platformCenter, radial, tangent, width, depth, railHeight, railRadius, platformMaterial, railMaterial);
-    }
+    return;
 }
-
 function addRoundedRestPlatform(group, center, radial, tangent, width, depth, railHeight, railRadius, platformMaterial, railMaterial) {
     const points = [];
     const arcSegments = 20;
