@@ -932,7 +932,7 @@ function addVerticalLadder(group, radius, height, angleOffset = 0, scale) {
     addCircularLadderCage(group, radius, height, radial, tangent, centerBase, cageMaterial, scale);
 
     // Plataformas pequeñas cada 9 m. Son balconcillos, no jaulas ni paneles.
-   /addSimpleRestPlatforms(group, radius, height, radial, tangent, centerBase, platformMaterial, cageMaterial, scale, railHalfWidth);
+   addSimpleRestPlatforms(group, radius, height, radial, tangent, centerBase, platformMaterial, cageMaterial, scale, railHalfWidth);
 
     addVerticalLadderTopPlatform(group, radius, height, radial, tangent, platformMaterial, cageMaterial, centerBase, railHalfWidth);
     addLadderTankBrackets(group, radius, height, radial, tangent, centerBase, cageMaterial);
@@ -1072,7 +1072,6 @@ function addSimpleRestPlatforms(group, radius, height, radial, tangent, centerBa
             }
         );
     }
-}    return;
 }
 function addVerticalRestPlatforms(group, radius, height, radial, tangent, platformMaterial, railMaterial, scale, centerBase, railHalfWidth) {
     return;
