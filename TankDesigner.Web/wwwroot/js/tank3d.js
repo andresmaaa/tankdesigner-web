@@ -930,7 +930,7 @@ function addDomeRoof(group, radius, height) {
     const domeHeight = Math.max(radius * 0.42, 1.35);
 
     const geometry = new THREE.SphereGeometry(
-        radius * 1.09,
+        radius * 1.015,
         128,
         32,
         0,
@@ -965,7 +965,7 @@ function addDomeRoof(group, radius, height) {
 
     group.add(dome);
 
-    addDomeRoofRibs(group, radius * 1.04, height, domeHeight);
+    addDomeRoofRibs(group, radius * 0.99, height, domeHeight);
     addDomeSkirtRing(group, radius, height);
 }
 function addDomeSkirtRing(group, radius, height) {
@@ -979,7 +979,7 @@ function addDomeSkirtRing(group, radius, height) {
     const skirtThickness = Math.max(radius * 0.016, 0.05);
 
     const skirt = new THREE.Mesh(
-        new THREE.CylinderGeometry(radius * 1.045, radius * 1.045, skirtHeight, 128, 1, true),
+        new THREE.CylinderGeometry(radius * 1.01, radius * 1.01, skirtHeight, 128, 1, true),
         material
     );
 
@@ -989,8 +989,8 @@ function addDomeSkirtRing(group, radius, height) {
 
     group.add(skirt);
 
-    addCircularRail(group, radius * 1.055, height + skirtHeight, skirtThickness, material);
-    addCircularRail(group, radius * 1.055, height, skirtThickness * 0.8, material);
+    addCircularRail(group, radius * 1.018, height + skirtHeight, skirtThickness, material);
+    addCircularRail(group, radius * 1.018, height, skirtThickness * 0.8, material);
 }
 function addDomeRoofRibs(group, radius, height, domeHeight) {
     const material = new THREE.MeshStandardMaterial({
