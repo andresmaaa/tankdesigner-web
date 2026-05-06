@@ -1021,59 +1021,60 @@ function addSimpleRestPlatforms(group, radius, height, radial, tangent, centerBa
 
     const realHeight = height / scale;
     const intervalMeters = 9;
-
     if (realHeight <= intervalMeters) return;
 
     const platformCount = Math.floor(realHeight / intervalMeters);
 
-    const width = Math.max(railHalfWidth * 3.4, 1.15);
-    const depth = Math.max(railHalfWidth * 2.4, 0.90);
-    const thickness = Math.max(radius * 0.006, 0.04);
+    const gapCenter = railHalfWidth * 2.15;
+    const sideWidth = Math.max(railHalfWidth * 1.35, 0.42);
+    const depth = Math.max(railHalfWidth * 2.25, 0.78);
+    const thickness = Math.max(radius * 0.0035, 0.025);
 
-    const railHeight = Math.max(radius * 0.07, 0.65);
-    const railRadius = Math.max(radius * 0.0034, 0.018);
+    const railHeight = Math.max(radius * 0.055, 0.52);
+    const railRadius = Math.max(radius * 0.0028, 0.014);
 
     for (let i = 1; i <= platformCount; i++) {
         const y = i * intervalMeters * scale;
-
         if (y >= height * 0.92) continue;
 
-        const center = centerBase.clone()
-            .add(radial.clone().multiplyScalar(depth * 0.58));
+        [-1, 1].forEach(side => {
+            const center = centerBase.clone()
+                .add(radial.clone().multiplyScalar(depth * 0.55))
+                .add(tangent.clone().multiplyScalar(side * (gapCenter / 2 + sideWidth / 2)));
 
-        center.y = y;
+            center.y = y;
 
-        const deck = new THREE.Mesh(
-            new THREE.BoxGeometry(width, thickness, depth),
-            platformMaterial
-        );
+            const deck = new THREE.Mesh(
+                new THREE.BoxGeometry(sideWidth, thickness, depth),
+                platformMaterial
+            );
 
-        deck.position.copy(center);
-        deck.rotation.y = -Math.atan2(radial.z, radial.x) + Math.PI / 2;
-        deck.castShadow = true;
-        deck.receiveShadow = true;
-        group.add(deck);
+            deck.position.copy(center);
+            deck.rotation.y = -Math.atan2(radial.z, radial.x) + Math.PI / 2;
+            deck.castShadow = true;
+            deck.receiveShadow = true;
+            group.add(deck);
 
-        addPlatformRails(
-            group,
-            center,
-            radial,
-            tangent,
-            width,
-            depth,
-            y,
-            thickness,
-            railHeight,
-            railRadius,
-            railMaterial,
-            {
-                openBack: true,
-                openFront: false
-            }
-        );
+            addPlatformRails(
+                group,
+                center,
+                radial,
+                tangent,
+                sideWidth,
+                depth,
+                y,
+                thickness,
+                railHeight,
+                railRadius,
+                railMaterial,
+                {
+                    openBack: true,
+                    openFront: false
+                }
+            );
+        });
     }
-}
-function addVerticalRestPlatforms(group, radius, height, radial, tangent, platformMaterial, railMaterial, scale, centerBase, railHalfWidth) {
+} function addVerticalRestPlatforms(group, radius, height, radial, tangent, platformMaterial, railMaterial, scale, centerBase, railHalfWidth) {
     return;
 }
 
