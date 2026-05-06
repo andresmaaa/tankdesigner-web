@@ -1016,29 +1016,47 @@ function addCageOpenHoop(group, cageCenter, radial, tangent, cageRadius, y, tube
     });
 }
 
-function addSimpleRestPlatforms(group, radius, height, radial, tangent, centerBase, platformMaterial, railMaterial, scale, railHalfWidth) {
+function addSimpleRestPlatforms(
+    group,
+    radius,
+    height,
+    radial,
+    tangent,
+    centerBase,
+    platformMaterial,
+    railMaterial,
+    scale,
+    railHalfWidth
+) {
     if (!scale || scale <= 0) return;
 
     const realHeight = height / scale;
     const intervalMeters = 9;
+
     if (realHeight <= intervalMeters) return;
 
     const platformCount = Math.floor(realHeight / intervalMeters);
 
-    const width = Math.max(railHalfWidth * 3.0, 1.00);
-    const depth = Math.max(railHalfWidth * 2.10, 0.80);
+    // Plataforma bastante más grande
+    const width = Math.max(radius * 0.42, 2.10);
+    const depth = Math.max(radius * 0.24, 1.45);
     const thickness = Math.max(radius * 0.006, 0.040);
 
-    const railHeight = Math.max(radius * 0.070, 0.65);
-    const railRadius = Math.max(radius * 0.0034, 0.018);
+    const railHeight = Math.max(radius * 0.075, 0.70);
+    const railRadius = Math.max(radius * 0.0035, 0.018);
 
     for (let i = 1; i <= platformCount; i++) {
+
         const y = i * intervalMeters * scale;
+
         if (y >= height * 0.92) continue;
 
-        // Plataforma horizontal pequeña, justo delante de la escalera.
-        const center = centerBase.clone().add(radial.clone().multiplyScalar(depth * 0.55));
+        const center = centerBase.clone()
+            .add(radial.clone().multiplyScalar(depth * 0.62));
+
         center.y = y;
+
+        // PLATAFORMA
 
         const deck = new THREE.Mesh(
             new THREE.BoxGeometry(width, thickness, depth),
@@ -1046,31 +1064,133 @@ function addSimpleRestPlatforms(group, radius, height, radial, tangent, centerBa
         );
 
         deck.position.copy(center);
-        deck.rotation.y = -Math.atan2(radial.z, radial.x) + Math.PI / 2;
+
+        deck.rotation.y =
+            -Math.atan2(radial.z, radial.x) + Math.PI / 2;
+
         deck.castShadow = true;
         deck.receiveShadow = true;
+
         group.add(deck);
 
-        // Barandilla baja de plataforma. Dejo abierta la parte de la escalera para que no tape.
-        addPlatformRails(group, center, radial, tangent, width, depth, y, thickness, railHeight, railRadius, railMaterial, {
-            openBack: true,
-            openFront: false
-        });
+        // BARANDILLAS
 
-        // Pequeña puerta/hueco visual en el centro para acceder desde la escalera.
-        const gateWidth = railHalfWidth * 1.55;
-        const gateY = y + thickness + railHeight * 0.55;
+        addPlatformRails(
+            group,
+            center,
+            radial,
+            tangent,
+            width,
+            depth,
+            y,
+            thickness,
+            railHeight,
+            railRadius,
+            railMaterial,
+            {
+                openBack: true,
+                openFront: false
+            }
+        );
 
-        const leftGate = centerBase.clone().add(tangent.clone().multiplyScalar(-gateWidth));
-        leftGate.y = gateY;
-        const leftGateEnd = leftGate.clone().add(radial.clone().multiplyScalar(depth * 0.38));
 
-        const rightGate = centerBase.clone().add(tangent.clone().multiplyScalar(gateWidth));
-        rightGate.y = gateY;
-        const rightGateEnd = rightGate.clone().add(radial.clone().multiplyScalar(depth * 0.38));
+        // alterno izquierda/derecha
+        const side =
+            i % 2 === 0 ? 1 : -1;
 
-        addCylinderBetween(group, leftGate, leftGateEnd, railRadius * 0.70, railMaterial, 8);
-        addCylinderBetween(group, rightGate, rightGateEnd, railRadius * 0.70, railMaterial, 8);
+        const lateralOffset =
+            width * 0.34 * side;
+
+        const newCenter =
+            centerBase.clone()
+                .add(
+                    tangent.clone().multiplyScalar(lateralOffset)
+                );
+
+        // tramo vertical pequeño encima de la plataforma
+        const upperHeight =
+            Math.min(height - y, intervalMeters * scale);
+
+        const leftBottom =
+            newCenter.clone()
+                .add(
+                    tangent.clone().multiplyScalar(-railHalfWidth)
+                );
+
+        leftBottom.y = y + thickness;
+
+        const leftTop = leftBottom.clone();
+        leftTop.y += upperHeight;
+
+        const rightBottom =
+            newCenter.clone()
+                .add(
+                    tangent.clone().multiplyScalar(railHalfWidth)
+                );
+
+        rightBottom.y = y + thickness;
+
+        const rightTop = rightBottom.clone();
+        rightTop.y += upperHeight;
+
+        addCylinderBetween(
+            group,
+            leftBottom,
+            leftTop,
+            railRadius,
+            railMaterial,
+            10
+        );
+
+        addCylinderBetween(
+            group,
+            rightBottom,
+            rightTop,
+            railRadius,
+            railMaterial,
+            10
+        );
+
+        // peldaños
+        const rungCount = Math.max(
+            8,
+            Math.floor(upperHeight / (0.30 * scale))
+        );
+
+        for (let r = 1; r < rungCount; r++) {
+
+            const ry =
+                y + (upperHeight * r) / rungCount;
+
+            const left =
+                newCenter.clone()
+                    .add(
+                        tangent.clone().multiplyScalar(-railHalfWidth)
+                    );
+
+            left.y = ry;
+
+            const right =
+                newCenter.clone()
+                    .add(
+                        tangent.clone().multiplyScalar(railHalfWidth)
+                    );
+
+            right.y = ry;
+
+            addCylinderBetween(
+                group,
+                left,
+                right,
+                railRadius * 0.75,
+                new THREE.MeshStandardMaterial({
+                    color: 0xff8800,
+                    metalness: 0.55,
+                    roughness: 0.24
+                }),
+                8
+            );
+        }
     }
 }
 
