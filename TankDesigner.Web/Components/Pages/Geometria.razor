@@ -282,8 +282,17 @@
     {
         EstadoProyecto.Tanque.AlturaPanelBase = CalculoGeometriaService.ObtenerAlturaPanelBase(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);
 
-        if (!CalculoGeometriaService.AlturasAnillosSonValidasParaCatalogo(EstadoProyecto.Tanque, EstadoProyecto.Proyecto))
-            EstadoProyecto.Tanque.AlturasAnillos = CalculoGeometriaService.GenerarAlturasAnillosDesdeCatalogo(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);
+        bool tieneAlturasManuales =
+            EstadoProyecto.Tanque.AlturasAnillos != null &&
+            EstadoProyecto.Tanque.AlturasAnillos.Count == EstadoProyecto.Tanque.NumeroAnillos &&
+            EstadoProyecto.Tanque.AlturasAnillos.All(a => a > 0);
+
+        if (!tieneAlturasManuales &&
+            !CalculoGeometriaService.AlturasAnillosSonValidasParaCatalogo(EstadoProyecto.Tanque, EstadoProyecto.Proyecto))
+        {
+            EstadoProyecto.Tanque.AlturasAnillos =
+                CalculoGeometriaService.GenerarAlturasAnillosDesdeCatalogo(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);
+        }
 
         EstadoProyecto.Tanque.AlturaTotal = CalculoGeometriaService.ObtenerAlturaTotal(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);
         EstadoProyecto.Tanque.Diametro = CalculoGeometriaService.ObtenerDiametro(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);

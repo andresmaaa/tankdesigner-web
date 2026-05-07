@@ -71,6 +71,13 @@ namespace TankDesigner.Core.Services
             if (tanque == null || proyecto == null)
                 return 0;
 
+            if (tanque.AlturasAnillos != null &&
+                tanque.AlturasAnillos.Count == tanque.NumeroAnillos &&
+                tanque.AlturasAnillos.All(a => a > 0))
+            {
+                return tanque.AlturasAnillos.Sum();
+            }
+
             var alturasCatalogo = GenerarAlturasAnillosDesdeCatalogo(tanque, proyecto);
 
             if (alturasCatalogo.Count > 0)
