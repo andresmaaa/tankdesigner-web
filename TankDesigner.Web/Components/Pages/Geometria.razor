@@ -97,6 +97,12 @@
                             </select>
                             <small>Configuración auxiliar del anillo asociada al tanque.</small>
                         </div>
+
+                        <div class="field field--wide">
+                            <label>Alturas reales por anillo (mm)</label>
+                            <textarea class="td-input" rows="3" value="@ObtenerAlturasTexto()" @onchange="OnAlturasAnillosChange" placeholder="Ej: 300, 1400, 1400, 1400, 1400, 700, 700, 700, 700, 400"></textarea>
+                            <small>Introduce las alturas desde arriba hacia abajo. Si lo dejas vacío, se genera automáticamente desde el catálogo.</small>
+                        </div>
                     </div>
                 </article>
 
@@ -205,6 +211,44 @@
     private void OnDensidadLiquidoInput(ChangeEventArgs e) { EstadoProyecto.Tanque.DensidadLiquido = ParseDoubleOrZero(e.Value?.ToString()); if (EstadoProyecto.Tanque.DensidadLiquido > 0) EstadoProyecto.Cargas.DensidadLiquido = EstadoProyecto.Tanque.DensidadLiquido; RecalcularYValidar(); }
     private void OnTipoTechoChange(ChangeEventArgs e) { EstadoProyecto.Instalacion.TipoTecho = e.Value?.ToString() ?? "Sin techo"; if (string.IsNullOrWhiteSpace(EstadoProyecto.Instalacion.TipoTecho) || EstadoProyecto.Instalacion.TipoTecho.Equals("Sin techo", StringComparison.OrdinalIgnoreCase)) { EstadoProyecto.Cargas.RoofType = "None"; EstadoProyecto.Cargas.RoofDeadLoad = 0; EstadoProyecto.Cargas.RoofSnowLoad = 0; EstadoProyecto.Cargas.RoofLiveLoad = 0; EstadoProyecto.Cargas.RoofCentroid = 0; EstadoProyecto.Cargas.RoofProjectedArea = 0; EstadoProyecto.Cargas.RoofAngle = "0°"; } else { EstadoProyecto.Cargas.RoofType = EstadoProyecto.Instalacion.TipoTecho; } RecalcularYValidar(); }
     private void OnTipoMedioAnilloChange(ChangeEventArgs e) { EstadoProyecto.Instalacion.TipoMedioAnillo = e.Value?.ToString() ?? "Anillo entero"; RecalcularYValidar(); }
+
+    private void OnAlturasAnillosChange(ChangeEventArgs e)
+    {
+        string texto = e.Value?.ToString() ?? string.Empty;
+        var alturas = ParseListaAlturas(texto);
+
+        EstadoProyecto.Tanque.AlturasAnillos = alturas;
+
+        if (alturas.Count > 0)
+            EstadoProyecto.Tanque.NumeroAnillos = alturas.Count;
+
+        if (EstadoProyecto.Tanque.AnilloArranque > EstadoProyecto.Tanque.NumeroAnillos)
+            EstadoProyecto.Tanque.AnilloArranque = EstadoProyecto.Tanque.NumeroAnillos;
+
+        RecalcularYValidar();
+    }
+
+    private List<double> ParseListaAlturas(string texto)
+    {
+        if (string.IsNullOrWhiteSpace(texto))
+            return new List<double>();
+
+        return texto
+            .Replace(";", ",")
+            .Replace("\n", ",")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(ParseDoubleOrZero)
+            .Where(x => x > 0)
+            .ToList();
+    }
+
+    private string ObtenerAlturasTexto()
+    {
+        if (EstadoProyecto.Tanque.AlturasAnillos == null || EstadoProyecto.Tanque.AlturasAnillos.Count == 0)
+            return string.Empty;
+
+        return string.Join(", ", EstadoProyecto.Tanque.AlturasAnillos.Select(FormatearNumero));
+    }
 
     private string GenerarModeloAutomatico()
     {

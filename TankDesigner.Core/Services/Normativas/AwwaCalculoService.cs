@@ -63,6 +63,20 @@ namespace TankDesigner.Core.Services.Normativas
 
                 Modelo = input.Modelo,
 
+                // IMPORTANTE: AWWA trabaja con alturas, materiales y configuraciones reales por anillo.
+                // Antes no se copiaban estas listas al input AWWA y el motor acababa usando
+                // anillos uniformes, por eso informes como Permastore 176.32.5SP salían mal.
+                AlturasAnillos = input.AlturasAnillos != null ? new List<double>(input.AlturasAnillos) : new List<double>(),
+                MaterialesAnillos = input.MaterialesAnillos != null ? new List<string>(input.MaterialesAnillos) : new List<string>(),
+                ConfiguracionesAnillos = input.ConfiguracionesAnillos != null ? new List<string>(input.ConfiguracionesAnillos) : new List<string>(),
+                Anillos = input.Anillos != null ? input.Anillos.Select(a => new AnilloCalculoModel
+                {
+                    NumeroAnillo = a.NumeroAnillo,
+                    AlturaMm = a.AlturaMm,
+                    Material = a.Material,
+                    Configuracion = a.Configuracion
+                }).ToList() : new List<AnilloCalculoModel>(),
+
                 NormativaAplicadaCargas = input.NormativaAplicadaCargas,
 
                 VelocidadViento = input.VelocidadViento,

@@ -66,22 +66,27 @@ namespace TankDesigner.Core.Services
             double diametroMm = input.Diametro;
             double diametroM = diametroMm / 1000.0;
             double radioMm = diametroMm / 2.0;
-            double cotaInferiorAcumulada = 0;
+
+            // El proyecto WPF/base numera los anillos de arriba hacia abajo.
+            // La profundidad de agua no es alturaTotal - centro del anillo, sino la cota acumulada
+            // desde la coronación menos el freeboard. Así Ring 1 puede tener Head = 0 si queda
+            // por encima del nivel de agua, igual que en los informes Permastore.
+            double cotaSuperiorDesdeCoronacionMm = 0;
+            double profundidadAguaAcumuladaMm = -Math.Max(0, input.BordeLibre);
 
             for (int i = 0; i < input.NumeroAnillos; i++)
             {
                 double alturaAnilloMm = ObtenerAlturaAnillo(input, i, alturasAnillos);
-                double alturaInferiorMm = cotaInferiorAcumulada;
+                double alturaInferiorMm = cotaSuperiorDesdeCoronacionMm;
                 double alturaSuperiorMm = alturaInferiorMm + alturaAnilloMm;
                 double alturaCentroMm = (alturaInferiorMm + alturaSuperiorMm) / 2.0;
-                cotaInferiorAcumulada = alturaSuperiorMm;
+                cotaSuperiorDesdeCoronacionMm = alturaSuperiorMm;
 
-                double alturaLiquidoSobreCentroMm = alturaTotalMm - alturaCentroMm;
-                if (alturaLiquidoSobreCentroMm < 0)
-                    alturaLiquidoSobreCentroMm = 0;
+                profundidadAguaAcumuladaMm += alturaAnilloMm;
+                double alturaLiquidoSobreAnilloMm = Math.Max(0, profundidadAguaAcumuladaMm);
 
-                double headM = alturaLiquidoSobreCentroMm / 1000.0;
-                double presionKPa = _formulaPresionService.CalcularPresionEnAltura(input.DensidadLiquido, alturaLiquidoSobreCentroMm);
+                double headM = alturaLiquidoSobreAnilloMm / 1000.0;
+                double presionKPa = _formulaPresionService.CalcularPresionEnAltura(input.DensidadLiquido, alturaLiquidoSobreAnilloMm);
 
                 string materialAnillo = ObtenerMaterialAnillo(input, i);
                 string materialPreferido = materialAnillo;
@@ -290,8 +295,8 @@ namespace TankDesigner.Core.Services
                             fu,
                             configuracion.Nombre ?? "—",
                             string.IsNullOrWhiteSpace(plancha.Material) ? input.MaterialPrincipal : plancha.Material);
-                            ultimoResultadoConfiguracion = resultadoAnillo;
-                            mejorResultado = ElegirMejorResultado(mejorResultado, resultadoAnillo);
+                        ultimoResultadoConfiguracion = resultadoAnillo;
+                        mejorResultado = ElegirMejorResultado(mejorResultado, resultadoAnillo);
 
                         // Si ya es válido, devolvemos directamente esa solución.
                         if (resultadoAnillo != null && resultadoAnillo.EsValido)
@@ -634,10 +639,13 @@ namespace TankDesigner.Core.Services
                 huboCambios = false;
                 iteraciones++;
 
-                for (int i = resultados.Count - 2; i >= 0; i--)
+                // La lista de anillos va de arriba hacia abajo.
+                // Por tanto, cada anillo inferior (i) debe ser al menos tan resistente
+                // como el anillo superior inmediato (i - 1).
+                for (int i = 1; i < resultados.Count; i++)
                 {
+                    ResultadoAnilloModel anilloSuperior = resultados[i - 1];
                     ResultadoAnilloModel anilloInferior = resultados[i];
-                    ResultadoAnilloModel anilloSuperior = resultados[i + 1];
 
                     if (anilloInferior == null || anilloSuperior == null)
                         continue;
@@ -735,13 +743,14 @@ namespace TankDesigner.Core.Services
             double alturaSuperiorMm = alturaInferiorMm + alturaAnilloMm;
             double alturaCentroMm = (alturaInferiorMm + alturaSuperiorMm) / 2.0;
 
-            double alturaLiquidoSobreCentroMm = alturaTotalMm - alturaCentroMm;
-            if (alturaLiquidoSobreCentroMm < 0)
-                alturaLiquidoSobreCentroMm = 0;
+            double profundidadAguaAcumuladaMm = -Math.Max(0, input.BordeLibre);
+            for (int j = 0; j <= indiceAnillo && j < alturasAnillos.Count; j++)
+                profundidadAguaAcumuladaMm += Math.Max(0, alturasAnillos[j]);
 
-            double headM = alturaLiquidoSobreCentroMm / 1000.0;
+            double alturaLiquidoSobreAnilloMm = Math.Max(0, profundidadAguaAcumuladaMm);
+            double headM = alturaLiquidoSobreAnilloMm / 1000.0;
 
-            double presionKPa = _formulaPresionService.CalcularPresionEnAltura(input.DensidadLiquido, alturaLiquidoSobreCentroMm);
+            double presionKPa = _formulaPresionService.CalcularPresionEnAltura(input.DensidadLiquido, alturaLiquidoSobreAnilloMm);
 
             string materialAnillo = ObtenerMaterialAnillo(input, indiceAnillo);
             string configuracionPreferidaTexto = ObtenerConfiguracionAnillo(input, indiceAnillo);
