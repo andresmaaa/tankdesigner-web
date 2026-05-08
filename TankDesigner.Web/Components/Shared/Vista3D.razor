@@ -207,7 +207,10 @@
         var resultado = Resultado!;
         var escalera = DetectarEscalera();
 
-        var anillos = AnillosOrdenados().Select(a => new
+        // Three.js construye el tanque desde abajo hacia arriba.
+        // El cálculo y el informe numeran los anillos de arriba hacia abajo,
+        // por eso aquí mando primero los anillos inferiores y mantengo su número real.
+        var anillos = AnillosOrdenadosParaModelo3D().Select(a => new
         {
             numero = a.NumeroAnillo,
             alturaInferior = a.AlturaInferior,
@@ -378,9 +381,22 @@
 
     private List<ResultadoAnilloModel> AnillosOrdenados()
     {
+        // Orden lógico de informe: anillo 1 arriba y el último abajo.
         return Resultado?.Anillos?
             .OrderBy(a => a.AlturaInferior)
             .ThenBy(a => a.NumeroAnillo)
+            .ToList() ?? new List<ResultadoAnilloModel>();
+    }
+
+    private List<ResultadoAnilloModel> AnillosOrdenadosParaModelo3D()
+    {
+        // En ResultadoAnilloModel, AlturaInferior/AlturaSuperior están medidos desde la coronación.
+        // Mayor AlturaInferior = anillo más bajo.
+        // El visor 3D apila desde Y=0 hacia arriba, así que necesita empezar por abajo.
+        return Resultado?.Anillos?
+            .OrderByDescending(a => a.AlturaInferior)
+            .ThenByDescending(a => a.AlturaSuperior)
+            .ThenByDescending(a => a.NumeroAnillo)
             .ToList() ?? new List<ResultadoAnilloModel>();
     }
 

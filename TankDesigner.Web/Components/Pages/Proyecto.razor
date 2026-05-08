@@ -102,14 +102,39 @@
                         </div>
 
                         <div class="field field--full">
-                            <label>Material principal</label>
-                            <select class="td-input td-select" value="@EstadoProyecto.Proyecto.MaterialPrincipal" @onchange="OnMaterialChange">
-                                @foreach (var item in _materiales)
+                            <label style="display:flex;align-items:center;gap:10px;">
+                                <input type="checkbox"
+                                       checked="@_tanqueHibrido"
+                                       @onchange="OnTanqueHibridoChanged" />
+
+                                <span>Tanque híbrido</span>
+                            </label>
+
+                            <small>
+                                Activa configuraciones híbridas acero + recubrimiento.
+                            </small>
+                        </div>
+
+                        <div class="field field--full">
+                            <label>
+                                @(_tanqueHibrido ? "Configuración híbrida" : "Material principal")
+                            </label>
+
+                            <select class="td-input td-select"
+                                    value="@EstadoProyecto.Proyecto.MaterialPrincipal"
+                                    @onchange="OnMaterialChange">
+
+                                @foreach (var item in ObtenerMaterialesVisibles())
                                 {
                                     <option value="@item">@item</option>
                                 }
                             </select>
-                            <small>Material base general del tanque. El acero real de cada anillo se calcula desde los JSON.</small>
+
+                            <small>
+                                @(_tanqueHibrido
+                                                                ? "Configuraciones híbridas disponibles para el tanque."
+                                                                : "Material base general del tanque. El acero real de cada anillo se calcula desde los JSON.")
+                            </small>
                         </div>
                     </div>
                 </article>
@@ -162,6 +187,7 @@
     private List<string> _normativas = new();
     private List<string> _fabricantes = new();
     private List<string> _materiales = new();
+    private bool _tanqueHibrido;
     private List<string> _errores = new();
 
     protected override void OnInitialized()
@@ -199,6 +225,35 @@
         ValidarProyecto();
     }
 
+    private IEnumerable<string> ObtenerMaterialesVisibles()
+    {
+        if (_tanqueHibrido)
+        {
+            return new List<string>
+        {
+            "Epoxi + inoxidable",
+            "Vidrio + inoxidable"
+        };
+        }
+
+        return _materiales;
+    }
+
+    private void OnTanqueHibridoChanged(ChangeEventArgs e)
+    {
+        _tanqueHibrido = e?.Value as bool? ?? false;
+
+        if (_tanqueHibrido)
+        {
+            EstadoProyecto.Proyecto.MaterialPrincipal = "Epoxi + inoxidable";
+        }
+        else
+        {
+            EstadoProyecto.Proyecto.MaterialPrincipal = _materiales.FirstOrDefault() ?? "AISI 304";
+        }
+
+        StateHasChanged();
+    }
     private void OnNombreProyectoInput(ChangeEventArgs e)
     {
         EstadoProyecto.Proyecto.NombreProyecto = e.Value?.ToString() ?? string.Empty;

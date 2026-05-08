@@ -1585,20 +1585,22 @@ namespace TankDesigner.Core.Services
         }
 
         // Construye las filas de datos para la tabla axial.
-        // Decide si usar valores base, de viento o sísmicos según el factor recibido.
+        // Las tablas axiales se muestran de menor a mayor carga axial,
+        // igual que la lectura técnica esperada en los informes Permastore.
         private List<TensionAxialRow> GenerarTablaAxial(int numeroAnillos, double factor)
         {
             var lista = new List<TensionAxialRow>();
 
             if (_resultado?.Anillos != null && _resultado.Anillos.Count > 0)
             {
-                var anillosOrdenados = ObtenerAnillosOrdenInformeAscendente();
+                bool esViento = Math.Abs(factor - 1.18) < 0.01;
+                bool esSismo = Math.Abs(factor - 1.42) < 0.01;
+
+                var anillosOrdenados = ObtenerAnillosOrdenAxialAscendente(esViento, esSismo);
 
                 for (int i = 0; i < anillosOrdenados.Count; i++)
                 {
                     var anillo = anillosOrdenados[i];
-                    bool esViento = Math.Abs(factor - 1.18) < 0.01;
-                    bool esSismo = Math.Abs(factor - 1.42) < 0.01;
 
                     lista.Add(new TensionAxialRow
                     {
@@ -1632,6 +1634,33 @@ namespace TankDesigner.Core.Services
             }
 
             return lista;
+        }
+
+        private List<ResultadoAnilloModel> ObtenerAnillosOrdenAxialAscendente(bool esViento, bool esSismo)
+        {
+            if (_resultado?.Anillos == null || _resultado.Anillos.Count == 0)
+                return new List<ResultadoAnilloModel>();
+
+            return _resultado.Anillos
+                .Where(a => a != null)
+                .OrderBy(a => ObtenerCargaAxialOrden(a, esViento, esSismo) > 0 ? ObtenerCargaAxialOrden(a, esViento, esSismo) : double.MaxValue)
+                .ThenBy(a => a.AlturaInferior)
+                .ThenBy(a => a.NumeroAnillo)
+                .ToList();
+        }
+
+        private static double ObtenerCargaAxialOrden(ResultadoAnilloModel anillo, bool esViento, bool esSismo)
+        {
+            if (anillo == null)
+                return 0;
+
+            if (esSismo)
+                return anillo.SeismicAxialLoad;
+
+            if (esViento)
+                return anillo.WindAxialLoad;
+
+            return anillo.AxialLoad;
         }
 
         // Devuelve el valor formateado según el caso que se esté pintando en la tabla axial:

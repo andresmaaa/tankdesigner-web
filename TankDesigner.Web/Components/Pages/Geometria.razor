@@ -88,14 +88,14 @@
                         </div>
 
                         <div class="field">
-                            <label>Tipo anillo</label>
+                            <label>Tipo anillo superior</label>
                             <select class="td-input td-select" value="@EstadoProyecto.Instalacion.TipoMedioAnillo" @onchange="OnTipoMedioAnilloChange">
                                 @foreach (var item in _tiposMedioAnillo)
                                 {
                                     <option value="@item">@item</option>
                                 }
                             </select>
-                            <small>Configuración auxiliar del anillo asociada al tanque.</small>
+                            <small>Configuración estructural aplicada únicamente al anillo superior del tanque.</small>
                         </div>
 
                         <div class="field field--wide">

@@ -92,9 +92,9 @@
                         </div>
 
                         <div class="field">
-                            <label>Horas trabajo día</label>
+                            <label>Horas trabajo día (h/día)</label>
                             <InputNumber class="td-input" @bind-Value="EstadoProyecto.Instalacion.HorasTrabajoDia" />
-                            <small>Jornada prevista de trabajo diario.</small>
+                            <small>Jornada prevista de trabajo diario en horas por día.</small>
                         </div>
 
                         <div class="field">
@@ -127,9 +127,9 @@
                         </div>
 
                         <div class="field field--full">
-                            <label>Distancia alojamiento - obra</label>
+                            <label>Distancia alojamiento - obra (h)</label>
                             <InputNumber class="td-input" @bind-Value="EstadoProyecto.Instalacion.DistanciaAlojamientoObra" />
-                            <small>Distancia logística estimada entre alojamiento y obra.</small>
+                            <small>Tiempo estimado de desplazamiento entre alojamiento y obra, expresado en horas.</small>
                         </div>
                     </div>
                 </article>
@@ -165,13 +165,18 @@
                         </div>
 
                         <div class="summary-row">
-                            <span class="summary-row__label">Horas día</span>
+                            <span class="summary-row__label">Horas día (h/día)</span>
                             <span class="summary-row__value">@EstadoProyecto.Instalacion.HorasTrabajoDia</span>
                         </div>
 
                         <div class="summary-row">
                             <span class="summary-row__label">Días lluvia (%)</span>
                             <span class="summary-row__value">@EstadoProyecto.Instalacion.DiasLluviaPorcentaje</span>
+                        </div>
+
+                        <div class="summary-row">
+                            <span class="summary-row__label">Alojamiento - obra (h)</span>
+                            <span class="summary-row__value">@EstadoProyecto.Instalacion.DistanciaAlojamientoObra</span>
                         </div>
                     </div>
                 </article>
