@@ -165,9 +165,9 @@ namespace TankDesigner.Web.Services
                 .Select(x => x.Trim())
                 .ToList();
 
-            tanque.AlturasAnillos = tanque.AlturasAnillos
-                .Where(x => x > 0)
-                .ToList();
+            // Las alturas se generan desde catálogo en el Core.
+            // Evito usar valores manuales o antiguos guardados en base de datos.
+            tanque.AlturasAnillos = new List<double>();
         }
 
         private static void NormalizarCargas(

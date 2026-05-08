@@ -177,21 +177,11 @@ namespace TankDesigner.Web.Services
             if (estado.Tanque.AlturaPanelBase <= 0)
                 estado.Tanque.AlturaPanelBase = 1200;
 
-            estado.Tanque.AlturasAnillos ??= new List<double>();
+            // Las alturas por anillo no se recuperan desde entradas manuales ni desde resultados antiguos.
+            // Se regeneran siempre desde los JSON del fabricante en CalculoGeometriaService.
+            estado.Tanque.AlturasAnillos = new List<double>();
             estado.Tanque.MaterialesAnillos ??= new List<string>();
             estado.Tanque.ConfiguracionesAnillos ??= new List<string>();
-
-            if (estado.Tanque.AlturasAnillos.Count == 0 && estado.Resultado.Anillos != null && estado.Resultado.Anillos.Count > 0)
-            {
-                estado.Tanque.AlturasAnillos = estado.Resultado.Anillos
-                    .OrderBy(x => x.NumeroAnillo)
-                    .Select(x =>
-                    {
-                        double altura = x.AlturaSuperior - x.AlturaInferior;
-                        return altura > 0 ? altura : estado.Tanque.AlturaPanelBase;
-                    })
-                    .ToList();
-            }
 
             if (estado.Tanque.MaterialesAnillos.Count == 0 && estado.Resultado.Anillos != null && estado.Resultado.Anillos.Count > 0)
             {
@@ -213,17 +203,11 @@ namespace TankDesigner.Web.Services
                 ? estado.Proyecto.MaterialPrincipal.Trim()
                 : "S235";
 
-            while (estado.Tanque.AlturasAnillos.Count < estado.Tanque.NumeroAnillos)
-                estado.Tanque.AlturasAnillos.Add(estado.Tanque.AlturaPanelBase > 0 ? estado.Tanque.AlturaPanelBase : 1200);
-
             while (estado.Tanque.MaterialesAnillos.Count < estado.Tanque.NumeroAnillos)
                 estado.Tanque.MaterialesAnillos.Add(materialDefault);
 
             while (estado.Tanque.ConfiguracionesAnillos.Count < estado.Tanque.NumeroAnillos)
                 estado.Tanque.ConfiguracionesAnillos.Add(string.Empty);
-
-            if (estado.Tanque.AlturasAnillos.Count > estado.Tanque.NumeroAnillos)
-                estado.Tanque.AlturasAnillos = estado.Tanque.AlturasAnillos.Take(estado.Tanque.NumeroAnillos).ToList();
 
             if (estado.Tanque.MaterialesAnillos.Count > estado.Tanque.NumeroAnillos)
                 estado.Tanque.MaterialesAnillos = estado.Tanque.MaterialesAnillos.Take(estado.Tanque.NumeroAnillos).ToList();
@@ -233,9 +217,6 @@ namespace TankDesigner.Web.Services
 
             for (int i = 0; i < estado.Tanque.NumeroAnillos; i++)
             {
-                if (estado.Tanque.AlturasAnillos[i] <= 0)
-                    estado.Tanque.AlturasAnillos[i] = estado.Tanque.AlturaPanelBase > 0 ? estado.Tanque.AlturaPanelBase : 1200;
-
                 if (string.IsNullOrWhiteSpace(estado.Tanque.MaterialesAnillos[i]))
                     estado.Tanque.MaterialesAnillos[i] = materialDefault;
             }

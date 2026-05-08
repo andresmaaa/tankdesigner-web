@@ -120,10 +120,7 @@ namespace TankDesigner.Core.Services
         {
             var lista = new List<double>();
 
-            if (tanque != null && calculoGeometriaService.AlturasAnillosSonValidasParaCatalogo(tanque, proyecto))
-                lista.AddRange(tanque.AlturasAnillos.Where(a => a > 0));
-
-            if (lista.Count == 0 && tanque != null)
+            if (tanque != null)
                 lista.AddRange(calculoGeometriaService.GenerarAlturasAnillosDesdeCatalogo(tanque, proyecto));
 
             while (lista.Count < Math.Max(0, tanque?.NumeroAnillos ?? 0))

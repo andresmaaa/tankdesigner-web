@@ -99,9 +99,11 @@
                         </div>
 
                         <div class="field field--wide">
-                            <label>Alturas reales por anillo (mm)</label>
-                            <textarea class="td-input" rows="3" value="@ObtenerAlturasTexto()" @onchange="OnAlturasAnillosChange" placeholder="Ej: 300, 1400, 1400, 1400, 1400, 700, 700, 700, 700, 400"></textarea>
-                            <small>Introduce las alturas desde arriba hacia abajo. Si lo dejas vacío, se genera automáticamente desde el catálogo.</small>
+                            <label>Alturas de anillos</label>
+                            <div class="td-input" style="min-height:72px;display:flex;align-items:center;line-height:1.45;background:#f8fafc;">
+                                @ObtenerResumenAlturasAutomaticas()
+                            </div>
+                            <small>Se calculan automáticamente desde los JSON del fabricante. No se introducen manualmente.</small>
                         </div>
                     </div>
                 </article>
@@ -212,42 +214,14 @@
     private void OnTipoTechoChange(ChangeEventArgs e) { EstadoProyecto.Instalacion.TipoTecho = e.Value?.ToString() ?? "Sin techo"; if (string.IsNullOrWhiteSpace(EstadoProyecto.Instalacion.TipoTecho) || EstadoProyecto.Instalacion.TipoTecho.Equals("Sin techo", StringComparison.OrdinalIgnoreCase)) { EstadoProyecto.Cargas.RoofType = "None"; EstadoProyecto.Cargas.RoofDeadLoad = 0; EstadoProyecto.Cargas.RoofSnowLoad = 0; EstadoProyecto.Cargas.RoofLiveLoad = 0; EstadoProyecto.Cargas.RoofCentroid = 0; EstadoProyecto.Cargas.RoofProjectedArea = 0; EstadoProyecto.Cargas.RoofAngle = "0°"; } else { EstadoProyecto.Cargas.RoofType = EstadoProyecto.Instalacion.TipoTecho; } RecalcularYValidar(); }
     private void OnTipoMedioAnilloChange(ChangeEventArgs e) { EstadoProyecto.Instalacion.TipoMedioAnillo = e.Value?.ToString() ?? "Anillo entero"; RecalcularYValidar(); }
 
-    private void OnAlturasAnillosChange(ChangeEventArgs e)
+    private string ObtenerResumenAlturasAutomaticas()
     {
-        string texto = e.Value?.ToString() ?? string.Empty;
-        var alturas = ParseListaAlturas(texto);
+        var alturas = CalculoGeometriaService.GenerarAlturasAnillosDesdeCatalogo(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);
 
-        EstadoProyecto.Tanque.AlturasAnillos = alturas;
+        if (alturas.Count == 0)
+            return "Pendiente de catálogo válido";
 
-        if (alturas.Count > 0)
-            EstadoProyecto.Tanque.NumeroAnillos = alturas.Count;
-
-        if (EstadoProyecto.Tanque.AnilloArranque > EstadoProyecto.Tanque.NumeroAnillos)
-            EstadoProyecto.Tanque.AnilloArranque = EstadoProyecto.Tanque.NumeroAnillos;
-
-        RecalcularYValidar();
-    }
-
-    private List<double> ParseListaAlturas(string texto)
-    {
-        if (string.IsNullOrWhiteSpace(texto))
-            return new List<double>();
-
-        return texto
-            .Replace(";", ",")
-            .Replace("\n", ",")
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(ParseDoubleOrZero)
-            .Where(x => x > 0)
-            .ToList();
-    }
-
-    private string ObtenerAlturasTexto()
-    {
-        if (EstadoProyecto.Tanque.AlturasAnillos == null || EstadoProyecto.Tanque.AlturasAnillos.Count == 0)
-            return string.Empty;
-
-        return string.Join(", ", EstadoProyecto.Tanque.AlturasAnillos.Select(FormatearNumero));
+        return string.Join(", ", alturas.Select(FormatearNumero));
     }
 
     private string GenerarModeloAutomatico()
@@ -282,17 +256,8 @@
     {
         EstadoProyecto.Tanque.AlturaPanelBase = CalculoGeometriaService.ObtenerAlturaPanelBase(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);
 
-        bool tieneAlturasManuales =
-            EstadoProyecto.Tanque.AlturasAnillos != null &&
-            EstadoProyecto.Tanque.AlturasAnillos.Count == EstadoProyecto.Tanque.NumeroAnillos &&
-            EstadoProyecto.Tanque.AlturasAnillos.All(a => a > 0);
-
-        if (!tieneAlturasManuales &&
-            !CalculoGeometriaService.AlturasAnillosSonValidasParaCatalogo(EstadoProyecto.Tanque, EstadoProyecto.Proyecto))
-        {
-            EstadoProyecto.Tanque.AlturasAnillos =
-                CalculoGeometriaService.GenerarAlturasAnillosDesdeCatalogo(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);
-        }
+        EstadoProyecto.Tanque.AlturasAnillos =
+            CalculoGeometriaService.GenerarAlturasAnillosDesdeCatalogo(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);
 
         EstadoProyecto.Tanque.AlturaTotal = CalculoGeometriaService.ObtenerAlturaTotal(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);
         EstadoProyecto.Tanque.Diametro = CalculoGeometriaService.ObtenerDiametro(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);

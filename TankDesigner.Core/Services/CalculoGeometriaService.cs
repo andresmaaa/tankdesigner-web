@@ -71,13 +71,6 @@ namespace TankDesigner.Core.Services
             if (tanque == null || proyecto == null)
                 return 0;
 
-            if (tanque.AlturasAnillos != null &&
-                tanque.AlturasAnillos.Count == tanque.NumeroAnillos &&
-                tanque.AlturasAnillos.All(a => a > 0))
-            {
-                return tanque.AlturasAnillos.Sum();
-            }
-
             var alturasCatalogo = GenerarAlturasAnillosDesdeCatalogo(tanque, proyecto);
 
             if (alturasCatalogo.Count > 0)
@@ -111,71 +104,38 @@ namespace TankDesigner.Core.Services
             if (tanque == null || proyecto == null || tanque.NumeroAnillos <= 0)
                 return resultado;
 
-            var planchas = ObtenerPlanchasValidas(proyecto);
-            if (planchas.Count == 0)
-                return resultado;
-
             double alturaPanelBase = ObtenerAlturaPanelBase(tanque, proyecto);
             if (alturaPanelBase <= 0)
                 return resultado;
 
-            double alturaObjetivo = tanque.AlturaTotal > 0 ? tanque.AlturaTotal : 0;
+            resultado.AddRange(Enumerable.Repeat(alturaPanelBase, tanque.NumeroAnillos));
 
-            if (alturaObjetivo <= 0)
+            double alturaStarterRing = ObtenerAlturaStarterRingDesdeCatalogo(proyecto);
+            if (alturaStarterRing > 0 && tanque.AnilloArranque > 0 && tanque.AnilloArranque <= resultado.Count)
             {
-                resultado.AddRange(Enumerable.Repeat(alturaPanelBase, tanque.NumeroAnillos));
-                return resultado;
+                resultado[tanque.AnilloArranque - 1] = alturaStarterRing;
             }
 
-            double alturaCompleta = alturaPanelBase * tanque.NumeroAnillos;
+            return resultado.Select(a => Math.Round(a, 3)).ToList();
+        }
 
-            if (Math.Abs(alturaObjetivo - alturaCompleta) < 0.001)
+        private double ObtenerAlturaStarterRingDesdeCatalogo(ProyectoGeneralModel proyecto)
+        {
+            try
             {
-                resultado.AddRange(Enumerable.Repeat(alturaPanelBase, tanque.NumeroAnillos));
-                return resultado;
+                var catalogo = new JsonCatalogService();
+                var starterRings = catalogo.CargarStarterRings(proyecto.Fabricante);
+
+                return starterRings
+                    .Where(sr => sr != null && sr.Altura > 0)
+                    .OrderBy(sr => sr.Altura)
+                    .Select(sr => sr.Altura)
+                    .FirstOrDefault();
             }
-
-            var alturasParcialesCatalogo = planchas
-                .Select(p => p.Altura)
-                .Where(a => a > 0 && a < alturaPanelBase)
-                .Distinct()
-                .OrderByDescending(a => a)
-                .ToList();
-
-            if (tanque.NumeroAnillos >= 2 && alturasParcialesCatalogo.Count > 0)
+            catch
             {
-                foreach (double alturaInferior in alturasParcialesCatalogo)
-                {
-                    double alturaSuperior = alturaObjetivo - alturaInferior - ((tanque.NumeroAnillos - 2) * alturaPanelBase);
-
-                    if (alturaSuperior > 0 && alturaSuperior <= alturaPanelBase)
-                    {
-                        resultado.Add(alturaInferior);
-
-                        for (int i = 0; i < tanque.NumeroAnillos - 2; i++)
-                            resultado.Add(alturaPanelBase);
-
-                        resultado.Add(Math.Round(alturaSuperior, 3));
-                        return resultado;
-                    }
-                }
+                return 0;
             }
-
-            double restante = alturaObjetivo;
-
-            for (int i = 0; i < tanque.NumeroAnillos; i++)
-            {
-                int anillosRestantes = tanque.NumeroAnillos - i - 1;
-                double alturaActual = Math.Min(alturaPanelBase, restante - (anillosRestantes * alturaPanelBase));
-
-                if (alturaActual <= 0 || alturaActual > alturaPanelBase)
-                    alturaActual = alturaPanelBase;
-
-                resultado.Add(Math.Round(alturaActual, 3));
-                restante -= alturaActual;
-            }
-
-            return resultado;
         }
 
         public bool AlturasAnillosSonValidasParaCatalogo(TankModel tanque, ProyectoGeneralModel proyecto)
@@ -183,22 +143,8 @@ namespace TankDesigner.Core.Services
             if (tanque == null || proyecto == null)
                 return false;
 
-            if (tanque.AlturasAnillos == null || tanque.AlturasAnillos.Count != tanque.NumeroAnillos)
-                return false;
-
-            if (tanque.AlturasAnillos.Any(a => a <= 0))
-                return false;
-
-            double alturaPanelBaseCatalogo = ObtenerAlturaPanelBase(tanque, proyecto);
-
-            if (!NormalizarFabricante(proyecto.Fabricante).Equals("BALMORAL", StringComparison.OrdinalIgnoreCase)
-                && tanque.AlturasAnillos.All(a => Math.Abs(a - 1200.0) < 0.001)
-                && Math.Abs(alturaPanelBaseCatalogo - 1200.0) > 0.001)
-            {
-                return false;
-            }
-
-            return true;
+            var alturasCatalogo = GenerarAlturasAnillosDesdeCatalogo(tanque, proyecto);
+            return alturasCatalogo.Count == tanque.NumeroAnillos && alturasCatalogo.All(a => a > 0);
         }
 
         private static string NormalizarFabricante(string? fabricante)
