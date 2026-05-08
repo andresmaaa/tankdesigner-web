@@ -563,8 +563,6 @@ namespace TankDesigner.Core.Services
             return _resultado.Anillos
                 .Where(a => a != null)
                 .OrderBy(a => a.Head > 0 ? a.Head : double.MaxValue)
-                .ThenByDescending(a => a.AlturaSuperior)
-                .ThenBy(a => a.AlturaInferior)
                 .ThenBy(a => a.NumeroAnillo)
                 .ToList();
         }
@@ -1678,11 +1676,17 @@ namespace TankDesigner.Core.Services
 
             if (_resultado?.Anillos != null && _resultado.Anillos.Count > 0)
             {
-                var anillosOrdenados = ObtenerAnillosOrdenInformeAscendente();
+                var anillosOrdenados = _resultado.Anillos
+                    .Where(a => a != null)
+                    .OrderBy(a => a.CombinedTotalHoopLoad > 0 ? a.CombinedTotalHoopLoad : double.MaxValue)
+                    .ThenBy(a => a.Head > 0 ? a.Head : double.MaxValue)
+                    .ThenBy(a => a.NumeroAnillo)
+                    .ToList();
 
                 for (int i = 0; i < anillosOrdenados.Count; i++)
                 {
                     var anillo = anillosOrdenados[i];
+
                     lista.Add(new TensionHidrodinamicaRow
                     {
                         Anillo = i + 1,
