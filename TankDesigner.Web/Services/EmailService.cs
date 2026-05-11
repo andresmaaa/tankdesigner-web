@@ -1,68 +1,91 @@
-﻿using System.Net.Http.Headers;
+﻿using System.Net;
+using System.Net.Mail;
 using System.Text;
-using System.Text.Json;
 
 namespace TankDesigner.Web.Services
 {
     public class EmailService
     {
         private readonly IConfiguration _configuration;
-        private readonly HttpClient _httpClient;
         private readonly ILogger<EmailService> _logger;
 
         public EmailService(
             IConfiguration configuration,
-            HttpClient httpClient,
             ILogger<EmailService> logger)
         {
             _configuration = configuration;
-            _httpClient = httpClient;
             _logger = logger;
         }
 
         public async Task EnviarEmailAsync(string destino, string asunto, string cuerpoHtml)
         {
-            var provider = _configuration["Email:Provider"];
+            if (string.IsNullOrWhiteSpace(destino))
+                throw new ArgumentException("El email de destino no puede estar vacío.", nameof(destino));
 
-            if (!string.Equals(provider, "Resend", StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException("Proveedor de email no configurado. Usa Email__Provider=Resend.");
+            string smtpHost = ObtenerConfig("EmailSettings:SmtpHost");
+            int smtpPort = ObtenerIntConfig("EmailSettings:SmtpPort", 587);
+            string smtpUser = ObtenerConfig("EmailSettings:SmtpUser");
+            string smtpPassword = ObtenerConfig("EmailSettings:SmtpPassword");
+            string fromEmail = ObtenerConfig("EmailSettings:FromEmail");
+            string fromName = ObtenerConfig("EmailSettings:FromName", "Tank Structural Designer");
+            bool enableSsl = ObtenerBoolConfig("EmailSettings:EnableSsl", true);
 
-            var apiKey = _configuration["Email:ApiKey"];
-            var fromEmail = _configuration["Email:FromEmail"];
-            var fromName = _configuration["Email:FromName"] ?? "Tank Structural Designer";
+            if (string.IsNullOrWhiteSpace(smtpHost))
+                throw new InvalidOperationException("Falta EmailSettings__SmtpHost.");
 
-            if (string.IsNullOrWhiteSpace(apiKey))
-                throw new InvalidOperationException("Falta Email__ApiKey.");
+            if (string.IsNullOrWhiteSpace(smtpUser))
+                throw new InvalidOperationException("Falta EmailSettings__SmtpUser.");
+
+            if (string.IsNullOrWhiteSpace(smtpPassword))
+                throw new InvalidOperationException("Falta EmailSettings__SmtpPassword.");
 
             if (string.IsNullOrWhiteSpace(fromEmail))
-                throw new InvalidOperationException("Falta Email__FromEmail.");
+                fromEmail = smtpUser;
 
-            using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.resend.com/emails");
-
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-
-            var payload = new
+            using var message = new MailMessage
             {
-                from = $"{fromName} <{fromEmail}>",
-                to = new[] { destino },
-                subject = asunto,
-                html = cuerpoHtml
+                From = new MailAddress(fromEmail, fromName, Encoding.UTF8),
+                Subject = asunto,
+                SubjectEncoding = Encoding.UTF8,
+                Body = cuerpoHtml,
+                BodyEncoding = Encoding.UTF8,
+                IsBodyHtml = true
             };
 
-            request.Content = new StringContent(
-                JsonSerializer.Serialize(payload),
-                Encoding.UTF8,
-                "application/json"
-            );
+            message.To.Add(new MailAddress(destino));
 
-            using var response = await _httpClient.SendAsync(request);
-            var responseBody = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
+            using var smtp = new SmtpClient(smtpHost, smtpPort)
             {
-                _logger.LogError("Error Resend: {StatusCode} - {Body}", response.StatusCode, responseBody);
-                throw new Exception($"Error Resend: {responseBody}");
+                Credentials = new NetworkCredential(smtpUser, smtpPassword),
+                EnableSsl = enableSsl,
+                DeliveryMethod = SmtpDeliveryMethod.Network,
+                UseDefaultCredentials = false
+            };
+
+            try
+            {
+                await smtp.SendMailAsync(message);
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error enviando email SMTP a {Destino}", destino);
+                throw;
+            }
+        }
+
+        private string ObtenerConfig(string key, string defaultValue = "")
+        {
+            return _configuration[key]?.Trim() ?? defaultValue;
+        }
+
+        private int ObtenerIntConfig(string key, int defaultValue)
+        {
+            return int.TryParse(_configuration[key], out int value) ? value : defaultValue;
+        }
+
+        private bool ObtenerBoolConfig(string key, bool defaultValue)
+        {
+            return bool.TryParse(_configuration[key], out bool value) ? value : defaultValue;
         }
     }
 }

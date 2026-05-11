@@ -1,20 +1,23 @@
 ﻿@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Nav
 
 <CascadingAuthenticationState>
     <Router AppAssembly="typeof(Program).Assembly">
         <Found Context="routeData">
             <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
                 <NotAuthorized>
-                    <LayoutView Layout="typeof(Layout.MainLayout)">
-                        <div class="auth-page">
-                            <div class="auth-card">
-                                <div class="auth-card__header">
-                                    <h1>Acceso restringido</h1>
-                                    <p>No tienes permisos para acceder a esta página.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </LayoutView>
+                    @{
+                        var relative = Nav.ToBaseRelativePath(Nav.Uri).Trim('/').ToLowerInvariant();
+
+                        if (relative != "login" &&
+                        relative != "register" &&
+                        relative != "forgot-password" &&
+                        relative != "reset-password" &&
+                        !relative.StartsWith("invitacion"))
+                        {
+                            Nav.NavigateTo($"/login?returnUrl={Uri.EscapeDataString("/" + relative)}", forceLoad: true);
+                        }
+                    }
                 </NotAuthorized>
             </AuthorizeRouteView>
 

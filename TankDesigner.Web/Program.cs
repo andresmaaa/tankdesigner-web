@@ -18,8 +18,6 @@ using TankDesigner.Web.Services.Ai;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Servicio para env�o de emails (invitaciones, etc.)
-builder.Services.AddHttpClient<EmailService>();
 // Configuraci�n de Blazor Server (componentes interactivos)
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -171,6 +169,11 @@ builder.Services.AddHttpClient<AiEngineeringService>();
 // Licencia de QuestPDF
 QuestPDF.Settings.License = LicenseType.Community;
 
+
+builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
+{
+    options.TokenLifespan = TimeSpan.FromHours(2);
+});
 var app = builder.Build();
 
 // Railway usa puerto din�mico
