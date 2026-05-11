@@ -359,6 +359,53 @@ function buildTank(viewer, tank, rings, scale) {
     }
 
     rings.forEach((ring, index) => {
+        const height = Number(ring.altura) * scale;
+        const materialName = ring.material || tank.materialPrincipal || "material";
+        const color = colorForMaterial(materialName);
+
+        const shellGeometry = new THREE.CylinderGeometry(radius, radius, height, 96, 1, true);
+        const shellMaterial = new THREE.MeshStandardMaterial({
+            color,
+            metalness: 0.72,
+            roughness: 0.30,
+            transparent: true,
+            opacity: 0.88,
+            side: THREE.DoubleSide
+        });
+
+        const shell = new THREE.Mesh(shellGeometry, shellMaterial);
+        shell.position.y = currentY + height / 2;
+        shell.castShadow = true;
+        shell.receiveShadow = true;
+
+        shell.userData = {
+            tipo: `Anillo ${index + 1}`,
+            material: materialName,
+            altura: formatTechnicalValue(ring.altura, "m"),
+            espesor: formatTechnicalValue(ring.espesor, "mm"),
+            diametro: formatTechnicalValue(tank.diametro, "m")
+        };
+
+        viewer.group.add(shell);
+
+        const edgeGeometry = new THREE.EdgesGeometry(shellGeometry, 18);
+        const edges = new THREE.LineSegments(
+            edgeGeometry,
+            new THREE.LineBasicMaterial({
+                color: 0x0f172a,
+                transparent: true,
+                opacity: 0.22
+            })
+        );
+
+        edges.position.copy(shell.position);
+        viewer.group.add(edges);
+
+        addRingSeam(viewer.group, radius, currentY);
+        addRingSeam(viewer.group, radius, currentY + height);
+
+        currentY += height;
+    });
 
     addBottomDisc(viewer.group, radius);
 
@@ -397,6 +444,49 @@ function buildTank(viewer, tank, rings, scale) {
     viewer.modelHeight = currentY;
 }
 
+function getStarterRingHeight(tank, scale) {
+    const rawHeight =
+        Number(tank?.alturaStarterRing) ||
+        Number(tank?.starterRingHeight) ||
+        Number(tank?.resultado?.alturaStarterRing) ||
+        Number(tank?.resultado?.starterRingHeight) ||
+        0;
+
+    if (rawHeight <= 0 || !scale || scale <= 0) return 0;
+
+    return rawHeight > 50 ? rawHeight * scale / 1000 : rawHeight * scale;
+}
+
+function addStarterRing(group, radius, height, tank) {
+    const material = new THREE.MeshStandardMaterial({
+        color: 0x1e293b,
+        metalness: 0.78,
+        roughness: 0.24,
+        transparent: true,
+        opacity: 0.95,
+        side: THREE.DoubleSide
+    });
+
+    const geometry = new THREE.CylinderGeometry(radius * 1.006, radius * 1.006, height, 96, 1, true);
+
+    const starter = new THREE.Mesh(geometry, material);
+    starter.position.y = height / 2;
+    starter.castShadow = true;
+    starter.receiveShadow = true;
+
+    starter.userData = {
+        tipo: "Starter ring / anillo inferior",
+        material: tank?.materialPrincipal || "Acero",
+        altura: formatTechnicalValue(height, "u.3D"),
+        espesor: "—",
+        diametro: formatTechnicalValue(radius * 2, "u.3D")
+    };
+
+    group.add(starter);
+
+    addRingSeam(group, radius, 0);
+    addRingSeam(group, radius, height);
+}
 function formatTechnicalValue(value, suffix) {
     const n = Number(value);
     if (!Number.isFinite(n) || n <= 0) return "—";
