@@ -35,6 +35,9 @@ namespace TankDesigner.Web.Services
             instalacion ??= new InstalacionModel();
 
             NormalizarProyecto(proyecto);
+            tanque.TipoAnilloSuperior = string.IsNullOrWhiteSpace(instalacion.TipoMedioAnillo)
+                ? "Anillo entero"
+                : instalacion.TipoMedioAnillo.Trim();
             NormalizarTanque(tanque, proyecto);
             NormalizarCargas(proyecto, tanque, cargas);
             RecalcularGeometria(proyecto, tanque);
@@ -150,6 +153,9 @@ namespace TankDesigner.Web.Services
                 tanque.DensidadLiquido = 1;
 
             tanque.Modelo = (tanque.Modelo ?? string.Empty).Trim();
+            tanque.TipoAnilloSuperior = string.IsNullOrWhiteSpace(tanque.TipoAnilloSuperior)
+                ? "Anillo entero"
+                : tanque.TipoAnilloSuperior.Trim();
 
             tanque.AlturasAnillos ??= new List<double>();
             tanque.MaterialesAnillos ??= new List<string>();
@@ -208,6 +214,7 @@ namespace TankDesigner.Web.Services
         private void RecalcularGeometria(ProyectoGeneralModel proyecto, TankModel tanque)
         {
             tanque.AlturaPanelBase = _calculoGeometriaService.ObtenerAlturaPanelBase(tanque, proyecto);
+            tanque.AlturasAnillos = _calculoGeometriaService.GenerarAlturasAnillosDesdeCatalogo(tanque, proyecto);
             tanque.AlturaTotal = _calculoGeometriaService.ObtenerAlturaTotal(tanque, proyecto);
             tanque.Diametro = _calculoGeometriaService.ObtenerDiametro(tanque, proyecto);
         }

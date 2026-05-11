@@ -13,29 +13,25 @@ namespace TankDesigner.Core.Services
             _calculoGeometriaService = new CalculoGeometriaService();
         }
 
-        // Construye el input básico del cálculo usando proyecto y tanque.
         public CalculoTanqueInputModel? Construir(ProyectoGeneralModel proyecto, TankModel tanque)
         {
             if (proyecto == null || tanque == null)
                 return null;
 
-            double alturaPanelBase = tanque.AlturaPanelBase > 0
-                ? tanque.AlturaPanelBase
-                : _calculoGeometriaService.ObtenerAlturaPanelBase(tanque, proyecto);
-
-            double alturaTotal = tanque.AlturaTotal > 0
-                ? tanque.AlturaTotal
-                : _calculoGeometriaService.ObtenerAlturaTotal(tanque, proyecto);
-
-            double diametro = tanque.Diametro > 0
-                ? tanque.Diametro
-                : _calculoGeometriaService.ObtenerDiametro(tanque, proyecto);
-
+            // La geometría siempre sale del catálogo JSON activo.
+            // No doy prioridad a valores manuales antiguos guardados en base de datos.
+            double alturaPanelBase = _calculoGeometriaService.ObtenerAlturaPanelBase(tanque, proyecto);
             List<double> alturasAnillos = NormalizarAlturasAnillos(tanque, proyecto, _calculoGeometriaService, alturaPanelBase);
+            double alturaTotal = alturasAnillos.Count > 0
+                ? alturasAnillos.Sum()
+                : _calculoGeometriaService.ObtenerAlturaTotal(tanque, proyecto);
+            double diametro = _calculoGeometriaService.ObtenerDiametro(tanque, proyecto);
+
             List<string> materialesAnillos = NormalizarTextosAnillos(
                 tanque.MaterialesAnillos,
                 tanque.NumeroAnillos,
                 string.Empty);
+
             List<string> configuracionesAnillos = NormalizarTextosAnillos(
                 tanque.ConfiguracionesAnillos,
                 tanque.NumeroAnillos,
@@ -66,7 +62,6 @@ namespace TankDesigner.Core.Services
             };
         }
 
-        // Construye el input completo incluyendo las cargas.
         public CalculoTanqueInputModel? Construir(
             ProyectoGeneralModel proyecto,
             TankModel tanque,
@@ -129,7 +124,7 @@ namespace TankDesigner.Core.Services
             if ((tanque?.NumeroAnillos ?? 0) > 0 && lista.Count > tanque!.NumeroAnillos)
                 lista = lista.Take(tanque.NumeroAnillos).ToList();
 
-            return lista;
+            return lista.Select(a => Math.Round(a, 3)).ToList();
         }
 
         private static List<string> NormalizarTextosAnillos(List<string>? listaOriginal, int numeroAnillos, string fallback)

@@ -195,6 +195,7 @@
         if (EstadoProyecto.Tanque.BordeLibre <= 0) EstadoProyecto.Tanque.BordeLibre = 800;
         if (EstadoProyecto.Tanque.DensidadLiquido <= 0) EstadoProyecto.Tanque.DensidadLiquido = 1;
         if (string.IsNullOrWhiteSpace(EstadoProyecto.Instalacion.TipoMedioAnillo)) EstadoProyecto.Instalacion.TipoMedioAnillo = "Anillo entero";
+        EstadoProyecto.Tanque.TipoAnilloSuperior = EstadoProyecto.Instalacion.TipoMedioAnillo;
         if (string.IsNullOrWhiteSpace(EstadoProyecto.Instalacion.TipoTecho)) EstadoProyecto.Instalacion.TipoTecho = "Cónico";
         if (string.IsNullOrWhiteSpace(EstadoProyecto.Cargas.RoofType)) EstadoProyecto.Cargas.RoofType = EstadoProyecto.Instalacion.TipoTecho.Equals("Sin techo", StringComparison.OrdinalIgnoreCase) ? "None" : EstadoProyecto.Instalacion.TipoTecho;
     }
@@ -212,7 +213,12 @@
     private void OnBordeLibreInput(ChangeEventArgs e) { EstadoProyecto.Tanque.BordeLibre = ParseDoubleOrZero(e.Value?.ToString()); RecalcularYValidar(); }
     private void OnDensidadLiquidoInput(ChangeEventArgs e) { EstadoProyecto.Tanque.DensidadLiquido = ParseDoubleOrZero(e.Value?.ToString()); if (EstadoProyecto.Tanque.DensidadLiquido > 0) EstadoProyecto.Cargas.DensidadLiquido = EstadoProyecto.Tanque.DensidadLiquido; RecalcularYValidar(); }
     private void OnTipoTechoChange(ChangeEventArgs e) { EstadoProyecto.Instalacion.TipoTecho = e.Value?.ToString() ?? "Sin techo"; if (string.IsNullOrWhiteSpace(EstadoProyecto.Instalacion.TipoTecho) || EstadoProyecto.Instalacion.TipoTecho.Equals("Sin techo", StringComparison.OrdinalIgnoreCase)) { EstadoProyecto.Cargas.RoofType = "None"; EstadoProyecto.Cargas.RoofDeadLoad = 0; EstadoProyecto.Cargas.RoofSnowLoad = 0; EstadoProyecto.Cargas.RoofLiveLoad = 0; EstadoProyecto.Cargas.RoofCentroid = 0; EstadoProyecto.Cargas.RoofProjectedArea = 0; EstadoProyecto.Cargas.RoofAngle = "0°"; } else { EstadoProyecto.Cargas.RoofType = EstadoProyecto.Instalacion.TipoTecho; } RecalcularYValidar(); }
-    private void OnTipoMedioAnilloChange(ChangeEventArgs e) { EstadoProyecto.Instalacion.TipoMedioAnillo = e.Value?.ToString() ?? "Anillo entero"; RecalcularYValidar(); }
+    private void OnTipoMedioAnilloChange(ChangeEventArgs e)
+    {
+        EstadoProyecto.Instalacion.TipoMedioAnillo = e.Value?.ToString() ?? "Anillo entero";
+        EstadoProyecto.Tanque.TipoAnilloSuperior = EstadoProyecto.Instalacion.TipoMedioAnillo;
+        RecalcularYValidar();
+    }
 
     private string ObtenerResumenAlturasAutomaticas()
     {
@@ -254,6 +260,7 @@
 
     private void RecalcularYValidar()
     {
+        EstadoProyecto.Tanque.TipoAnilloSuperior = EstadoProyecto.Instalacion.TipoMedioAnillo;
         EstadoProyecto.Tanque.AlturaPanelBase = CalculoGeometriaService.ObtenerAlturaPanelBase(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);
 
         EstadoProyecto.Tanque.AlturasAnillos =
