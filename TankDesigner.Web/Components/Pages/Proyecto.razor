@@ -106,24 +106,17 @@
                                 <input type="checkbox"
                                        checked="@_tanqueHibrido"
                                        @onchange="OnTanqueHibridoChanged" />
-
                                 <span>Tanque híbrido</span>
                             </label>
-
-                            <small>
-                                Activa configuraciones híbridas acero + recubrimiento.
-                            </small>
+                            <small>Activa configuraciones híbridas de recubrimiento + inoxidable.</small>
                         </div>
 
                         <div class="field field--full">
-                            <label>
-                                @(_tanqueHibrido ? "Configuración híbrida" : "Material principal")
-                            </label>
+                            <label>@(_tanqueHibrido ? "Configuración híbrida" : "Material principal")</label>
 
                             <select class="td-input td-select"
                                     value="@EstadoProyecto.Proyecto.MaterialPrincipal"
                                     @onchange="OnMaterialChange">
-
                                 @foreach (var item in ObtenerMaterialesVisibles())
                                 {
                                     <option value="@item">@item</option>
@@ -132,7 +125,7 @@
 
                             <small>
                                 @(_tanqueHibrido
-                                                                ? "Configuraciones híbridas disponibles para el tanque."
+                                                                ? "Configuración híbrida del tanque: recubrimiento exterior/interior + acero inoxidable."
                                                                 : "Material base general del tanque. El acero real de cada anillo se calcula desde los JSON.")
                             </small>
                         </div>
@@ -172,7 +165,7 @@
                             <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Proyecto.Fabricante)</span>
                         </div>
                         <div class="summary-row">
-                            <span class="summary-row__label">Material</span>
+                            <span class="summary-row__label">@(_tanqueHibrido ? "Configuración híbrida" : "Material")</span>
                             <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Proyecto.MaterialPrincipal)</span>
                         </div>
                     </div>
@@ -183,6 +176,14 @@
 </div>
 
 @code {
+    private readonly List<string> _materialesHibridos = new()
+    {
+        "epoxi + aisi304",
+        "epoxi + aisi316",
+        "vidrio + aisi304",
+        "vidrio + aisi316"
+    };
+
     private List<string> _modelosCalculo = new();
     private List<string> _normativas = new();
     private List<string> _fabricantes = new();
@@ -213,10 +214,20 @@
         if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.Fabricante))
             EstadoProyecto.Proyecto.Fabricante = _fabricantes.FirstOrDefault() ?? "Permastore";
 
-        if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.MaterialPrincipal) ||
-            !_materiales.Contains(EstadoProyecto.Proyecto.MaterialPrincipal, StringComparer.OrdinalIgnoreCase))
+        _tanqueHibrido = EsMaterialHibrido(EstadoProyecto.Proyecto.MaterialPrincipal);
+
+        if (_tanqueHibrido)
         {
-            EstadoProyecto.Proyecto.MaterialPrincipal = _materiales.FirstOrDefault() ?? "Acero vitrificado";
+            if (!_materialesHibridos.Contains(EstadoProyecto.Proyecto.MaterialPrincipal, StringComparer.OrdinalIgnoreCase))
+                EstadoProyecto.Proyecto.MaterialPrincipal = _materialesHibridos.First();
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.MaterialPrincipal) ||
+                !_materiales.Contains(EstadoProyecto.Proyecto.MaterialPrincipal, StringComparer.OrdinalIgnoreCase))
+            {
+                EstadoProyecto.Proyecto.MaterialPrincipal = _materiales.FirstOrDefault() ?? "Acero vitrificado";
+            }
         }
 
         if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.IdiomaInforme))
@@ -227,33 +238,21 @@
 
     private IEnumerable<string> ObtenerMaterialesVisibles()
     {
-        if (_tanqueHibrido)
-        {
-            return new List<string>
-        {
-            "Epoxi + inoxidable",
-            "Vidrio + inoxidable"
-        };
-        }
-
-        return _materiales;
+        return _tanqueHibrido ? _materialesHibridos : _materiales;
     }
 
     private void OnTanqueHibridoChanged(ChangeEventArgs e)
     {
-        _tanqueHibrido = e?.Value as bool? ?? false;
+        _tanqueHibrido = e?.Value is bool value && value;
 
-        if (_tanqueHibrido)
-        {
-            EstadoProyecto.Proyecto.MaterialPrincipal = "Epoxi + inoxidable";
-        }
-        else
-        {
-            EstadoProyecto.Proyecto.MaterialPrincipal = _materiales.FirstOrDefault() ?? "AISI 304";
-        }
+        EstadoProyecto.Proyecto.MaterialPrincipal = _tanqueHibrido
+            ? _materialesHibridos.First()
+            : (_materiales.FirstOrDefault() ?? "Acero vitrificado");
 
+        ValidarProyecto();
         StateHasChanged();
     }
+
     private void OnNombreProyectoInput(ChangeEventArgs e)
     {
         EstadoProyecto.Proyecto.NombreProyecto = e.Value?.ToString() ?? string.Empty;
@@ -287,7 +286,19 @@
     private void OnMaterialChange(ChangeEventArgs e)
     {
         EstadoProyecto.Proyecto.MaterialPrincipal = e.Value?.ToString() ?? string.Empty;
+
+        if (_tanqueHibrido && !EsMaterialHibrido(EstadoProyecto.Proyecto.MaterialPrincipal))
+            EstadoProyecto.Proyecto.MaterialPrincipal = _materialesHibridos.First();
+
         ValidarProyecto();
+    }
+
+    private bool EsMaterialHibrido(string? material)
+    {
+        if (string.IsNullOrWhiteSpace(material))
+            return false;
+
+        return _materialesHibridos.Contains(material.Trim(), StringComparer.OrdinalIgnoreCase);
     }
 
     private void ValidarProyecto()
