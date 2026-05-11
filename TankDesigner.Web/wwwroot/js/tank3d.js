@@ -29,7 +29,7 @@ function renderTank3D(container, tank, dotNetRef) {
 
     const realDiameter = Number(tank.diametro) || 1;
     const realHeight = Number(tank.alturaTotal) || rings.reduce((s, r) => s + Number(r.altura || 0), 0);
-
+    const starterHeight = tank?.tieneStarterRing === true ? getStarterRingHeight(tank, scale) : 0;
     const maxRealSize = Math.max(realDiameter, realHeight, 1);
     const targetModelSize = 42;
     const scale = targetModelSize / maxRealSize;

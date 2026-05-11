@@ -9,8 +9,8 @@
             <h2>Modelo tridimensional del tanque</h2>
             <p>
                 Vista generada desde el resultado real del cálculo: diámetro, altura total,
-                anillos, espesores, materiales, configuración, rigidizador, techo aplicado,
-                vigas radiales y escaleras.
+                starter ring, anillos, espesores, materiales, configuración, rigidizador,
+                techo aplicado, vigas radiales y escaleras.
             </p>
         </div>
 
@@ -44,6 +44,15 @@
             <div class="tank3d-info__row">
                 <span>Anillos</span>
                 <strong>@(Resultado?.Anillos?.Count ?? 0)</strong>
+            </div>
+
+            <div class="tank3d-info__row">
+                <span>Starter ring</span>
+                <strong>
+                    @(Resultado?.TieneStarterRing == true && Resultado.AlturaStarterRing > 0
+                                        ? $"{FormatoNumero(Resultado.AlturaStarterRing)} mm"
+                                        : "No")
+                </strong>
             </div>
 
             <div class="tank3d-info__row">
@@ -96,6 +105,15 @@
 
             <div class="tank3d-legend">
                 <div class="tank3d-legend__title">Anillos calculados</div>
+
+                @if (Resultado?.TieneStarterRing == true && Resultado.AlturaStarterRing > 0)
+                {
+                    <div class="tank3d-legend__item">
+                        <span>Starter ring</span>
+                        <strong>@FormatoNumero(Resultado.AlturaStarterRing) mm · anillo inferior</strong>
+                    </div>
+                }
+
                 @foreach (var anillo in AnillosOrdenados())
                 {
                     <div class="tank3d-legend__item">
@@ -130,6 +148,7 @@
             ?? Resultado?.VigasTechoConico?.NumeroVigas
             ?? 0;
     }
+
     [JSInvokable]
     public async Task ActualizarConfiguracionTecho3D(int numeroVigas, double factorNucleo)
     {
@@ -147,6 +166,7 @@
 
         StateHasChanged();
     }
+
     private sealed class Escalera3DInfo
     {
         public string Tipo { get; set; } = "Sin escalera";
@@ -207,9 +227,6 @@
         var resultado = Resultado!;
         var escalera = DetectarEscalera();
 
-        // Three.js construye el tanque desde abajo hacia arriba.
-        // El cálculo y el informe numeran los anillos de arriba hacia abajo,
-        // por eso aquí mando primero los anillos inferiores y mantengo su número real.
         var anillos = AnillosOrdenadosParaModelo3D().Select(a => new
         {
             numero = a.NumeroAnillo,
@@ -230,6 +247,12 @@
             configuracion = TextoSeguro(resultado.NombreConfiguracionCalculada, resultado.NombreConfiguracion),
             rigidizadorSuperior = TextoSeguro(resultado.NombreRigidizadorBase),
             techo = DetectarTecho(),
+
+            tieneStarterRing = resultado.TieneStarterRing,
+            alturaStarterRing = resultado.AlturaStarterRing,
+            starterRingHeight = resultado.AlturaStarterRing,
+            distanciaFStarterRing = resultado.DistanciaFStarterRing,
+            shearKeysPorLineaStarterRing = resultado.ShearKeysPorLineaStarterRing,
 
             vigasTechoConico = resultado.VigasTechoConico is null
                 ? null
@@ -381,18 +404,13 @@
 
     private List<ResultadoAnilloModel> AnillosOrdenados()
     {
-        // Orden lógico de informe: anillo 1 arriba y el último abajo.
         return Resultado?.Anillos?
-            .OrderBy(a => a.AlturaInferior)
-            .ThenBy(a => a.NumeroAnillo)
+            .OrderBy(a => a.NumeroAnillo)
             .ToList() ?? new List<ResultadoAnilloModel>();
     }
 
     private List<ResultadoAnilloModel> AnillosOrdenadosParaModelo3D()
     {
-        // En ResultadoAnilloModel, AlturaInferior/AlturaSuperior están medidos desde la coronación.
-        // Mayor AlturaInferior = anillo más bajo.
-        // El visor 3D apila desde Y=0 hacia arriba, así que necesita empezar por abajo.
         return Resultado?.Anillos?
             .OrderByDescending(a => a.AlturaInferior)
             .ThenByDescending(a => a.AlturaSuperior)
