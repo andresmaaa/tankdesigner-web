@@ -2,7 +2,7 @@
 
 const technicalViewState = {
     showRoof: true,
-    showGuardrail: true,
+    showGuardrail: false,
     showConnections: true,
     showLadder: true,
     showReferences: false,
@@ -546,26 +546,17 @@ function getStarterRingHeightMm(tank) {
 function addStarterRing(group, radius, height, tank) {
     const realHeightMm = getStarterRingHeightMm(tank);
 
-    const outerRadius = radius * 1.01;
-    const innerRadius = radius * 0.992;
-
     const material = new THREE.MeshStandardMaterial({
-        color: 0x6b6b4b,
-        metalness: 0.58,
-        roughness: 0.42,
+        color: 0x5d5e34,
+        metalness: 0.62,
+        roughness: 0.34,
         side: THREE.DoubleSide
     });
 
-    const geometry = new THREE.CylinderGeometry(
-        outerRadius,
-        outerRadius,
-        height,
-        128,
-        1,
-        true
+    const starter = new THREE.Mesh(
+        new THREE.CylinderGeometry(radius * 1.015, radius * 1.015, height, 128, 1, true),
+        material
     );
-
-    const starter = new THREE.Mesh(geometry, material);
 
     starter.position.y = height / 2;
     starter.castShadow = true;
@@ -581,27 +572,8 @@ function addStarterRing(group, radius, height, tank) {
 
     group.add(starter);
 
-    const topRing = new THREE.Mesh(
-        new THREE.TorusGeometry(outerRadius, Math.max(radius * 0.006, 0.025), 12, 96),
-        new THREE.MeshStandardMaterial({
-            color: 0x3f3f2a,
-            metalness: 0.72,
-            roughness: 0.24
-        })
-    );
-
-    topRing.rotation.x = Math.PI / 2;
-    topRing.position.y = height;
-
-    group.add(topRing);
-
-    const bottomRing = topRing.clone();
-    bottomRing.position.y = 0;
-
-    group.add(bottomRing);
-
-    addRingSeam(group, outerRadius, height);
-    addRingSeam(group, outerRadius, 0);
+    addRingSeam(group, radius * 1.015, 0);
+    addRingSeam(group, radius * 1.015, height);
 
     return height;
 }
@@ -737,40 +709,30 @@ function addManhole(group, radius, height) {
     const boltRadius = Math.max(radius * 0.006, 0.022);
 
     const materialCover = new THREE.MeshStandardMaterial({
-        color: 0xb8c0ca,
-        metalness: 0.78,
-        roughness: 0.24
+        color: 0x94a3b8,
+        metalness: 0.72,
+        roughness: 0.26
     });
 
     const materialFrame = new THREE.MeshStandardMaterial({
         color: 0x475569,
-        metalness: 0.82,
-        roughness: 0.22
+        metalness: 0.78,
+        roughness: 0.24
     });
 
-    const center = radial.clone().multiplyScalar(radius + coverThickness * 0.55);
+    const center = radial.clone().multiplyScalar(radius + coverThickness * 0.7);
     center.y = y;
 
     const quaternion = new THREE.Quaternion();
-
-    quaternion.setFromUnitVectors(
-        new THREE.Vector3(0, 1, 0),
-        radial.clone().normalize()
-    );
+    quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), radial.clone().normalize());
 
     const cover = new THREE.Mesh(
-        new THREE.CylinderGeometry(
-            manholeRadius,
-            manholeRadius,
-            coverThickness,
-            64
-        ),
+        new THREE.CylinderGeometry(manholeRadius, manholeRadius, coverThickness, 54),
         materialCover
     );
 
     cover.position.copy(center);
     cover.quaternion.copy(quaternion);
-
     cover.castShadow = true;
     cover.receiveShadow = true;
 
@@ -785,26 +747,14 @@ function addManhole(group, radius, height) {
     group.add(cover);
 
     const frame = new THREE.Mesh(
-        new THREE.TorusGeometry(
-            manholeRadius * 1.04,
-            Math.max(radius * 0.008, 0.028),
-            10,
-            64
-        ),
+        new THREE.TorusGeometry(manholeRadius * 1.08, Math.max(radius * 0.010, 0.035), 12, 64),
         materialFrame
     );
 
-    frame.position.copy(
-        center.clone().add(
-            radial.clone().multiplyScalar(coverThickness * 0.45)
-        )
-    );
-
+    frame.position.copy(center.clone().add(radial.clone().multiplyScalar(coverThickness * 0.9)));
     frame.quaternion.copy(quaternion);
-
     frame.castShadow = true;
     frame.receiveShadow = true;
-
     group.add(frame);
 
     const boltCount = 16;
@@ -813,31 +763,17 @@ function addManhole(group, radius, height) {
         const a = (Math.PI * 2 * i) / boltCount;
 
         const boltPos = center.clone()
-            .add(
-                tangent.clone().multiplyScalar(
-                    Math.cos(a) * manholeRadius * 0.84
-                )
-            )
-            .add(
-                vertical.clone().multiplyScalar(
-                    Math.sin(a) * manholeRadius * 0.84
-                )
-            )
-            .add(radial.clone().multiplyScalar(coverThickness * 0.45));
+            .add(tangent.clone().multiplyScalar(Math.cos(a) * manholeRadius * 0.86))
+            .add(vertical.clone().multiplyScalar(Math.sin(a) * manholeRadius * 0.86))
+            .add(radial.clone().multiplyScalar(coverThickness));
 
         const bolt = new THREE.Mesh(
-            new THREE.CylinderGeometry(
-                boltRadius,
-                boltRadius,
-                coverThickness * 0.9,
-                8
-            ),
+            new THREE.CylinderGeometry(boltRadius, boltRadius, coverThickness * 1.35, 8),
             materialFrame
         );
 
         bolt.position.copy(boltPos);
         bolt.quaternion.copy(quaternion);
-
         bolt.castShadow = true;
         bolt.receiveShadow = true;
 
@@ -1916,14 +1852,9 @@ function addNozzle(group, radius, height, options) {
     flange.position.copy(flangeCenter);
 
     const quaternion = new THREE.Quaternion();
-
-    quaternion.setFromUnitVectors(
-        new THREE.Vector3(0, 1, 0),
-        radial.clone().normalize()
-    );
+    quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), radial.clone().normalize());
 
     flange.quaternion.copy(quaternion);
-
     flange.castShadow = true;
     flange.receiveShadow = true;
 
