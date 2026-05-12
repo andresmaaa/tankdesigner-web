@@ -82,7 +82,7 @@ function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
     shell.style.position = "relative";
     shell.style.width = "100%";
     shell.style.height = "100%";
-    shell.style.minHeight = "620px";
+    shell.style.minHeight = "720";
     shell.style.borderRadius = "24px";
     shell.style.overflow = "hidden";
     shell.style.background = `
@@ -186,29 +186,30 @@ function addMouseHelpPanel(shell) {
     const panel = document.createElement("div");
 
     panel.innerHTML = `
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;">
-            <strong style="color:#ffffff;">Controles de vista 3D</strong>
-            <span>🖱️ Rotar: botón izquierdo + arrastrar</span>
-            <span>🔍 Zoom: rueda del ratón</span>
-            <span>ℹ️ Datos: pasar cursor sobre piezas</span>
-        </div>
+        <strong>Controles de vista 3D</strong>
+        <span>🖱️ Rotar: botón izquierdo + arrastrar</span>
+        <span>🔍 Zoom: rueda del ratón</span>
+        <span>ℹ️ Datos: pasa el cursor sobre piezas</span>
     `;
 
     panel.style.position = "absolute";
-    panel.style.left = "50%";
-    panel.style.bottom = "16px";
-    panel.style.transform = "translateX(-50%)";
-    panel.style.zIndex = "30";
-    panel.style.maxWidth = "calc(100% - 36px)";
-    panel.style.padding = "10px 16px";
-    panel.style.borderRadius = "16px";
-    panel.style.background = "rgba(15,23,42,0.86)";
+    panel.style.left = "24px";
+    panel.style.right = "24px";
+    panel.style.bottom = "18px";
+    panel.style.zIndex = "12";
+    panel.style.display = "flex";
+    panel.style.flexWrap = "wrap";
+    panel.style.justifyContent = "center";
+    panel.style.gap = "16px";
+    panel.style.alignItems = "center";
+    panel.style.padding = "12px 16px";
+    panel.style.borderRadius = "18px";
+    panel.style.background = "rgba(15,23,42,0.88)";
     panel.style.border = "1px solid rgba(148,163,184,0.35)";
-    panel.style.boxShadow = "0 16px 40px rgba(15,23,42,0.25)";
-    panel.style.backdropFilter = "blur(12px)";
-    panel.style.color = "#e5e7eb";
+    panel.style.boxShadow = "0 18px 45px rgba(15,23,42,0.28)";
+    panel.style.backdropFilter = "blur(14px)";
+    panel.style.color = "#ffffff";
     panel.style.font = "12px Arial";
-    panel.style.lineHeight = "1.35";
     panel.style.pointerEvents = "none";
 
     shell.appendChild(panel);
@@ -232,7 +233,7 @@ function addScaleBadge(shell, metersPerUnit, tank) {
     `;
     scaleBadge.style.position = "absolute";
     scaleBadge.style.right = "18px";
-    scaleBadge.style.bottom = "72px";
+    scaleBadge.style.bottom = "94px";
     scaleBadge.style.zIndex = "5";
     scaleBadge.style.padding = "12px 14px";
     scaleBadge.style.borderRadius = "16px";
@@ -315,7 +316,7 @@ function addTechnicalControls(shell, container, tank, dotNetRef) {
 
     panel.style.position = "absolute";
     panel.style.left = "18px";
-    panel.style.bottom = "72px";
+    panel.style.bottom = "94px";
     panel.style.zIndex = "9";
     panel.style.width = "190px";
     panel.style.padding = "14px";
@@ -2175,7 +2176,7 @@ function bindControls(viewer) {
 function resize(viewer) {
     const rect = viewer.container.getBoundingClientRect();
     const width = Math.max(320, rect.width || 320);
-    const height = Math.max(560, rect.height || 560);
+    const height = Math.max(740, rect.height || 740);
 
     viewer.camera.aspect = width / height;
     viewer.camera.updateProjectionMatrix();

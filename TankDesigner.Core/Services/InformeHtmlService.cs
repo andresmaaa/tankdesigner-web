@@ -1539,8 +1539,7 @@ namespace TankDesigner.Core.Services
                 for (int i = 0; i < anillosOrdenados.Count; i++)
                 {
                     var anillo = anillosOrdenados[i];
-                    double profundidadMostrar = anillo.Head;
-
+                    double profundidadMostrar = NormalizarProfundidadMetros(anillo.Head);
                     lista.Add(new TensionHidrostaticaRow
                     {
                         Anillo = anillo.NumeroAnillo,
@@ -1658,15 +1657,23 @@ namespace TankDesigner.Core.Services
 
         // Devuelve el valor formateado según el caso que se esté pintando en la tabla axial:
         // axial normal, axial por viento o axial por sismo.
+        private string ValorConUnidad(double valor, string unidad)
+        {
+            return valor > 0 ? Formato(valor, "0.###") : "—";
+        }
+
         private string ValorSegunCaso(double axial, double wind, double seismic, bool esViento, bool esSismo, string unidad)
         {
             double valor = esSismo ? seismic : esViento ? wind : axial;
             return ValorConUnidad(valor, unidad);
         }
 
-        private string ValorConUnidad(double valor, string unidad)
+        private double NormalizarProfundidadMetros(double valor)
         {
-            return valor > 0 ? Formato(valor, "0.###") + " " + unidad : "—";
+            if (valor <= 0)
+                return 0;
+
+            return valor > 50 ? valor / 1000.0 : valor;
         }
 
         // Construye las filas de datos para la tabla hidrodinámica.
@@ -1734,9 +1741,9 @@ namespace TankDesigner.Core.Services
                 sb.Append("<tr>");
                 sb.Append($"<td>{Html(Lang("Anillo de arranque", "Starter ring"))}</td>");
                 sb.Append($"<td>{Html(Lang("Base del tanque; no es rigidizador", "Tank base; not a stiffener"))}</td>");
-                sb.Append($"<td>{Formato(_resultado.AlturaStarterRing, "0.###")} mm</td>");
-                sb.Append($"<td>{(_resultado.DistanciaFStarterRing > 0 ? Formato(_resultado.DistanciaFStarterRing, "0.###") + " mm" : "—")}</td>");
-                sb.Append($"<td>{(_resultado.ShearKeysPorLineaStarterRing > 0 ? _resultado.ShearKeysPorLineaStarterRing.ToString(CultureInfo.InvariantCulture) + " ud/línea" : "—")}</td>");
+                sb.Append($"<td>{Formato(_resultado.AlturaStarterRing, "0.###")}</td>");
+                sb.Append($"<td>{(_resultado.DistanciaFStarterRing > 0 ? Formato(_resultado.DistanciaFStarterRing, "0.###") : "—")}</td>");
+                sb.Append($"<td>{(_resultado.ShearKeysPorLineaStarterRing > 0 ? _resultado.ShearKeysPorLineaStarterRing.ToString(CultureInfo.InvariantCulture) : "—")}</td>");
                 sb.Append("</tr>");
             }
             else
@@ -1767,10 +1774,11 @@ namespace TankDesigner.Core.Services
                     Rigidizador = _resultado!.NombreRigidizadorBase,
                     Posicion = Lang("Coronación / rigidizador superior", "Top shell / top stiffener"),
                     ModuloRequerido = _resultado.AlturaRigidizadorBase > 0
-                        ? Formato(_resultado.AlturaRigidizadorBase, "0.###") + " mm"
+                        ? Formato(_resultado.AlturaRigidizadorBase, "0.###")
                         : "—",
+
                     ModuloProvisto = _resultado.EspesorRigidizadorBase > 0
-                        ? Formato(_resultado.EspesorRigidizadorBase, "0.###") + " mm"
+                        ? Formato(_resultado.EspesorRigidizadorBase, "0.###")
                         : "—"
                 });
             }
