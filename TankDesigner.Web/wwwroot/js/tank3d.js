@@ -77,15 +77,20 @@ function disposeViewer(container) {
     viewers.delete(container);
 }
 function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
-
     const shell = document.createElement("div");
 
     shell.style.position = "relative";
     shell.style.width = "100%";
     shell.style.height = "100%";
-    shell.style.minHeight = "560px";
+    shell.style.minHeight = "620px";
     shell.style.borderRadius = "24px";
     shell.style.overflow = "hidden";
+    shell.style.background = `
+        radial-gradient(circle at 52% 42%,
+        rgba(255,255,255,0.98) 0%,
+        rgba(226,232,240,0.96) 45%,
+        rgba(203,213,225,0.92) 100%)
+    `;
 
     container.appendChild(shell);
 
@@ -94,16 +99,11 @@ function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
     addTechnicalControls(shell, container, tank, dotNetRef);
     addTechnicalInfoOverlay(shell);
     addMouseHelpPanel(shell);
+
     const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xe8eef6);
 
-    shell.style.background = `
-    radial-gradient(circle at 52% 42%, rgba(226,232,240,0.18) 0%, rgba(30,41,59,0.92) 48%, #0f172a 100%)
-`;
-
-    scene.background = new THREE.Color(0x1e293b);
-    scene.fog = new THREE.Fog(0x1e293b, 120, 260);
-
-    const camera = new THREE.PerspectiveCamera(38, 1, 0.01, 10000);
+    const camera = new THREE.PerspectiveCamera(34, 1, 0.01, 10000);
 
     const renderer = new THREE.WebGLRenderer({
         antialias: true,
@@ -112,65 +112,42 @@ function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
     });
 
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
-    renderer.physicallyCorrectLights = true;
-
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.25;
+    renderer.toneMappingExposure = 1.45;
 
     shell.appendChild(renderer.domElement);
-
     addDownloadPngButton(shell, renderer);
 
     const group = new THREE.Group();
     scene.add(group);
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.42));
+    scene.add(new THREE.AmbientLight(0xffffff, 1.65));
 
-    const key = new THREE.DirectionalLight(0xffffff, 2.6);
-
-    key.position.set(40, 52, 36);
-
+    const key = new THREE.DirectionalLight(0xffffff, 2.1);
+    key.position.set(36, 42, 32);
     key.castShadow = true;
-
-    key.shadow.mapSize.width = 4096;
-    key.shadow.mapSize.height = 4096;
-
+    key.shadow.mapSize.width = 2048;
+    key.shadow.mapSize.height = 2048;
     key.shadow.camera.near = 1;
     key.shadow.camera.far = 250;
-
     key.shadow.camera.left = -80;
     key.shadow.camera.right = 80;
     key.shadow.camera.top = 80;
     key.shadow.camera.bottom = -80;
-
-    key.shadow.bias = -0.00008;
-
     scene.add(key);
 
-    const fill = new THREE.DirectionalLight(0xdbeafe, 1.2);
-
-    fill.position.set(-32, 18, -28);
-
+    const fill = new THREE.DirectionalLight(0xffffff, 1.25);
+    fill.position.set(-32, 20, -28);
     scene.add(fill);
 
-    const rim = new THREE.DirectionalLight(0xffffff, 1.0);
-
-    rim.position.set(-20, 30, 42);
-
+    const rim = new THREE.DirectionalLight(0xffffff, 0.85);
+    rim.position.set(-24, 28, 44);
     scene.add(rim);
 
-    const hemi = new THREE.HemisphereLight(
-        0xffffff,
-        0xb6c2cf,
-        0.65
-    );
-
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x94a3b8, 0.8);
     scene.add(hemi);
 
     const viewer = {
@@ -180,8 +157,8 @@ function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
         camera,
         renderer,
         group,
-        yaw: 0.82,
-        pitch: 0.32,
+        yaw: 0.72,
+        pitch: 0.24,
         distance: 72,
         target: new THREE.Vector3(0, 0, 0),
         isDragging: false,
@@ -193,19 +170,14 @@ function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
     renderer.__tank3dCamera = camera;
 
     bindControls(viewer);
-
     bindTechnicalHover(viewer);
-
     resize(viewer);
 
     const resizeObserver = new ResizeObserver(() => resize(viewer));
-
     resizeObserver.observe(container);
-
     viewer.resizeObserver = resizeObserver;
 
     animate(viewer);
-
     return viewer;
 }
 
@@ -213,45 +185,30 @@ function addMouseHelpPanel(shell) {
     const panel = document.createElement("div");
 
     panel.innerHTML = `
-        <div style="font-weight:800;font-size:13px;margin-bottom:8px;color:#ffffff;">
-            Controles de visualización
-        </div>
-
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
-            <div>
-                <strong style="color:#ffffff;">🖱️ Rotar</strong><br>
-                <span style="color:#cbd5e1;">Botón izquierdo y arrastrar.</span>
-            </div>
-
-            <div>
-                <strong style="color:#ffffff;">🔍 Zoom</strong><br>
-                <span style="color:#cbd5e1;">Rueda del ratón.</span>
-            </div>
-
-            <div>
-                <strong style="color:#ffffff;">✋ Explorar</strong><br>
-                <span style="color:#cbd5e1;">Mueve la vista alrededor.</span>
-            </div>
-
-            <div>
-                <strong style="color:#ffffff;">ℹ️ Datos</strong><br>
-                <span style="color:#cbd5e1;">Pasa el cursor sobre piezas.</span>
-            </div>
-        </div>
+        <strong>Controles:</strong>
+        <span>🖱️ Rotar: botón izquierdo + arrastrar</span>
+        <span>🔍 Zoom: rueda del ratón</span>
+        <span>ℹ️ Datos: pasar cursor sobre piezas</span>
     `;
 
     panel.style.position = "absolute";
-    panel.style.left = "18px";
-    panel.style.right = "18px";
-    panel.style.bottom = "18px";
+    panel.style.left = "50%";
+    panel.style.bottom = "16px";
+    panel.style.transform = "translateX(-50%)";
     panel.style.zIndex = "7";
-    panel.style.padding = "14px 16px";
-    panel.style.borderRadius = "18px";
-    panel.style.background = "rgba(15,23,42,0.78)";
-    panel.style.border = "1px solid rgba(148,163,184,0.30)";
-    panel.style.boxShadow = "0 20px 55px rgba(0,0,0,0.28)";
-    panel.style.backdropFilter = "blur(14px)";
+    panel.style.display = "flex";
+    panel.style.gap = "18px";
+    panel.style.alignItems = "center";
+    panel.style.maxWidth = "calc(100% - 36px)";
+    panel.style.padding = "10px 14px";
+    panel.style.borderRadius = "16px";
+    panel.style.background = "rgba(15,23,42,0.82)";
+    panel.style.border = "1px solid rgba(148,163,184,0.32)";
+    panel.style.boxShadow = "0 16px 40px rgba(15,23,42,0.25)";
+    panel.style.backdropFilter = "blur(12px)";
+    panel.style.color = "#ffffff";
     panel.style.font = "12px Arial";
+    panel.style.whiteSpace = "nowrap";
     panel.style.pointerEvents = "none";
 
     shell.appendChild(panel);
@@ -275,7 +232,7 @@ function addScaleBadge(shell, metersPerUnit, tank) {
     `;
     scaleBadge.style.position = "absolute";
     scaleBadge.style.right = "18px";
-    scaleBadge.style.bottom = "142px";
+    scaleBadge.style.bottom = "72px";
     scaleBadge.style.zIndex = "5";
     scaleBadge.style.padding = "12px 14px";
     scaleBadge.style.borderRadius = "16px";
@@ -358,9 +315,9 @@ function addTechnicalControls(shell, container, tank, dotNetRef) {
 
     panel.style.position = "absolute";
     panel.style.left = "18px";
-    panel.style.bottom = "142px";
+    panel.style.bottom = "72px";
     panel.style.zIndex = "9";
-    panel.style.width = "220px";
+    panel.style.width = "190";
     panel.style.padding = "14px";
     panel.style.borderRadius = "16px";
     panel.style.background = "rgba(15,23,42,0.92)";
@@ -471,9 +428,8 @@ function buildTank(viewer, tank, rings, scale) {
         const shellGeometry = new THREE.CylinderGeometry(radius, radius, height, 96, 1, true);
         const shellMaterial = new THREE.MeshStandardMaterial({
             color,
-            metalness: 0.55,
-            roughness: 0.46,
-            envMapIntensity: 0.9,
+            metalness: 0.48,
+            roughness: 0.38,
             side: THREE.DoubleSide
         });
 
@@ -2238,9 +2194,9 @@ function fitCamera(viewer) {
     const radius = viewer.modelRadius || 20;
     const maxSize = Math.max(height, radius * 2, 1);
 
-    viewer.distance = maxSize * 2.35;
-    viewer.target.set(0, 0, 0);
-    viewer.pitch = 0.24;
+    viewer.distance = maxSize * 1.85;
+    viewer.target.set(0, height * 0.03, 0);
+    viewer.pitch = 0.22;
     viewer.yaw = 0.72;
 
     updateCamera(viewer);
@@ -2261,13 +2217,13 @@ function updateCamera(viewer) {
 function colorForMaterial(name) {
     const normalized = String(name || "").toUpperCase();
 
-    if (normalized.includes("HSLA")) return 0x3b4f63;
-    if (normalized.includes("S355")) return 0x2f5f5a;
-    if (normalized.includes("S275")) return 0x34495e;
-    if (normalized.includes("S235")) return 0x5b6673;
-    if (normalized.includes("GLASS") || normalized.includes("VITR")) return 0x2f5f5a;
+    if (normalized.includes("HSLA")) return 0x6b7280;
+    if (normalized.includes("S355")) return 0x52616f;
+    if (normalized.includes("S275")) return 0x5f6f7f;
+    if (normalized.includes("S235")) return 0x7b8794;
+    if (normalized.includes("GLASS") || normalized.includes("VITR")) return 0x5f7f7a;
 
-    return 0x34495e;
+    return 0x667788;
 }
 
 function showError(container, message) {
