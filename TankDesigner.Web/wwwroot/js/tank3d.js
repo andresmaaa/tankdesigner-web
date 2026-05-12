@@ -148,7 +148,6 @@ function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
     addRoofControls(shell, container, tank, dotNetRef);
     addTechnicalControls(shell, container, tank, dotNetRef);
     addTechnicalInfoOverlay(shell);
-    addMouseHelpPanel(shell);
     addDownloadPngButton(shell, renderer);
     addMouseHelpPanel(shell);
 
@@ -187,30 +186,29 @@ function addMouseHelpPanel(shell) {
     const panel = document.createElement("div");
 
     panel.innerHTML = `
-        <strong>Controles:</strong>
-        <span>🖱️ Rotar: botón izquierdo + arrastrar</span>
-        <span>🔍 Zoom: rueda del ratón</span>
-        <span>ℹ️ Datos: pasar cursor sobre piezas</span>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;">
+            <strong style="color:#ffffff;">Controles de vista 3D</strong>
+            <span>🖱️ Rotar: botón izquierdo + arrastrar</span>
+            <span>🔍 Zoom: rueda del ratón</span>
+            <span>ℹ️ Datos: pasar cursor sobre piezas</span>
+        </div>
     `;
 
     panel.style.position = "absolute";
     panel.style.left = "50%";
     panel.style.bottom = "16px";
     panel.style.transform = "translateX(-50%)";
-    panel.style.zIndex = "7";
-    panel.style.display = "flex";
-    panel.style.gap = "18px";
-    panel.style.alignItems = "center";
+    panel.style.zIndex = "30";
     panel.style.maxWidth = "calc(100% - 36px)";
-    panel.style.padding = "10px 14px";
+    panel.style.padding = "10px 16px";
     panel.style.borderRadius = "16px";
-    panel.style.background = "rgba(15,23,42,0.82)";
-    panel.style.border = "1px solid rgba(148,163,184,0.32)";
+    panel.style.background = "rgba(15,23,42,0.86)";
+    panel.style.border = "1px solid rgba(148,163,184,0.35)";
     panel.style.boxShadow = "0 16px 40px rgba(15,23,42,0.25)";
     panel.style.backdropFilter = "blur(12px)";
-    panel.style.color = "#ffffff";
+    panel.style.color = "#e5e7eb";
     panel.style.font = "12px Arial";
-    panel.style.whiteSpace = "nowrap";
+    panel.style.lineHeight = "1.35";
     panel.style.pointerEvents = "none";
 
     shell.appendChild(panel);
