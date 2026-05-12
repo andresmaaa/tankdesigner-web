@@ -14,7 +14,9 @@ function renderTank3D(container, tank, dotNetRef) {
 
     disposeViewer(container);
     container.innerHTML = "";
-
+    container.style.minHeight = "720px";
+    container.style.height = "720px";
+    container.style.overflow = "visible";
     if (!window.THREE) {
         showError(container, "Three.js no está cargado. Revisa App.razor.");
         return;
@@ -81,8 +83,8 @@ function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
 
     shell.style.position = "relative";
     shell.style.width = "100%";
-    shell.style.height = "100%";
-    shell.style.minHeight = "760px";
+    shell.style.height = "720px";
+    shell.style.minHeight = "720px";
     shell.style.borderRadius = "24px";
     shell.style.overflow = "hidden";
     shell.style.background = `
@@ -189,19 +191,22 @@ function addMouseHelpPanel(shell) {
         <strong>Controles de vista 3D</strong>
         <span>🖱️ Rotar: botón izquierdo + arrastrar</span>
         <span>🔍 Zoom: rueda del ratón</span>
-        <span>ℹ️ Datos: pasa el cursor sobre piezas</span>
+        <span>ℹ️ Datos: cursor sobre piezas</span>
     `;
 
     panel.style.position = "absolute";
-    panel.style.left = "270px";
-    panel.style.right = "270px";
-    panel.style.bottom = "22px";
+    panel.style.left = "50%";
+    panel.style.bottom = "18px";
+    panel.style.transform = "translateX(-50%)";
     panel.style.zIndex = "12";
     panel.style.display = "flex";
     panel.style.flexWrap = "wrap";
     panel.style.justifyContent = "center";
     panel.style.gap = "14px";
     panel.style.alignItems = "center";
+    panel.style.width = "calc(100% - 520px)";
+    panel.style.minWidth = "360px";
+    panel.style.maxWidth = "760px";
     panel.style.padding = "11px 16px";
     panel.style.borderRadius = "18px";
     panel.style.background = "rgba(15,23,42,0.90)";
@@ -233,7 +238,7 @@ function addScaleBadge(shell, metersPerUnit, tank) {
     `;
     scaleBadge.style.position = "absolute";
     scaleBadge.style.right = "22px";
-    scaleBadge.style.bottom = "112px";
+    scaleBadge.style.bottom = "100px";
     scaleBadge.style.zIndex = "5";
     scaleBadge.style.padding = "12px 14px";
     scaleBadge.style.borderRadius = "16px";
@@ -316,7 +321,7 @@ function addTechnicalControls(shell, container, tank, dotNetRef) {
 
     panel.style.position = "absolute";
     panel.style.left = "18px";
-    panel.style.bottom = "112px";
+    panel.style.bottom = "100px";
     panel.style.zIndex = "9";
     panel.style.width = "190px";
     panel.style.padding = "14px";
@@ -500,7 +505,7 @@ function buildTank(viewer, tank, rings, scale) {
         addLadder(viewer.group, radius, currentY, tank.escalera, scale);
     }
 
-    viewer.group.position.y = -currentY / 2;
+    viewer.group.position.y = (-currentY / 2) + currentY * 0.12;
     viewer.modelRadius = radius;
     viewer.modelHeight = currentY;
 }
@@ -2174,10 +2179,10 @@ function bindControls(viewer) {
 }
 
 function resize(viewer) {
-    const rect = viewer.container.getBoundingClientRect();
+    const rect = viewer.shell.getBoundingClientRect();
 
     const width = Math.max(320, rect.width || 320);
-    const height = Math.max(760, rect.height || 760);
+    const height = Math.max(720, rect.height || 720);
 
     viewer.camera.aspect = width / height;
     viewer.camera.updateProjectionMatrix();
@@ -2197,15 +2202,10 @@ function fitCamera(viewer) {
     const radius = viewer.modelRadius || 20;
     const maxSize = Math.max(height, radius * 2, 1);
 
-    viewer.distance = maxSize * 2.15;
+    viewer.distance = maxSize * 2.05;
+    viewer.target.set(0, 0, 0);
 
-    viewer.target.set(
-        0,
-        height * 0.10,
-        0
-    );
-
-    viewer.pitch = 0.18;
+    viewer.pitch = 0.16;
     viewer.yaw = 0.72;
 
     updateCamera(viewer);
