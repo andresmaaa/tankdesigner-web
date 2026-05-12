@@ -82,7 +82,7 @@ function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
     shell.style.position = "relative";
     shell.style.width = "100%";
     shell.style.height = "100%";
-    shell.style.minHeight = "720";
+    shell.style.minHeight = "760px";
     shell.style.borderRadius = "24px";
     shell.style.overflow = "hidden";
     shell.style.background = `
@@ -193,20 +193,20 @@ function addMouseHelpPanel(shell) {
     `;
 
     panel.style.position = "absolute";
-    panel.style.left = "24px";
-    panel.style.right = "24px";
-    panel.style.bottom = "18px";
+    panel.style.left = "270px";
+    panel.style.right = "270px";
+    panel.style.bottom = "22px";
     panel.style.zIndex = "12";
     panel.style.display = "flex";
     panel.style.flexWrap = "wrap";
     panel.style.justifyContent = "center";
-    panel.style.gap = "16px";
+    panel.style.gap = "14px";
     panel.style.alignItems = "center";
-    panel.style.padding = "12px 16px";
+    panel.style.padding = "11px 16px";
     panel.style.borderRadius = "18px";
-    panel.style.background = "rgba(15,23,42,0.88)";
+    panel.style.background = "rgba(15,23,42,0.90)";
     panel.style.border = "1px solid rgba(148,163,184,0.35)";
-    panel.style.boxShadow = "0 18px 45px rgba(15,23,42,0.28)";
+    panel.style.boxShadow = "0 18px 45px rgba(15,23,42,0.26)";
     panel.style.backdropFilter = "blur(14px)";
     panel.style.color = "#ffffff";
     panel.style.font = "12px Arial";
@@ -232,8 +232,8 @@ function addScaleBadge(shell, metersPerUnit, tank) {
         ${escalera}
     `;
     scaleBadge.style.position = "absolute";
-    scaleBadge.style.right = "18px";
-    scaleBadge.style.bottom = "94px";
+    scaleBadge.style.right = "22px";
+    scaleBadge.style.bottom = "112px";
     scaleBadge.style.zIndex = "5";
     scaleBadge.style.padding = "12px 14px";
     scaleBadge.style.borderRadius = "16px";
@@ -316,7 +316,7 @@ function addTechnicalControls(shell, container, tank, dotNetRef) {
 
     panel.style.position = "absolute";
     panel.style.left = "18px";
-    panel.style.bottom = "94px";
+    panel.style.bottom = "112px";
     panel.style.zIndex = "9";
     panel.style.width = "190px";
     panel.style.padding = "14px";
@@ -2175,11 +2175,13 @@ function bindControls(viewer) {
 
 function resize(viewer) {
     const rect = viewer.container.getBoundingClientRect();
+
     const width = Math.max(320, rect.width || 320);
-    const height = Math.max(740, rect.height || 740);
+    const height = Math.max(760, rect.height || 760);
 
     viewer.camera.aspect = width / height;
     viewer.camera.updateProjectionMatrix();
+
     viewer.renderer.setSize(width, height, false);
 }
 
@@ -2195,9 +2197,15 @@ function fitCamera(viewer) {
     const radius = viewer.modelRadius || 20;
     const maxSize = Math.max(height, radius * 2, 1);
 
-    viewer.distance = maxSize * 1.85;
-    viewer.target.set(0, height * 0.03, 0);
-    viewer.pitch = 0.22;
+    viewer.distance = maxSize * 2.15;
+
+    viewer.target.set(
+        0,
+        height * 0.10,
+        0
+    );
+
+    viewer.pitch = 0.18;
     viewer.yaw = 0.72;
 
     updateCamera(viewer);
