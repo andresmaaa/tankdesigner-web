@@ -545,145 +545,14 @@ function getStarterRingHeightMm(tank) {
 
 function addStarterRing(group, radius, height, tank) {
     const realHeightMm = getStarterRingHeightMm(tank);
-
-    const tooltipData = {
-        tipo: "Starter ring / anillo de arranque",
-        material: "Anillo base rellenable",
-        altura: `${realHeightMm} mm`,
-        espesor: "Base de mortero / concreto",
-        diametro: `${((radius * 2) / 1).toFixed(3)} u.3D`
-    };
-
-    const starterGroup = new THREE.Group();
-
-    const concreteHeight = Math.max(height * 0.65, 0.42);
-    const concreteRadius = radius * 1.20;
-
-    const concreteMaterial = new THREE.MeshStandardMaterial({
-        color: 0x9f9b93,
-        metalness: 0.02,
-        roughness: 1
-    });
-
-    const concrete = new THREE.Mesh(
-        new THREE.CylinderGeometry(concreteRadius, concreteRadius, concreteHeight, 160),
-        concreteMaterial
-    );
-
-    concrete.position.y = concreteHeight / 2;
-    concrete.receiveShadow = true;
-    concrete.userData = tooltipData;
-    starterGroup.add(concrete);
-
-    const starterY = concreteHeight;
-    const starterMaterial = new THREE.MeshStandardMaterial({
-        color: 0x747541,
-        metalness: 0.58,
-        roughness: 0.34,
-        side: THREE.DoubleSide
-    });
-
-    const starter = new THREE.Mesh(
-        new THREE.CylinderGeometry(radius * 1.055, radius * 1.055, height, 160, 1, true),
-        starterMaterial
-    );
-
-    starter.position.y = starterY + height / 2;
-    starter.castShadow = true;
-    starter.receiveShadow = true;
-    starter.userData = tooltipData;
-    starterGroup.add(starter);
-
-    const darkMetal = new THREE.MeshStandardMaterial({
-        color: 0x252516,
-        metalness: 0.8,
-        roughness: 0.2
-    });
-
-    const topRing = new THREE.Mesh(
-        new THREE.TorusGeometry(radius * 1.06, Math.max(radius * 0.014, 0.045), 18, 160),
-        darkMetal
-    );
-
-    topRing.rotation.x = Math.PI / 2;
-    topRing.position.y = starterY + height;
-    topRing.castShadow = true;
-    topRing.userData = tooltipData;
-    starterGroup.add(topRing);
-
-    const bottomRing = new THREE.Mesh(
-        new THREE.TorusGeometry(radius * 1.06, Math.max(radius * 0.012, 0.038), 18, 160),
-        darkMetal
-    );
-
-    bottomRing.rotation.x = Math.PI / 2;
-    bottomRing.position.y = starterY;
-    bottomRing.userData = tooltipData;
-    starterGroup.add(bottomRing);
-
-    const plateMaterial = new THREE.MeshStandardMaterial({
-        color: 0x5d5e34,
-        metalness: 0.62,
-        roughness: 0.34
-    });
-
-    const plateCount = 36;
-
-    for (let i = 0; i < plateCount; i++) {
-        const angle = (Math.PI * 2 * i) / plateCount;
-
-        const plate = new THREE.Mesh(
-            new THREE.BoxGeometry(
-                Math.max(radius * 0.034, 0.16),
-                height * 0.82,
-                Math.max(radius * 0.014, 0.045)
-            ),
-            plateMaterial
-        );
-
-        plate.position.set(
-            Math.cos(angle) * radius * 1.078,
-            starterY + height * 0.43,
-            Math.sin(angle) * radius * 1.078
-        );
-
-        plate.lookAt(0, starterY + height * 0.43, 0);
-        plate.castShadow = true;
-        plate.receiveShadow = true;
-        plate.userData = tooltipData;
-        starterGroup.add(plate);
-    }
-
-    const boltMaterial = new THREE.MeshStandardMaterial({
-        color: 0xd9dee5,
-        metalness: 0.95,
-        roughness: 0.14
-    });
-
-    const boltCount = 128;
-
-    for (let i = 0; i < boltCount; i++) {
-        const angle = (Math.PI * 2 * i) / boltCount;
-
-        const bolt = new THREE.Mesh(
-            new THREE.SphereGeometry(Math.max(radius * 0.0046, 0.022), 10, 10),
-            boltMaterial
-        );
-
-        bolt.position.set(
-            Math.cos(angle) * radius * 1.067,
-            starterY + height * 0.88,
-            Math.sin(angle) * radius * 1.067
-        );
-
-        bolt.castShadow = true;
-        bolt.userData = tooltipData;
-        starterGroup.add(bolt);
-    }
-
-    group.add(starterGroup);
-
-    return concreteHeight + height;
+    const material = new THREE.MeshStandardMaterial({ color: 0x5d5e34, metalness: 0.62, roughness: 0.34, side: THREE.DoubleSide });
+    const starter = new THREE.Mesh(new THREE.CylinderGeometry(radius * 1.015, radius * 1.015, height, 128, 1, true), material);
+    starter.position.y = height / 2; starter.castShadow = true;
+    starter.receiveShadow = true; starter.userData = { tipo: "Starter ring", material: "Acero", altura: `${realHeightMm} mm`, espesor: "—", diametro: `${(radius * 2).toFixed(3)} u.3D` };
+    group.add(starter);
+    addRingSeam(group, radius * 1.015, height);
+    addRingSeam(group, radius * 1.015, 0);
+    return height;
 }
 function formatTechnicalValue(value, suffix) {
     const n = Number(value);
@@ -806,7 +675,7 @@ function addRoof(group, radius, height, roofRaw, vigasTechoConico, scale) {
 
 function addManhole(group, radius, height) {
     const angle = Math.PI * 1.82;
-    const y = height * 0.22;
+    const y = height * 0.30;
 
     const radial = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
     const tangent = new THREE.Vector3(-Math.sin(angle), 0, Math.cos(angle));
@@ -832,7 +701,11 @@ function addManhole(group, radius, height) {
     center.y = y;
 
     const quaternion = new THREE.Quaternion();
-    quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), radial.clone().normalize());
+
+    quaternion.setFromUnitVectors(
+        new THREE.Vector3(0, 1, 0),
+        radial.clone().normalize()
+    );
 
     const cover = new THREE.Mesh(
         new THREE.CylinderGeometry(manholeRadius, manholeRadius, coverThickness, 54),
@@ -843,6 +716,7 @@ function addManhole(group, radius, height) {
     cover.quaternion.copy(quaternion);
     cover.castShadow = true;
     cover.receiveShadow = true;
+
     cover.userData = {
         tipo: "Manhole",
         material: "Acero",
@@ -850,17 +724,28 @@ function addManhole(group, radius, height) {
         espesor: formatTechnicalValue(coverThickness, "u.3D"),
         diametro: formatTechnicalValue(manholeRadius * 2, "u.3D")
     };
+
     group.add(cover);
 
     const frame = new THREE.Mesh(
-        new THREE.TorusGeometry(manholeRadius * 1.08, Math.max(radius * 0.010, 0.035), 12, 64),
+        new THREE.TorusGeometry(
+            manholeRadius * 1.08,
+            Math.max(radius * 0.010, 0.035),
+            12,
+            64
+        ),
         materialFrame
     );
 
-    frame.position.copy(center.clone().add(radial.clone().multiplyScalar(coverThickness * 0.9)));
+    frame.position.copy(
+        center.clone().add(radial.clone().multiplyScalar(coverThickness * 0.9))
+    );
+
     frame.quaternion.copy(quaternion);
+
     frame.castShadow = true;
     frame.receiveShadow = true;
+
     group.add(frame);
 
     const boltCount = 16;
@@ -874,7 +759,12 @@ function addManhole(group, radius, height) {
             .add(radial.clone().multiplyScalar(coverThickness));
 
         const bolt = new THREE.Mesh(
-            new THREE.CylinderGeometry(boltRadius, boltRadius, coverThickness * 1.35, 8),
+            new THREE.CylinderGeometry(
+                boltRadius,
+                boltRadius,
+                coverThickness * 1.35,
+                8
+            ),
             materialFrame
         );
 
@@ -882,9 +772,11 @@ function addManhole(group, radius, height) {
         bolt.quaternion.copy(quaternion);
         bolt.castShadow = true;
         bolt.receiveShadow = true;
+
         group.add(bolt);
     }
 }
+
 
 function addRoofVent(group, radius, height, roofRaw) {
     const roof = normalizarTecho(roofRaw);
@@ -1510,7 +1402,17 @@ function addVerticalLadder(group, radius, height, angleOffset = 0, scale) {
     addLadderTankBrackets(group, radius, height, radial, tangent, centerBase, cageMaterial);
 }
 
-function addVerticalLadderIntermediatePlatform(group, radius, height, radial, tangent, platformMaterial, railMaterial, centerBase, railHalfWidth) {
+function addVerticalLadderIntermediatePlatform(
+    group,
+    radius,
+    height,
+    radial,
+    tangent,
+    platformMaterial,
+    railMaterial,
+    centerBase,
+    railHalfWidth
+) {
     const platformY = height * 0.46;
 
     if (platformY <= 0.8) return;
@@ -1519,7 +1421,10 @@ function addVerticalLadderIntermediatePlatform(group, radius, height, radial, ta
     const depth = Math.max(railHalfWidth * 2.8, 1.05);
     const thickness = Math.max(radius * 0.008, 0.055);
 
-    const center = centerBase.clone().add(radial.clone().multiplyScalar(depth * 0.75));
+    const center = centerBase.clone().add(
+        radial.clone().multiplyScalar(depth * 0.75)
+    );
+
     center.y = platformY;
 
     const platform = new THREE.Mesh(
@@ -1528,7 +1433,10 @@ function addVerticalLadderIntermediatePlatform(group, radius, height, radial, ta
     );
 
     platform.position.copy(center);
-    platform.rotation.y = -Math.atan2(radial.z, radial.x) + Math.PI / 2;
+
+    platform.rotation.y =
+        -Math.atan2(radial.z, radial.x) + Math.PI / 2;
+
     platform.castShadow = true;
     platform.receiveShadow = true;
 
@@ -1541,27 +1449,6 @@ function addVerticalLadderIntermediatePlatform(group, radius, height, radial, ta
     };
 
     group.add(platform);
-
-    const railHeight = Math.max(radius * 0.075, 0.72);
-    const railRadius = Math.max(radius * 0.004, 0.020);
-
-    addPlatformRails(
-        group,
-        center,
-        radial,
-        tangent,
-        width,
-        depth,
-        platformY,
-        thickness,
-        railHeight,
-        railRadius,
-        railMaterial,
-        {
-            openBack: true,
-            openFront: false
-        }
-    );
 
     const supportRadius = Math.max(radius * 0.006, 0.025);
 
@@ -1583,16 +1470,27 @@ function addVerticalLadderIntermediatePlatform(group, radius, height, radial, ta
 
     leftOuter.y = platformY - thickness;
     rightOuter.y = platformY - thickness;
+
     leftBottom.y = platformY - Math.max(radius * 0.22, 1.25);
     rightBottom.y = platformY - Math.max(radius * 0.22, 1.25);
 
-    addCylinderBetween(group, leftBottom, leftOuter, supportRadius, railMaterial, 10);
-    addCylinderBetween(group, rightBottom, rightOuter, supportRadius, railMaterial, 10);
+    addCylinderBetween(
+        group,
+        leftBottom,
+        leftOuter,
+        supportRadius,
+        railMaterial,
+        10
+    );
 
-    const tankBracket = radial.clone().multiplyScalar(radius * 1.002);
-    tankBracket.y = platformY;
-
-    addCylinderBetween(group, tankBracket, center, supportRadius * 0.85, railMaterial, 8);
+    addCylinderBetween(
+        group,
+        rightBottom,
+        rightOuter,
+        supportRadius,
+        railMaterial,
+        10
+    );
 }
 function addCircularLadderCage(group, radius, height, radial, tangent, centerBase, material, scale) {
     const cageRadius = Math.max(radius * 0.068, 0.50);
@@ -1907,12 +1805,12 @@ function addNozzle(group, radius, height, options) {
 
     const radial = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
 
-    const nozzleLength = Math.max(radius * 0.18 * size, 0.42);
-    const nozzleRadius = Math.max(radius * 0.045 * size, 0.18);
+    const nozzleLength = Math.max(radius * 0.06 * size, 0.18);
+    const nozzleRadius = Math.max(radius * 0.030 * size, 0.12);
 
-    const flangeRadius = nozzleRadius * 1.65;
-    const flangeThickness = Math.max(nozzleRadius * 0.32, 0.08);
-    const boltRadius = Math.max(nozzleRadius * 0.08, 0.025);
+    const flangeRadius = nozzleRadius * 1.45;
+    const flangeThickness = Math.max(nozzleRadius * 0.24, 0.04);
+    const boltRadius = Math.max(nozzleRadius * 0.06, 0.015);
 
     const materialNozzle = new THREE.MeshStandardMaterial({
         color: 0xb6beca,
@@ -1932,30 +1830,36 @@ function addNozzle(group, radius, height, options) {
         roughness: 0.25
     });
 
-    const base = radial.clone().multiplyScalar(radius * 1.01);
+    const base = radial.clone().multiplyScalar(radius * 1.005);
     base.y = y;
 
     const end = radial.clone().multiplyScalar(radius + nozzleLength);
     end.y = y;
 
-    addCylinderBetween(group, base, end, nozzleRadius, materialNozzle, 32);
+    addCylinderBetween(group, base, end, nozzleRadius, materialNozzle, 24);
 
-    const flangeCenter = radial.clone().multiplyScalar(radius + nozzleLength + flangeThickness * 0.25);
+    const flangeCenter = radial.clone().multiplyScalar(radius + nozzleLength + flangeThickness * 0.18);
     flangeCenter.y = y;
 
     const flange = new THREE.Mesh(
-        new THREE.CylinderGeometry(flangeRadius, flangeRadius, flangeThickness, 48),
+        new THREE.CylinderGeometry(flangeRadius, flangeRadius, flangeThickness, 36),
         materialFlange
     );
 
     flange.position.copy(flangeCenter);
 
     const quaternion = new THREE.Quaternion();
-    quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), radial.clone().normalize());
+
+    quaternion.setFromUnitVectors(
+        new THREE.Vector3(0, 1, 0),
+        radial.clone().normalize()
+    );
+
     flange.quaternion.copy(quaternion);
 
     flange.castShadow = true;
     flange.receiveShadow = true;
+
     flange.userData = {
         tipo: options.label || "Boquilla",
         material: "Acero",
@@ -1963,22 +1867,23 @@ function addNozzle(group, radius, height, options) {
         espesor: "—",
         diametro: formatTechnicalValue(nozzleRadius * 2, "u.3D")
     };
+
     group.add(flange);
 
     const tangent = new THREE.Vector3(-Math.sin(angle), 0, Math.cos(angle));
     const vertical = new THREE.Vector3(0, 1, 0);
 
-    const boltCount = 12;
+    const boltCount = 8;
 
     for (let i = 0; i < boltCount; i++) {
         const a = (Math.PI * 2 * i) / boltCount;
 
         const boltPos = flangeCenter.clone()
-            .add(tangent.clone().multiplyScalar(Math.cos(a) * flangeRadius * 0.72))
-            .add(vertical.clone().multiplyScalar(Math.sin(a) * flangeRadius * 0.72));
+            .add(tangent.clone().multiplyScalar(Math.cos(a) * flangeRadius * 0.70))
+            .add(vertical.clone().multiplyScalar(Math.sin(a) * flangeRadius * 0.70));
 
         const bolt = new THREE.Mesh(
-            new THREE.CylinderGeometry(boltRadius, boltRadius, flangeThickness * 1.25, 10),
+            new THREE.CylinderGeometry(boltRadius, boltRadius, flangeThickness * 1.2, 8),
             materialBolt
         );
 
