@@ -93,12 +93,15 @@ function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
     addRoofControls(shell, container, tank, dotNetRef);
     addTechnicalControls(shell, container, tank, dotNetRef);
     addTechnicalInfoOverlay(shell);
-
+    addMouseHelpPanel(shell);
     const scene = new THREE.Scene();
 
-    scene.background = new THREE.Color(0xf4f7fb);
+    shell.style.background = `
+    radial-gradient(circle at 50% 42%, rgba(37,99,235,0.18) 0%, rgba(15,23,42,0.96) 48%, #020617 100%)
+`;
 
-    scene.fog = new THREE.Fog(0xf4f7fb, 90, 220);
+    scene.background = new THREE.Color(0x06111f);
+    scene.fog = new THREE.Fog(0x06111f, 90, 220);
 
     const camera = new THREE.PerspectiveCamera(38, 1, 0.01, 10000);
 
@@ -206,6 +209,65 @@ function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
     return viewer;
 }
 
+function addMouseHelpPanel(shell) {
+    const panel = document.createElement("div");
+
+    panel.innerHTML = `
+        <div style="font-weight:800;font-size:14px;margin-bottom:10px;color:#ffffff;">
+            Controles de visualización
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+            <div style="display:flex;gap:10px;align-items:flex-start;">
+                <div style="font-size:22px;">🖱️</div>
+                <div>
+                    <strong style="color:#ffffff;">Rotar modelo</strong><br>
+                    <span style="color:#cbd5e1;">Mantén pulsado el botón izquierdo y arrastra.</span>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:10px;align-items:flex-start;">
+                <div style="font-size:22px;">🔍</div>
+                <div>
+                    <strong style="color:#ffffff;">Acercar / alejar</strong><br>
+                    <span style="color:#cbd5e1;">Usa la rueda del ratón para hacer zoom.</span>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:10px;align-items:flex-start;">
+                <div style="font-size:22px;">✋</div>
+                <div>
+                    <strong style="color:#ffffff;">Mover vista</strong><br>
+                    <span style="color:#cbd5e1;">Arrastra para explorar detalles del tanque.</span>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:10px;align-items:flex-start;">
+                <div style="font-size:22px;">💡</div>
+                <div>
+                    <strong style="color:#ffffff;">Información</strong><br>
+                    <span style="color:#cbd5e1;">Pasa el cursor sobre piezas para ver datos técnicos.</span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    panel.style.position = "absolute";
+    panel.style.left = "18px";
+    panel.style.right = "18px";
+    panel.style.bottom = "18px";
+    panel.style.zIndex = "7";
+    panel.style.padding = "16px 18px";
+    panel.style.borderRadius = "18px";
+    panel.style.background = "rgba(15,23,42,0.78)";
+    panel.style.border = "1px solid rgba(148,163,184,0.28)";
+    panel.style.boxShadow = "0 20px 55px rgba(0,0,0,0.28)";
+    panel.style.backdropFilter = "blur(14px)";
+    panel.style.font = "13px Arial";
+    panel.style.pointerEvents = "none";
+
+    shell.appendChild(panel);
+}
 function addScaleBadge(shell, metersPerUnit, tank) {
     const vigas = tank.vigasTechoConico && tank.vigasTechoConico.aplica === true
         ? `<br>Vigas radiales: <strong style="color:#fca5a5">${tank.vigasTechoConico.numeroVigas || 0}</strong>`
@@ -225,7 +287,7 @@ function addScaleBadge(shell, metersPerUnit, tank) {
     `;
     scaleBadge.style.position = "absolute";
     scaleBadge.style.right = "18px";
-    scaleBadge.style.bottom = "18px";
+    scaleBadge.style.bottom = "142px";
     scaleBadge.style.zIndex = "5";
     scaleBadge.style.padding = "12px 14px";
     scaleBadge.style.borderRadius = "16px";
@@ -308,7 +370,7 @@ function addTechnicalControls(shell, container, tank, dotNetRef) {
 
     panel.style.position = "absolute";
     panel.style.left = "18px";
-    panel.style.bottom = "18px";
+    panel.style.bottom = "142px";
     panel.style.zIndex = "9";
     panel.style.width = "220px";
     panel.style.padding = "14px";
@@ -1347,38 +1409,49 @@ function addRingSeam(group, radius, y) {
 }
 
 function addBottomDisc(group, radius) {
-
     const material = new THREE.MeshStandardMaterial({
-        color: 0xd6dde5,
-        metalness: 0.24,
-        roughness: 0.82
+        color: 0x2f3744,
+        metalness: 0.18,
+        roughness: 0.88,
+        side: THREE.DoubleSide
     });
 
     const disc = new THREE.Mesh(
-        new THREE.CircleGeometry(radius, 128),
+        new THREE.CircleGeometry(radius * 1.24, 160),
         material
     );
 
     disc.rotation.x = -Math.PI / 2;
-
+    disc.position.y = -0.015;
     disc.receiveShadow = true;
 
     group.add(disc);
 
-    const shadow = new THREE.Mesh(
-        new THREE.CircleGeometry(radius * 1.25, 128),
-        new THREE.MeshBasicMaterial({
-            color: 0x000000,
-            transparent: true,
-            opacity: 0.08
-        })
-    );
+    const gridMaterial = new THREE.LineBasicMaterial({
+        color: 0x64748b,
+        transparent: true,
+        opacity: 0.16
+    });
 
-    shadow.rotation.x = -Math.PI / 2;
+    const gridSize = radius * 2.35;
+    const step = gridSize / 16;
 
-    shadow.position.y = -0.01;
+    for (let i = -8; i <= 8; i++) {
+        const x = i * step;
 
-    group.add(shadow);
+        const line1 = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(x, -0.005, -gridSize / 2),
+            new THREE.Vector3(x, -0.005, gridSize / 2)
+        ]);
+
+        const line2 = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(-gridSize / 2, -0.005, x),
+            new THREE.Vector3(gridSize / 2, -0.005, x)
+        ]);
+
+        group.add(new THREE.Line(line1, gridMaterial));
+        group.add(new THREE.Line(line2, gridMaterial));
+    }
 }
 
 function addReferenceGrid(group, radius, height) {
