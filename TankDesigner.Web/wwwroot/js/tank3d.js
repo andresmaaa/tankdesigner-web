@@ -426,7 +426,6 @@ function buildTank(viewer, tank, rings, scale) {
             envMapIntensity: 1.2,
             side: THREE.DoubleSide
         });
-        });
 
         const shell = new THREE.Mesh(shellGeometry, shellMaterial);
         shell.position.y = currentY + height / 2;
@@ -549,9 +548,8 @@ function addStarterRing(group, radius, height, tank) {
     const concreteRadius = radius * 1.20;
 
     const concreteMaterial = new THREE.MeshStandardMaterial({
-        color: 0x9f9b93
+        color: 0x9f9b93,
         metalness: 0.02,
-        roughness: 0.96,
         roughness: 1
     });
 
@@ -687,11 +685,10 @@ function addRoofGuardrail(group, radius, height, roofRaw) {
 
     const material = new THREE.MeshStandardMaterial({
         color: 0xe5e7eb,
-        metalness: 0.72,
-        roughness: 0.28,
+        metalness: 0.95,
+        roughness: 0.16,
         envMapIntensity: 1.4,
         side: THREE.DoubleSide
-    });
     });
 
     const postRadius = Math.max(radius * 0.0045, 0.022);
@@ -2195,23 +2192,21 @@ function resize(viewer) {
 }
 
 function animate(viewer) {
-    viewer.group.rotation.y += 0.0005;
     viewer.animationId = requestAnimationFrame(() => animate(viewer));
-    viewer.distance = maxSize * 2.75;
+
     if (!viewer.renderer || !viewer.scene || !viewer.camera) return;
 
     viewer.renderer.render(viewer.scene, viewer.camera);
 }
-
 function fitCamera(viewer) {
     const height = viewer.modelHeight || 40;
     const radius = viewer.modelRadius || 20;
     const maxSize = Math.max(height, radius * 2, 1);
 
-    viewer.distance = maxSize * 3.25;
+    viewer.distance = maxSize * 2.75;
     viewer.target.set(0, 0, 0);
-    viewer.pitch = 0.34;
-    viewer.yaw = 0.85;
+    viewer.pitch = 0.32;
+    viewer.yaw = 0.82;
 
     updateCamera(viewer);
 }
