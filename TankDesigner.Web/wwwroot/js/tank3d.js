@@ -150,6 +150,7 @@ function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
     addTechnicalInfoOverlay(shell);
     addMouseHelpPanel(shell);
     addDownloadPngButton(shell, renderer);
+    addMouseHelpPanel(shell);
 
     const viewer = {
         container,
