@@ -86,11 +86,14 @@ function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
     shell.style.borderRadius = "24px";
     shell.style.overflow = "hidden";
     shell.style.background = `
-        radial-gradient(circle at 52% 42%,
-        rgba(255,255,255,0.98) 0%,
-        rgba(226,232,240,0.96) 45%,
-        rgba(203,213,225,0.92) 100%)
-    `;
+    radial-gradient(circle at 52% 42%,
+    rgba(255,255,255,1) 0%,
+    rgba(241,245,249,0.98) 45%,
+    rgba(226,232,240,0.96) 100%)
+`;
+
+    scene.background = new THREE.Color(0xf1f5f9);
+    scene.fog = null;
 
     container.appendChild(shell);
 
