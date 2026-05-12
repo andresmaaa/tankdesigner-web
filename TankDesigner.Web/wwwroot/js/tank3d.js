@@ -43,6 +43,7 @@ function renderTank3D(container, tank, dotNetRef) {
     buildTank(viewer, tank, rings, scale);
     fitCamera(viewer);
 
+    // Initial render
     viewer.renderer.render(viewer.scene, viewer.camera);
 }
 
@@ -88,64 +89,121 @@ function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
     shell.style.minHeight = "720px";
     shell.style.borderRadius = "24px";
     shell.style.overflow = "hidden";
+    // Fondo premium con degradado sutil
     shell.style.background = `
-        radial-gradient(circle at 52% 42%,
+        radial-gradient(circle at 50% 40%,
         rgba(255,255,255,1) 0%,
-        rgba(241,245,249,0.98) 48%,
-        rgba(226,232,240,0.96) 100%)
+        rgba(241,245,249,1) 60%,
+        rgba(219,228,238,1) 100%)
     `;
 
     container.appendChild(shell);
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xf1f5f9);
-    scene.fog = null;
+    scene.background = null; // Usamos el fondo del div shell
 
-    const camera = new THREE.PerspectiveCamera(34, 1, 0.01, 10000);
+    const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 10000); // FOV ligeramente más cerrado para look profesional
 
     const renderer = new THREE.WebGLRenderer({
         antialias: true,
         alpha: true,
-        preserveDrawingBuffer: true
+        preserveDrawingBuffer: true,
+        powerPreference: "high-performance" // Sugerir uso de GPU dedicada
     });
 
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    // Activación de sombras suaves profesionales
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.25;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping; // Tone mapping de cine para realismo
+    renderer.toneMappingExposure = 1.1;
 
     shell.appendChild(renderer.domElement);
 
     const group = new THREE.Group();
     scene.add(group);
 
-    scene.add(new THREE.AmbientLight(0xffffff, 1.35));
+    // --- ILUMINACIÓN PROFESIONAL DE ESTUDIO (5 PUNTOS) ---
 
-    const key = new THREE.DirectionalLight(0xffffff, 2.0);
-    key.position.set(36, 42, 32);
-    key.castShadow = true;
-    key.shadow.mapSize.width = 2048;
-    key.shadow.mapSize.height = 2048;
-    key.shadow.camera.near = 1;
-    key.shadow.camera.far = 250;
-    key.shadow.camera.left = -80;
-    key.shadow.camera.right = 80;
-    key.shadow.camera.top = 80;
-    key.shadow.camera.bottom = -80;
-    scene.add(key);
+    // 1. Luz de Ambiente Sutil (Relleno base)
+    scene.add(new THREE.AmbientLight(0xffffff, 0.5));
 
-    const fill = new THREE.DirectionalLight(0xffffff, 0.95);
-    fill.position.set(-32, 20, -28);
-    scene.add(fill);
+    // 2. Luz Principal (Key Light) - Cálida, posicionada arriba a la derecha
+    const keyLight = new THREE.DirectionalLight(0xfffaf0, 1.8);
+    keyLight.position.set(40, 50, 40);
+    keyLight.castShadow = true;
+    // Configuración de sombras de alta calidad
+    keyLight.shadow.mapSize.width = 4096;
+    keyLight.shadow.mapSize.height = 4096;
+    keyLight.shadow.camera.near = 1;
+    keyLight.shadow.camera.far = 300;
+    const sCamSize = 70;
+    keyLight.shadow.camera.left = -sCamSize;
+    keyLight.shadow.camera.right = sCamSize;
+    keyLight.shadow.camera.top = sCamSize;
+    keyLight.shadow.camera.bottom = -sCamSize;
+    keyLight.shadow.bias = -0.0005; // Evitar artefactos
+    keyLight.shadow.radius = 2.5; // Suavizado de bordes
+    scene.add(keyLight);
 
-    const rim = new THREE.DirectionalLight(0xffffff, 0.75);
-    rim.position.set(-24, 28, 44);
-    scene.add(rim);
+    // 3. Luz de Relleno (Fill Light) - Fría, posición opuesta
+    const fillLight = new THREE.DirectionalLight(0xe0f2fe, 0.9);
+    fillLight.position.set(-40, 15, -10);
+    scene.add(fillLight);
 
-    const hemi = new THREE.HemisphereLight(0xffffff, 0x94a3b8, 0.7);
-    scene.add(hemi);
+    // 4. Luz de Contorno (Rim Light) - Resalta bordes traseros, muy brillante
+    const rimLight = new THREE.DirectionalLight(0xffffff, 2.2);
+    rimLight.position.set(-20, 30, -50);
+    scene.add(rimLight);
+
+    // 5. Luz de Acento (Kick Light) - Brillo lateral
+    const kickLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    kickLight.position.set(50, 0, -20);
+    scene.add(kickLight);
+
+    // 6. Luz de Techo (Top Light) - Define volumen superior
+    const topLight = new THREE.DirectionalLight(0xffffff, 0.4);
+    topLight.position.set(0, 80, 0);
+    scene.add(topLight);
+
+    // --- GENERACIÓN DE ENTORNO PARA REFLEJOS (Crucial para realismo metálico) ---
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    pmremGenerator.compileEquirectangularShader();
+
+    // Creamos un entorno de estudio procedimental sutil
+    const generateStudioScene = () => {
+        const studioScene = new THREE.Scene();
+        const fill = new THREE.Color(0xf1f5f9);
+        studioScene.background = fill;
+
+        for (let i = 0; i < 4; i++) {
+            const lMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const lGeom = new THREE.SphereGeometry(10 + Math.random() * 10, 16, 16);
+            const lMesh = new THREE.Mesh(lGeom, lMat);
+            lMesh.position.set(
+                (Math.random() - 0.5) * 200,
+                30 + Math.random() * 60,
+                (Math.random() - 0.5) * 200
+            );
+            studioScene.add(lMesh);
+        }
+        return studioScene;
+    };
+
+    const studioEnv = generateStudioScene();
+    scene.environment = pmremGenerator.fromScene(studioEnv).texture;
+    studioEnv.traverse(child => { if (child.geometry) child.geometry.dispose(); });
+
+    // Plano de sombra de contacto en el suelo para "asentar" el modelo
+    const groundShadowGeo = new THREE.PlaneGeometry(200, 200);
+    const groundShadowMat = new THREE.ShadowMaterial({ opacity: 0.1 });
+    const groundShadow = new THREE.Mesh(groundShadowGeo, groundShadowMat);
+    groundShadow.rotation.x = -Math.PI / 2;
+    groundShadow.position.y = -0.05; // Ligeramente debajo del disco base
+    groundShadow.receiveShadow = true;
+    scene.add(groundShadow);
+
 
     addScaleBadge(shell, metersPerUnit, tank);
     addRoofControls(shell, container, tank, dotNetRef);
@@ -161,6 +219,10 @@ function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
         camera,
         renderer,
         group,
+        // Variables de estado de cámara con amortiguación
+        inputYaw: 0.72,
+        inputPitch: 0.24,
+        inputDistance: 72,
         yaw: 0.72,
         pitch: 0.24,
         distance: 72,
@@ -189,38 +251,35 @@ function addMouseHelpPanel(shell) {
     const panel = document.createElement("div");
 
     panel.innerHTML = `
-        <strong>Controles de vista 3D</strong>
-        <span>🖱️ Rotar: botón izquierdo + arrastrar</span>
-        <span>🔍 Zoom: rueda del ratón</span>
-        <span>ℹ️ Datos: cursor sobre piezas</span>
+        <span style="opacity:0.6;margin-right:4px;">🖱️</span>
+        <strong style="margin-right:12px;">Vista 3D</strong>
+        <span style="color:#a1a1aa;margin-right:12px;">Rotar: Clic izq. + arrastrar</span>
+        <span style="color:#a1a1aa;margin-right:12px;">Zoom: Rueda</span>
+        <span style="color:#a1a1aa;">Datos: Puntero sobre piezas</span>
     `;
 
     panel.style.position = "absolute";
     panel.style.left = "50%";
-    panel.style.bottom = "18px";
+    panel.style.bottom = "20px";
     panel.style.transform = "translateX(-50%)";
     panel.style.zIndex = "12";
     panel.style.display = "flex";
-    panel.style.flexWrap = "wrap";
     panel.style.justifyContent = "center";
-    panel.style.gap = "14px";
     panel.style.alignItems = "center";
-    panel.style.width = "calc(100% - 520px)";
-    panel.style.minWidth = "360px";
-    panel.style.maxWidth = "760px";
-    panel.style.padding = "11px 16px";
-    panel.style.borderRadius = "18px";
-    panel.style.background = "rgba(15,23,42,0.90)";
-    panel.style.border = "1px solid rgba(148,163,184,0.35)";
-    panel.style.boxShadow = "0 18px 45px rgba(15,23,42,0.26)";
-    panel.style.backdropFilter = "blur(14px)";
+    panel.style.width = "auto";
+    panel.style.padding = "10px 20px";
+    panel.style.borderRadius = "20px";
+    panel.style.background = "rgba(17,24,39,0.85)"; // Fondo más oscuro profesional
+    panel.style.border = "1px solid rgba(255,255,255,0.08)";
+    panel.style.boxShadow = "0 10px 30px rgba(0,0,0,0.25)";
+    panel.style.backdropFilter = "blur(10px)";
     panel.style.color = "#ffffff";
-    panel.style.font = "12px Arial";
+    panel.style.font = "500 12px 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
     panel.style.pointerEvents = "none";
+    panel.style.whiteSpace = "nowrap";
 
     shell.appendChild(panel);
 }
-
 function addScaleBadge(shell, metersPerUnit, tank) {
     const vigas = tank.vigasTechoConico && tank.vigasTechoConico.aplica === true
         ? `<br>Vigas radiales: <strong style="color:#fca5a5">${tank.vigasTechoConico.numeroVigas || 0}</strong>`
@@ -232,8 +291,9 @@ function addScaleBadge(shell, metersPerUnit, tank) {
 
     const scaleBadge = document.createElement("div");
     scaleBadge.innerHTML = `
-        <strong>Escala automática</strong><br>
-        1 unidad 3D = ${metersPerUnit.toFixed(2)} m<br>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;opacity:0.7;margin-bottom:4px;">Configuración</div>
+        <strong>Escala Automática</strong><br>
+        <span style="color:#a1a1aa">1 u. 3D = ${metersPerUnit.toFixed(2)} m</span><br>
         Techo: ${normalizarTecho(tank.techo).label}
         ${vigas}
         ${escalera}
@@ -242,12 +302,14 @@ function addScaleBadge(shell, metersPerUnit, tank) {
     scaleBadge.style.right = "22px";
     scaleBadge.style.bottom = "100px";
     scaleBadge.style.zIndex = "5";
-    scaleBadge.style.padding = "12px 14px";
+    scaleBadge.style.padding = "14px 16px";
     scaleBadge.style.borderRadius = "16px";
-    scaleBadge.style.background = "rgba(15,23,42,0.88)";
+    scaleBadge.style.background = "rgba(17,24,39,0.85)";
+    scaleBadge.style.border = "1px solid rgba(255,255,255,0.08)";
+    scaleBadge.style.boxShadow = "0 10px 30px rgba(0,0,0,0.25)";
     scaleBadge.style.color = "#ffffff";
-    scaleBadge.style.font = "13px Arial";
-    scaleBadge.style.lineHeight = "1.45";
+    scaleBadge.style.font = "12px 'Segoe UI', Arial";
+    scaleBadge.style.lineHeight = "1.5";
     shell.appendChild(scaleBadge);
 }
 
@@ -264,29 +326,30 @@ function addRoofControls(shell, container, tank, dotNetRef) {
 
     const panel = document.createElement("div");
     panel.style.position = "absolute";
-    panel.style.left = "18px";
-    panel.style.top = "18px";
+    panel.style.left = "20px";
+    panel.style.top = "20px";
     panel.style.zIndex = "6";
-    panel.style.width = "210px";
-    panel.style.padding = "14px";
+    panel.style.width = "220px";
+    panel.style.padding = "16px";
     panel.style.borderRadius = "16px";
-    panel.style.background = "rgba(15,23,42,0.90)";
+    panel.style.background = "rgba(17,24,39,0.85)";
+    panel.style.border = "1px solid rgba(255,255,255,0.08)";
     panel.style.color = "#ffffff";
-    panel.style.font = "13px Arial";
-    panel.style.boxShadow = "0 18px 45px rgba(15,23,42,0.25)";
+    panel.style.font = "13px 'Segoe UI', Arial";
+    panel.style.boxShadow = "0 15px 35px rgba(0,0,0,0.3)";
+    panel.style.backdropFilter = "blur(10px)";
 
     panel.innerHTML = `
-        <div style="font-weight:700;margin-bottom:10px;">Techo cónico 3D</div>
-        <label style="display:block;margin-bottom:6px;color:#cbd5e1;">Número de vigas</label>
-        <input data-tank3d-beams type="number" min="0" max="160" step="1" value="${currentBeamCount}" style="width:100%;box-sizing:border-box;border-radius:10px;border:1px solid #334155;background:#0f172a;color:white;padding:8px 10px;margin-bottom:10px;">
-        <label style="display:flex;justify-content:space-between;gap:8px;margin-bottom:6px;color:#cbd5e1;">
-            <span>Núcleo central</span>
-            <strong data-tank3d-hub-label style="color:#fde68a;">${currentHubPercent}%</strong>
-        </label>
-        <input data-tank3d-hub type="range" min="8" max="32" step="1" value="${currentHubPercent}" style="width:100%;">
-        <div style="margin-top:8px;color:#94a3b8;font-size:12px;line-height:1.35;">
-            El núcleo se calcula sobre el radio del tanque y varía con el tamaño del modelo.
+        <div style="font-weight:700;font-size:14px;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+            <span style="color:#60a5fa">📐</span> Techo Cónico 3D
         </div>
+        <label style="display:block;margin-bottom:6px;color:#a1a1aa;font-size:12px;">Número de vigas</label>
+        <input data-tank3d-beams type="number" min="0" max="160" step="1" value="${currentBeamCount}" style="width:100%;box-sizing:border-box;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(0,0,0,0.2);color:white;padding:8px 10px;margin-bottom:12px;font-family:inherit;">
+        <label style="display:flex;justify-content:space-between;gap:8px;margin-bottom:6px;color:#a1a1aa;font-size:12px;">
+            <span>Factor Núcleo Central</span>
+            <strong data-tank3d-hub-label style="color:#fbbf24;">${currentHubPercent}%</strong>
+        </label>
+        <input data-tank3d-hub type="range" min="8" max="32" step="1" value="${currentHubPercent}" style="width:100%;cursor:pointer;">
     `;
 
     const beamsInput = panel.querySelector("[data-tank3d-beams]");
@@ -322,29 +385,58 @@ function addTechnicalControls(shell, container, tank, dotNetRef) {
     const panel = document.createElement("div");
 
     panel.style.position = "absolute";
-    panel.style.left = "18px";
+    panel.style.left = "20px";
     panel.style.bottom = "100px";
     panel.style.zIndex = "9";
     panel.style.width = "190px";
-    panel.style.padding = "14px";
+    panel.style.padding = "16px";
     panel.style.borderRadius = "16px";
-    panel.style.background = "rgba(15,23,42,0.92)";
+    panel.style.background = "rgba(17,24,39,0.88)";
+    panel.style.border = "1px solid rgba(255,255,255,0.08)";
     panel.style.color = "white";
-    panel.style.font = "13px Arial";
-    panel.style.boxShadow = "0 18px 45px rgba(15,23,42,0.28)";
+    panel.style.font = "13px 'Segoe UI', Arial";
+    panel.style.boxShadow = "0 15px 35px rgba(0,0,0,0.3)";
+    panel.style.backdropFilter = "blur(10px)";
 
     panel.innerHTML = `
-        <div style="font-size:14px;font-weight:700;margin-bottom:12px;">
-            Vista técnica 3D
+        <div style="font-weight:700;font-size:14px;margin-bottom:14px;display:flex;align-items:center;gap:8px;">
+            <span style="color:#60a5fa">👁️</span> Vista Técnica
         </div>
-
-        ${createTechnicalCheckbox("Techo", "showRoof")}
-        ${createTechnicalCheckbox("Barandilla", "showGuardrail")}
-        ${createTechnicalCheckbox("Conexiones", "showConnections")}
-        ${createTechnicalCheckbox("Escalera", "showLadder")}
-        ${createTechnicalCheckbox("Agua", "showWater")}
-        ${createTechnicalCheckbox("Referencias", "showReferences")}
+        <div style="display:grid;gap:10px;">
+            ${createTechnicalCheckbox("Techo", "showRoof")}
+            ${createTechnicalCheckbox("Barandilla", "showGuardrail")}
+            ${createTechnicalCheckbox("Conexiones", "showConnections")}
+            ${createTechnicalCheckbox("Escalera", "showLadder")}
+            ${createTechnicalCheckbox("Agua", "showWater")}
+            ${createTechnicalCheckbox("Referencias", "showReferences")}
+        </div>
     `;
+
+    // Estilo personalizado para checkboxes profesionales
+    const styleTag = document.createElement('style');
+    styleTag.textContent = `
+        .tank3d-checkbox {
+            appearance: none;
+            width: 16px; height: 16px;
+            border-radius: 4px;
+            border: 2px solid rgba(255,255,255,0.3);
+            background: rgba(0,0,0,0.2);
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s;
+        }
+        .tank3d-checkbox:checked {
+            background: #2563eb;
+            border-color: #2563eb;
+        }
+        .tank3d-checkbox:checked::after {
+            content: '✓';
+            position: absolute;
+            color: white; font-size: 12px; font-weight:bold;
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
+        }
+    `;
+    shell.appendChild(styleTag);
 
     panel.querySelectorAll("input[type='checkbox']").forEach(input => {
         input.addEventListener("change", () => {
@@ -358,8 +450,8 @@ function addTechnicalControls(shell, container, tank, dotNetRef) {
 
 function createTechnicalCheckbox(label, key) {
     return `
-        <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer;">
-            <input type="checkbox" data-key="${key}" ${technicalViewState[key] ? "checked" : ""}>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;color:#e4e4e7;">
+            <input type="checkbox" class="tank3d-checkbox" data-key="${key}" ${technicalViewState[key] ? "checked" : ""}>
             <span>${label}</span>
         </label>
     `;
@@ -371,17 +463,19 @@ function addTechnicalInfoOverlay(shell) {
     overlay.id = "tank3d-tech-overlay";
     overlay.style.position = "absolute";
     overlay.style.left = "50%";
-    overlay.style.top = "18px";
+    overlay.style.top = "20px";
     overlay.style.transform = "translateX(-50%)";
-    overlay.style.padding = "10px 14px";
+    overlay.style.padding = "12px 16px";
     overlay.style.borderRadius = "14px";
-    overlay.style.background = "rgba(15,23,42,0.88)";
-    overlay.style.color = "white";
-    overlay.style.font = "13px Arial";
+    overlay.style.background = "rgba(255,255,255,0.95)"; // Fondo claro profesional para info
+    overlay.style.color = "#111827";
+    overlay.style.font = "500 13px 'Segoe UI', Arial";
     overlay.style.zIndex = "20";
     overlay.style.pointerEvents = "none";
     overlay.style.display = "none";
-    overlay.style.lineHeight = "1.45";
+    overlay.style.lineHeight = "1.6";
+    overlay.style.boxShadow = "0 15px 40px rgba(0,0,0,0.15)";
+    overlay.style.border = "1px solid rgba(0,0,0,0.05)";
 
     shell.appendChild(overlay);
 }
@@ -390,26 +484,36 @@ function addDownloadPngButton(shell, renderer) {
     const button = document.createElement("button");
 
     button.type = "button";
-    button.textContent = "Descargar PNG";
+    button.innerHTML = `
+        <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+        Descargar PNG
+    `;
 
     button.style.position = "absolute";
-    button.style.right = "18px";
-    button.style.top = "18px";
+    button.style.right = "20px";
+    button.style.top = "20px";
     button.style.zIndex = "8";
     button.style.border = "0";
-    button.style.borderRadius = "14px";
-    button.style.padding = "10px 14px";
-    button.style.background = "#2563eb";
-    button.style.color = "#ffffff";
-    button.style.font = "700 13px Arial";
+    button.style.borderRadius = "12px";
+    button.style.padding = "10px 16px";
+    button.style.background = "#ffffff";
+    button.style.color = "#111827";
+    button.style.font = "600 13px 'Segoe UI', Arial";
     button.style.cursor = "pointer";
-    button.style.boxShadow = "0 12px 28px rgba(37,99,235,0.32)";
+    button.style.display = "flex";
+    button.style.alignItems = "center";
+    button.style.gap = "8px";
+    button.style.boxShadow = "0 4px 12px rgba(0,0,0,0.1)";
+    button.style.transition = "all 0.2s";
+
+    button.addEventListener("mouseover", () => { button.style.background = "#f3f4f6"; });
+    button.addEventListener("mouseout", () => { button.style.background = "#ffffff"; });
 
     button.addEventListener("click", () => {
         renderer.render(renderer.__tank3dScene, renderer.__tank3dCamera);
 
         const link = document.createElement("a");
-        link.download = `tank-3d-${new Date().toISOString().slice(0, 10)}.png`;
+        link.download = `render-tanque-${tank.id || 'modelo'}-${new Date().toISOString().slice(0, 10)}.png`;
         link.href = renderer.domElement.toDataURL("image/png");
         link.click();
     });
@@ -433,12 +537,16 @@ function buildTank(viewer, tank, rings, scale) {
         const materialName = ring.material || tank.materialPrincipal || "material";
         const color = colorForMaterial(materialName);
 
-        const shellGeometry = new THREE.CylinderGeometry(radius, radius, height, 96, 1, true);
+        // Aumento de segmentos para curvas perfectas profesionales
+        const shellGeometry = new THREE.CylinderGeometry(radius, radius, height, 160, 1, true);
+
+        // MATERIAL PROFESIONAL PBR
         const shellMaterial = new THREE.MeshStandardMaterial({
             color,
-            metalness: 0.48,
-            roughness: 0.38,
-            side: THREE.DoubleSide
+            metalness: 0.85, // Look metálico premium
+            roughness: 0.22, // Superficie satinada, reflejos definidos
+            side: THREE.DoubleSide,
+            envMapIntensity: 1.0
         });
 
         const shell = new THREE.Mesh(shellGeometry, shellMaterial);
@@ -456,13 +564,14 @@ function buildTank(viewer, tank, rings, scale) {
 
         viewer.group.add(shell);
 
-        const edgeGeometry = new THREE.EdgesGeometry(shellGeometry, 18);
+        // Líneas de unión más sutiles y elegantes
+        const edgeGeometry = new THREE.EdgesGeometry(shellGeometry, 25);
         const edges = new THREE.LineSegments(
             edgeGeometry,
             new THREE.LineBasicMaterial({
-                color: 0x0f172a,
+                color: 0x000000,
                 transparent: true,
-                opacity: 0.22
+                opacity: 0.12
             })
         );
 
@@ -507,7 +616,7 @@ function buildTank(viewer, tank, rings, scale) {
         addLadder(viewer.group, radius, currentY, tank.escalera, scale);
     }
 
-    viewer.group.position.y = (-currentY / 2) + currentY * 0.12;
+    viewer.group.position.y = (-currentY / 2); // Centrado perfecto
     viewer.modelRadius = radius;
     viewer.modelHeight = currentY;
 }
@@ -550,13 +659,13 @@ function addStarterRing(group, radius, height, tank) {
 
     const material = new THREE.MeshStandardMaterial({
         color: 0x5d5e34,
-        metalness: 0.62,
-        roughness: 0.34,
+        metalness: 0.9,
+        roughness: 0.3,
         side: THREE.DoubleSide
     });
 
     const starter = new THREE.Mesh(
-        new THREE.CylinderGeometry(radius * 1.015, radius * 1.015, height, 128, 1, true),
+        new THREE.CylinderGeometry(radius * 1.015, radius * 1.015, height, 160, 1, true),
         material
     );
 
@@ -592,9 +701,9 @@ function addRoofGuardrail(group, radius, height, roofRaw) {
 
     const material = new THREE.MeshStandardMaterial({
         color: 0xe5e7eb,
-        metalness: 0.95,
-        roughness: 0.16,
-        envMapIntensity: 1.4,
+        metalness: 1.0, // Acero inoxidable pulido
+        roughness: 0.1,
+        envMapIntensity: 1.5,
         side: THREE.DoubleSide
     });
 
@@ -614,7 +723,7 @@ function addRoofGuardrail(group, radius, height, roofRaw) {
         const bottom = new THREE.Vector3(x, height, z);
         const top = new THREE.Vector3(x, height + railHeight, z);
 
-        addCylinderBetween(group, bottom, top, postRadius, material, 8);
+        addCylinderBetween(group, bottom, top, postRadius, material, 12);
     }
 
     addCircularRail(group, railRadiusPosition, height + railHeight, railRadius, material);
@@ -647,9 +756,9 @@ function addRoofAccessGate(group, radius, height, material) {
     const rightTop = rightBottom.clone();
     rightTop.y = height + gateHeight;
 
-    addCylinderBetween(group, leftBottom, leftTop, railRadius, material, 8);
-    addCylinderBetween(group, rightBottom, rightTop, railRadius, material, 8);
-    addCylinderBetween(group, leftTop, rightTop, railRadius, material, 8);
+    addCylinderBetween(group, leftBottom, leftTop, railRadius, material, 12);
+    addCylinderBetween(group, rightBottom, rightTop, railRadius, material, 12);
+    addCylinderBetween(group, leftTop, rightTop, railRadius, material, 12);
 
     const chain = new THREE.MeshStandardMaterial({
         color: 0xff7a18,
@@ -661,7 +770,7 @@ function addRoofAccessGate(group, radius, height, material) {
 }
 
 function addCircularRail(group, radius, y, tubeRadius, material) {
-    const segments = 96;
+    const segments = 128; // Mayor suavizado
     const points = [];
 
     for (let i = 0; i <= segments; i++) {
@@ -674,7 +783,7 @@ function addCircularRail(group, radius, y, tubeRadius, material) {
     }
 
     for (let i = 0; i < points.length - 1; i++) {
-        addCylinderBetween(group, points[i], points[i + 1], tubeRadius, material, 8);
+        addCylinderBetween(group, points[i], points[i + 1], tubeRadius, material, 12);
     }
 }
 
@@ -700,7 +809,6 @@ function addRoof(group, radius, height, roofRaw, vigasTechoConico, scale) {
 }
 
 function addManhole(group, radius, height) {
-    // MODIFICADO: Se deja únicamente la placa circular limpia pegada al tanque.
     const angle = Math.PI * 1.82;
     const y = height * 0.30;
 
@@ -711,11 +819,10 @@ function addManhole(group, radius, height) {
 
     const materialCover = new THREE.MeshStandardMaterial({
         color: 0x94a3b8,
-        metalness: 0.72,
-        roughness: 0.26
+        metalness: 0.8,
+        roughness: 0.25
     });
 
-    // Se posiciona el centro justo en la pared exterior del tanque
     const center = radial.clone().multiplyScalar(radius + coverThickness * 0.3);
     center.y = y;
 
@@ -723,7 +830,7 @@ function addManhole(group, radius, height) {
     quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), radial.clone().normalize());
 
     const cover = new THREE.Mesh(
-        new THREE.CylinderGeometry(manholeRadius, manholeRadius, coverThickness, 54),
+        new THREE.CylinderGeometry(manholeRadius, manholeRadius, coverThickness, 64),
         materialCover
     );
 
@@ -752,12 +859,12 @@ function addRoofVent(group, radius, height, roofRaw) {
 
     const material = new THREE.MeshStandardMaterial({
         color: 0x64748b,
-        metalness: 0.72,
-        roughness: 0.26
+        metalness: 0.8,
+        roughness: 0.2
     });
 
     const vent = new THREE.Mesh(
-        new THREE.CylinderGeometry(ventRadius, ventRadius, ventHeight, 32),
+        new THREE.CylinderGeometry(ventRadius, ventRadius, ventHeight, 48),
         material
     );
 
@@ -774,7 +881,7 @@ function addRoofVent(group, radius, height, roofRaw) {
     group.add(vent);
 
     const cap = new THREE.Mesh(
-        new THREE.CylinderGeometry(ventRadius * 1.45, ventRadius * 1.45, ventHeight * 0.18, 32),
+        new THREE.CylinderGeometry(ventRadius * 1.45, ventRadius * 1.45, ventHeight * 0.18, 48),
         material
     );
 
@@ -808,11 +915,11 @@ function normalizarTecho(value) {
 }
 
 function addOpenTop(group, radius, height) {
-    const geometry = new THREE.TorusGeometry(radius, Math.max(radius * 0.014, 0.035), 12, 180);
+    const geometry = new THREE.TorusGeometry(radius, Math.max(radius * 0.014, 0.035), 16, 160);
     const material = new THREE.MeshStandardMaterial({
         color: 0x0f172a,
-        metalness: 0.58,
-        roughness: 0.28
+        metalness: 0.8,
+        roughness: 0.2
     });
 
     const torus = new THREE.Mesh(geometry, material);
@@ -825,13 +932,13 @@ function addOpenTop(group, radius, height) {
 function addFlatRoof(group, radius, height) {
     const baseMaterial = new THREE.MeshStandardMaterial({
         color: 0xdbe3ec,
-        metalness: 0.58,
-        roughness: 0.34,
+        metalness: 0.6,
+        roughness: 0.3,
         side: THREE.DoubleSide
     });
 
     const roof = new THREE.Mesh(
-        new THREE.CircleGeometry(radius * 0.985, 128),
+        new THREE.CircleGeometry(radius * 0.985, 160),
         baseMaterial
     );
 
@@ -843,14 +950,14 @@ function addFlatRoof(group, radius, height) {
 
     const sheetMaterial = new THREE.MeshStandardMaterial({
         color: 0xf1f5f9,
-        metalness: 0.68,
-        roughness: 0.26
+        metalness: 0.8,
+        roughness: 0.2
     });
 
     const ribMaterial = new THREE.MeshStandardMaterial({
         color: 0x94a3b8,
-        metalness: 0.72,
-        roughness: 0.24
+        metalness: 0.8,
+        roughness: 0.2
     });
 
     const sheetCount = Math.max(10, Math.min(22, Math.floor(radius * 1.8)));
@@ -899,13 +1006,13 @@ function addConeRoof(group, radius, height, vigasTechoConico, scale) {
         ? alturaConoReal * scale
         : Math.max(radius * 0.16, 1.2);
 
-    const geometry = new THREE.ConeGeometry(radius * 1.01, roofHeight, 96, 1, false);
+    const geometry = new THREE.ConeGeometry(radius * 1.01, roofHeight, 160, 1, false);
     const material = new THREE.MeshStandardMaterial({
         color: 0xe5e7eb,
-        metalness: 0.52,
-        roughness: 0.38,
+        metalness: 0.7,
+        roughness: 0.3,
         transparent: true,
-        opacity: 0.86,
+        opacity: 0.9,
         side: THREE.DoubleSide
     });
 
@@ -945,7 +1052,7 @@ function addConeRoofPanels(group, radius, baseHeight, roofHeight) {
         const y = baseHeight + roofHeight * (1 - f);
 
         const curve = new THREE.EllipseCurve(0, 0, ringRadius, ringRadius, 0, Math.PI * 2, false, 0);
-        const points = curve.getPoints(120).map(p => new THREE.Vector3(p.x, y, p.y));
+        const points = curve.getPoints(160).map(p => new THREE.Vector3(p.x, y, p.y));
         const geometry = new THREE.BufferGeometry().setFromPoints(points);
 
         group.add(new THREE.LineLoop(geometry, material));
@@ -960,10 +1067,8 @@ function addConeRoofRafters(group, radius, baseHeight, roofHeight, vigasTechoCon
 
     const beamMaterial = new THREE.MeshStandardMaterial({
         color: 0xb91c1c,
-        emissive: new THREE.Color(0x450a0a),
-        emissiveIntensity: 0.12,
-        metalness: 0.78,
-        roughness: 0.24
+        metalness: 0.9,
+        roughness: 0.2
     });
 
     const hubRadius = calcularRadioNucleoTecho(radius, numeroVigas, vigasTechoConico, scale);
@@ -998,13 +1103,11 @@ function addConeRoofCenterHub(group, y, radius, numeroVigas, vigasTechoConico, s
     const hubRadius = calcularRadioNucleoTecho(radius, numeroVigas, vigasTechoConico, scale);
     const hubHeight = Math.max(radius * 0.035, 0.18);
 
-    const geometry = new THREE.CylinderGeometry(hubRadius, hubRadius, hubHeight, 72);
+    const geometry = new THREE.CylinderGeometry(hubRadius, hubRadius, hubHeight, 96);
     const material = new THREE.MeshStandardMaterial({
         color: 0x5f0f0f,
-        emissive: new THREE.Color(0x450a0a),
-        emissiveIntensity: 0.15,
-        metalness: 0.82,
-        roughness: 0.2
+        metalness: 0.9,
+        roughness: 0.1
     });
 
     const hub = new THREE.Mesh(geometry, material);
@@ -1039,8 +1142,8 @@ function addDomeRoof(group, radius, height) {
 
     const geometry = new THREE.SphereGeometry(
         radius * 1.015,
-        128,
-        32,
+        160,
+        40,
         0,
         Math.PI * 2,
         0,
@@ -1049,8 +1152,8 @@ function addDomeRoof(group, radius, height) {
 
     const material = new THREE.MeshStandardMaterial({
         color: 0xe5e7eb,
-        metalness: 0.58,
-        roughness: 0.30,
+        metalness: 0.9,
+        roughness: 0.2,
         transparent: true,
         opacity: 0.92,
         side: THREE.DoubleSide
@@ -1080,15 +1183,15 @@ function addDomeRoof(group, radius, height) {
 function addDomeSkirtRing(group, radius, height) {
     const material = new THREE.MeshStandardMaterial({
         color: 0xd1d5db,
-        metalness: 0.72,
-        roughness: 0.24
+        metalness: 1.0,
+        roughness: 0.15
     });
 
     const skirtHeight = Math.max(radius * 0.09, 0.38);
     const skirtThickness = Math.max(radius * 0.016, 0.05);
 
     const skirt = new THREE.Mesh(
-        new THREE.CylinderGeometry(radius * 1.01, radius * 1.01, skirtHeight, 128, 1, true),
+        new THREE.CylinderGeometry(radius * 1.01, radius * 1.01, skirtHeight, 160, 1, true),
         material
     );
 
@@ -1105,8 +1208,8 @@ function addDomeSkirtRing(group, radius, height) {
 function addDomeRoofRibs(group, radius, height, domeHeight) {
     const material = new THREE.MeshStandardMaterial({
         color: 0xcbd5e1,
-        metalness: 0.72,
-        roughness: 0.24
+        metalness: 1.0,
+        roughness: 0.1
     });
 
     const ribRadius = Math.max(radius * 0.0045, 0.020);
@@ -1123,7 +1226,7 @@ function addDomeRoofRibs(group, radius, height, domeHeight) {
 
         const end = new THREE.Vector3(0, height + domeHeight, 0);
 
-        addCylinderBetween(group, start, end, ribRadius, material, 8);
+        addCylinderBetween(group, start, end, ribRadius, material, 12);
     }
 
     [0.35, 0.62, 0.84].forEach(f => {
@@ -1147,15 +1250,15 @@ function addWaterLevelIfAvailable(group, radius, height, tank, scale) {
     if (y <= 0) return;
 
     const material = new THREE.MeshStandardMaterial({
-        color: 0x38bdf8,
+        color: 0x0ea5e9, // Color agua más vibrante profesional
         transparent: true,
-        opacity: 0.18,
-        metalness: 0.05,
-        roughness: 0.12,
+        opacity: 0.3,
+        metalness: 0.1,
+        roughness: 0.05,
         side: THREE.DoubleSide
     });
 
-    const disc = new THREE.Mesh(new THREE.CircleGeometry(radius * 0.96, 96), material);
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(radius * 0.96, 160), material);
     disc.rotation.x = -Math.PI / 2;
     disc.position.y = y;
     disc.receiveShadow = true;
@@ -1169,23 +1272,23 @@ function addWaterLevelIfAvailable(group, radius, height, tank, scale) {
     group.add(disc);
 
     const lineMaterial = new THREE.LineBasicMaterial({
-        color: 0x0284c7,
+        color: 0x38bdf8,
         transparent: true,
-        opacity: 0.82
+        opacity: 0.8
     });
 
     const curve = new THREE.EllipseCurve(0, 0, radius * 0.965, radius * 0.965, 0, Math.PI * 2, false, 0);
-    const points = curve.getPoints(120).map(p => new THREE.Vector3(p.x, y + 0.01, p.y));
+    const points = curve.getPoints(160).map(p => new THREE.Vector3(p.x, y + 0.01, p.y));
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
     group.add(new THREE.LineLoop(geometry, lineMaterial));
 }
 
 function addTopStiffener(group, radius, height) {
-    const geometry = new THREE.TorusGeometry(radius * 1.015, Math.max(radius * 0.018, 0.045), 14, 120);
+    const geometry = new THREE.TorusGeometry(radius * 1.015, Math.max(radius * 0.018, 0.045), 16, 160);
     const material = new THREE.MeshStandardMaterial({
         color: 0x1e293b,
-        metalness: 0.72,
-        roughness: 0.28
+        metalness: 0.9,
+        roughness: 0.2
     });
 
     const stiffener = new THREE.Mesh(geometry, material);
@@ -1204,43 +1307,45 @@ function addTopStiffener(group, radius, height) {
 
 function addRingSeam(group, radius, y) {
     const curve = new THREE.EllipseCurve(0, 0, radius * 1.006, radius * 1.006, 0, Math.PI * 2, false, 0);
-    const points = curve.getPoints(120).map(p => new THREE.Vector3(p.x, y, p.y));
+    const points = curve.getPoints(160).map(p => new THREE.Vector3(p.x, y, p.y));
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
 
     group.add(new THREE.LineLoop(
         geometry,
         new THREE.LineBasicMaterial({
-            color: 0x0f172a,
+            color: 0x000000,
             transparent: true,
-            opacity: 0.62
+            opacity: 0.3
         })
     ));
 }
 
 function addBottomDisc(group, radius) {
     const material = new THREE.MeshStandardMaterial({
-        color: 0x475569,
-        metalness: 0.12,
-        roughness: 0.88,
+        color: 0x334155,
+        metalness: 0.1,
+        roughness: 0.9,
         side: THREE.DoubleSide
     });
 
     const disc = new THREE.Mesh(
-        new THREE.CircleGeometry(radius * 1.22, 160),
+        new THREE.CircleGeometry(radius * 1.15, 160),
         material
     );
 
     disc.rotation.x = -Math.PI / 2;
     disc.position.y = -0.015;
-    disc.receiveShadow = true;
+    disc.receiveShadow = true; // El disco base recibe la sombra de contacto
 
     group.add(disc);
 }
 
 function addReferenceGrid(group, radius, height) {
     const size = Math.max(radius * 3.2, height * 1.4, 20);
-    const grid = new THREE.GridHelper(size, 20, 0x94a3b8, 0xcbd5e1);
+    const grid = new THREE.GridHelper(size, 20, 0x94a3b8, 0xd1d5db);
     grid.position.y = -0.02;
+    grid.material.opacity = 0.5;
+    grid.material.transparent = true;
     group.add(grid);
 }
 
@@ -1255,7 +1360,8 @@ function addVerticalReference(group, radius, height) {
         new THREE.LineBasicMaterial({
             color: 0xef4444,
             transparent: true,
-            opacity: 0.7
+            opacity: 0.7,
+            linewidth: 2
         })
     ));
 }
@@ -1284,27 +1390,24 @@ function addLadder(group, radius, height, escalera, scale) {
 }
 
 function addVerticalLadder(group, radius, height, angleOffset = 0, scale) {
-    // RESTAURADO: Mantiene los materiales y llamadas de jaula originales
     const ladderMaterial = new THREE.MeshStandardMaterial({
         color: 0xd97706,
-        emissive: new THREE.Color(0x7c2d12),
-        emissiveIntensity: 0.10,
-        metalness: 0.62,
-        roughness: 0.26
+        metalness: 0.8,
+        roughness: 0.2
     });
 
     const cageMaterial = new THREE.MeshStandardMaterial({
         color: 0xcbd5e1,
-        metalness: 0.78,
-        roughness: 0.20,
+        metalness: 0.9,
+        roughness: 0.15,
         transparent: true,
-        opacity: 0.48
+        opacity: 0.6
     });
 
     const platformMaterial = new THREE.MeshStandardMaterial({
         color: 0x64748b,
-        metalness: 0.72,
-        roughness: 0.28
+        metalness: 0.8,
+        roughness: 0.2
     });
 
     const angle = -Math.PI / 4 + angleOffset;
@@ -1333,8 +1436,8 @@ function addVerticalLadder(group, radius, height, angleOffset = 0, scale) {
     const rightRailTop = centerBase.clone().add(tangent.clone().multiplyScalar(railHalfWidth));
     rightRailTop.y = topY;
 
-    addCylinderBetween(group, leftRailBottom, leftRailTop, railRadius, ladderMaterial, 14);
-    addCylinderBetween(group, rightRailBottom, rightRailTop, railRadius, ladderMaterial, 14);
+    addCylinderBetween(group, leftRailBottom, leftRailTop, railRadius, ladderMaterial, 16);
+    addCylinderBetween(group, rightRailBottom, rightRailTop, railRadius, ladderMaterial, 16);
 
     const modelRungSpacing = scale && scale > 0 ? 0.30 * scale : 0.26;
     const rungSpacing = Math.max(Math.min(modelRungSpacing, 0.38), 0.16);
@@ -1349,10 +1452,9 @@ function addVerticalLadder(group, radius, height, angleOffset = 0, scale) {
         const right = centerBase.clone().add(tangent.clone().multiplyScalar(railHalfWidth));
         right.y = y;
 
-        addCylinderBetween(group, left, right, rungRadius, ladderMaterial, 10);
+        addCylinderBetween(group, left, right, rungRadius, ladderMaterial, 12);
     }
 
-    // RESTAURADO: Se vuelve a dibujar la jaula de recubrimiento perimetral
     addCircularLadderCage(group, radius, height, radial, tangent, centerBase, cageMaterial, scale);
 
     addVerticalLadderIntermediatePlatform(
@@ -1449,7 +1551,7 @@ function addVerticalLadderIntermediatePlatform(
         leftOuter,
         supportRadius,
         railMaterial,
-        10
+        12
     );
 
     addCylinderBetween(
@@ -1458,12 +1560,10 @@ function addVerticalLadderIntermediatePlatform(
         rightOuter,
         supportRadius,
         railMaterial,
-        10
+        12
     );
 }
-
 function addCircularLadderCage(group, radius, height, radial, tangent, centerBase, material, scale) {
-    // RESTAURADO: Generación intacta de la jaula perimetral de seguridad
     const cageRadius = Math.max(radius * 0.068, 0.50);
     const tubeRadius = Math.max(radius * 0.0024, 0.012);
     const cageCenter = centerBase.clone().add(radial.clone().multiplyScalar(cageRadius * 0.78));
@@ -1510,7 +1610,7 @@ function addCircularLadderCage(group, radius, height, radial, tangent, centerBas
 }
 
 function addCageOpenHoop(group, cageCenter, radial, tangent, cageRadius, y, tubeRadius, material) {
-    const segments = 18;
+    const segments = 24; // Más suave
 
     const arcs = [
         [-Math.PI * 0.78, -Math.PI * 0.18],
@@ -1598,29 +1698,27 @@ function addLadderTankBrackets(group, radius, height, radial, tangent, centerBas
         const ladderPoint = centerBase.clone();
         ladderPoint.y = y;
 
-        addCylinderBetween(group, wallPoint, ladderPoint, bracketRadius, material, 8);
+        addCylinderBetween(group, wallPoint, ladderPoint, bracketRadius, material, 12);
     }
 }
 
 function addHelicalStair(group, radius, height, angleOffset = 0) {
     const stepMaterial = new THREE.MeshStandardMaterial({
         color: 0xff7a18,
-        emissive: new THREE.Color(0x7c2d12),
-        emissiveIntensity: 0.14,
-        metalness: 0.6,
-        roughness: 0.22
+        metalness: 0.8,
+        roughness: 0.2
     });
 
     const railMaterial = new THREE.MeshStandardMaterial({
         color: 0xe2e8f0,
-        metalness: 0.68,
-        roughness: 0.23
+        metalness: 1.0,
+        roughness: 0.1
     });
 
     const supportMaterial = new THREE.MeshStandardMaterial({
         color: 0x334155,
-        metalness: 0.72,
-        roughness: 0.24
+        metalness: 0.9,
+        roughness: 0.2
     });
 
     const stairRadius = radius + Math.max(radius * 0.012, 0.08);
@@ -1702,8 +1800,8 @@ function addHelicalStair(group, radius, height, angleOffset = 0) {
         innerStringer.push(stringerInner);
 
         if (i % 3 === 0 || i === steps - 1) {
-            addCylinderBetween(group, outerBase, outerTop, postRadius, railMaterial, 10);
-            addCylinderBetween(group, innerBase, innerTop, postRadius * 0.85, railMaterial, 10);
+            addCylinderBetween(group, outerBase, outerTop, postRadius, railMaterial, 12);
+            addCylinderBetween(group, innerBase, innerTop, postRadius * 0.85, railMaterial, 12);
         }
 
         if (i % 4 === 0) {
@@ -1719,15 +1817,15 @@ function addHelicalStair(group, radius, height, angleOffset = 0) {
                 Math.sin(angle) * innerRadius
             );
 
-            addCylinderBetween(group, wallPoint, stairPoint, postRadius * 0.75, supportMaterial, 8);
+            addCylinderBetween(group, wallPoint, stairPoint, postRadius * 0.75, supportMaterial, 10);
         }
     }
 
-    connectPath(group, outerRail, railRadius, railMaterial, 10);
-    connectPath(group, innerRail, railRadius, railMaterial, 10);
-    connectPath(group, outerMidRail, railRadius * 0.8, railMaterial, 8);
-    connectPath(group, lowerStringer, stringerRadius, supportMaterial, 10);
-    connectPath(group, innerStringer, stringerRadius * 0.85, railMaterial, 10);
+    connectPath(group, outerRail, railRadius, railMaterial, 12);
+    connectPath(group, innerRail, railRadius, railMaterial, 12);
+    connectPath(group, outerMidRail, railRadius * 0.8, railMaterial, 10);
+    connectPath(group, lowerStringer, stringerRadius, supportMaterial, 12);
+    connectPath(group, innerStringer, stringerRadius * 0.85, railMaterial, 12);
 
     const finalAngle = -Math.PI / 2 + angleOffset + turns * Math.PI * 2;
     addHelicalTopPlatform(group, radius, height, finalAngle, supportMaterial, railMaterial);
@@ -1785,20 +1883,20 @@ function addNozzle(group, radius, height, options) {
 
     const materialNozzle = new THREE.MeshStandardMaterial({
         color: 0xb6beca,
-        metalness: 0.76,
-        roughness: 0.24
+        metalness: 0.8,
+        roughness: 0.2
     });
 
     const materialFlange = new THREE.MeshStandardMaterial({
         color: 0x475569,
-        metalness: 0.82,
-        roughness: 0.22
+        metalness: 0.9,
+        roughness: 0.15
     });
 
     const materialBolt = new THREE.MeshStandardMaterial({
         color: 0x111827,
-        metalness: 0.75,
-        roughness: 0.25
+        metalness: 0.8,
+        roughness: 0.2
     });
 
     const base = radial.clone().multiplyScalar(radius * 1.005);
@@ -1807,13 +1905,13 @@ function addNozzle(group, radius, height, options) {
     const end = radial.clone().multiplyScalar(radius + nozzleLength);
     end.y = y;
 
-    addCylinderBetween(group, base, end, nozzleRadius, materialNozzle, 24);
+    addCylinderBetween(group, base, end, nozzleRadius, materialNozzle, 32);
 
     const flangeCenter = radial.clone().multiplyScalar(radius + nozzleLength + flangeThickness * 0.18);
     flangeCenter.y = y;
 
     const flange = new THREE.Mesh(
-        new THREE.CylinderGeometry(flangeRadius, flangeRadius, flangeThickness, 36),
+        new THREE.CylinderGeometry(flangeRadius, flangeRadius, flangeThickness, 48),
         materialFlange
     );
 
@@ -1905,12 +2003,12 @@ function addHelicalTopPlatform(group, radius, height, angle, platformMaterial, r
     });
 
     for (let i = 0; i < bottoms.length; i++) {
-        addCylinderBetween(group, bottoms[i], tops[i], railRadius, railMaterial, 10);
+        addCylinderBetween(group, bottoms[i], tops[i], railRadius, railMaterial, 12);
     }
 
-    addCylinderBetween(group, tops[0], tops[1], railRadius, railMaterial, 10);
-    addCylinderBetween(group, tops[0], tops[2], railRadius, railMaterial, 10);
-    addCylinderBetween(group, tops[1], tops[3], railRadius, railMaterial, 10);
+    addCylinderBetween(group, tops[0], tops[1], railRadius, railMaterial, 12);
+    addCylinderBetween(group, tops[0], tops[2], railRadius, railMaterial, 12);
+    addCylinderBetween(group, tops[1], tops[3], railRadius, railMaterial, 12);
 }
 
 function addPlatformRails(group, center, radial, tangent, width, depth, y, thickness, railHeight, railRadius, material, options = {}) {
@@ -1930,14 +2028,14 @@ function addPlatformRails(group, center, radial, tangent, width, depth, y, thick
         top.y = bottom.y + railHeight;
         tops.push(top);
 
-        addCylinderBetween(group, bottom, top, railRadius, material, 8);
+        addCylinderBetween(group, bottom, top, railRadius, material, 12);
     });
 
-    if (!options.openFront) addCylinderBetween(group, tops[0], tops[1], railRadius, material, 8);
-    if (!options.openBack) addCylinderBetween(group, tops[2], tops[3], railRadius, material, 8);
+    if (!options.openFront) addCylinderBetween(group, tops[0], tops[1], railRadius, material, 12);
+    if (!options.openBack) addCylinderBetween(group, tops[2], tops[3], railRadius, material, 12);
 
-    addCylinderBetween(group, tops[0], tops[2], railRadius, material, 8);
-    addCylinderBetween(group, tops[1], tops[3], railRadius, material, 8);
+    addCylinderBetween(group, tops[0], tops[2], railRadius, material, 12);
+    addCylinderBetween(group, tops[1], tops[3], railRadius, material, 12);
 }
 
 function addCylinderBetween(group, start, end, radius, material, segments) {
@@ -1946,7 +2044,7 @@ function addCylinderBetween(group, start, end, radius, material, segments) {
 
     if (length <= 0) return;
 
-    const geometry = new THREE.CylinderGeometry(radius, radius, length, segments || 12, 1, false);
+    const geometry = new THREE.CylinderGeometry(radius, radius, length, segments || 16, 1, false);
     const mesh = new THREE.Mesh(geometry, material);
 
     mesh.position.copy(start).add(end).multiplyScalar(0.5);
@@ -1984,17 +2082,22 @@ function bindTechnicalHover(viewer) {
 
         if (!valid) {
             overlay.style.display = "none";
+            viewer.renderer.domElement.style.cursor = viewer.isDragging ? "grabbing" : "grab";
             return;
         }
 
         const data = valid.object.userData;
+        viewer.renderer.domElement.style.cursor = "pointer"; // Cursor de interacción
 
         overlay.innerHTML = `
-            <strong>${data.tipo}</strong><br>
-            Material: ${data.material || "—"}<br>
-            Altura: ${data.altura || "—"}<br>
-            Espesor: ${data.espesor || "—"}<br>
-            Diámetro: ${data.diametro || "—"}
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#6b7280;margin-bottom:4px;">Detalle de Pieza</div>
+            <strong style="font-size:15px;color:#111827;">${data.tipo}</strong><br>
+            <div style="margin-top:8px;display:grid;grid-template-columns:auto auto;gap:4px 12px;color:#374151;">
+                <span>Material:</span><strong>${data.material || "—"}</strong>
+                <span>Altura:</span><strong>${data.altura || "—"}</strong>
+                <span>Espesor:</span><strong>${data.espesor || "—"}</strong>
+                <span>Diámetro:</span><strong>${data.diametro || "—"}</strong>
+            </div>
         `;
 
         overlay.style.display = "block";
@@ -2002,19 +2105,24 @@ function bindTechnicalHover(viewer) {
 
     viewer.renderer.domElement.addEventListener("mouseleave", () => {
         overlay.style.display = "none";
+        viewer.renderer.domElement.style.cursor = "default";
     });
 }
 
 function bindControls(viewer) {
     const canvas = viewer.renderer.domElement;
     canvas.style.cursor = "grab";
+    canvas.style.touchAction = "none"; // Necesario para controles táctiles suaves
 
     canvas.addEventListener("pointerdown", e => {
+        if (e.button !== 0) return; // Solo clic izquierdo
         viewer.isDragging = true;
         viewer.lastX = e.clientX;
         viewer.lastY = e.clientY;
         canvas.setPointerCapture(e.pointerId);
         canvas.style.cursor = "grabbing";
+        overlay = viewer.shell.querySelector("#tank3d-tech-overlay");
+        if (overlay) overlay.style.display = "none"; // Esconder info al arrastrar
     });
 
     canvas.addEventListener("pointerup", e => {
@@ -2032,20 +2140,18 @@ function bindControls(viewer) {
         viewer.lastX = e.clientX;
         viewer.lastY = e.clientY;
 
-        viewer.yaw -= dx * 0.006;
-        viewer.pitch -= dy * 0.006;
-        viewer.pitch = Math.max(-1.1, Math.min(1.1, viewer.pitch));
-
-        updateCamera(viewer);
+        // Sensibilidad ajustada profesionalmente
+        viewer.inputYaw -= dx * 0.005;
+        viewer.inputPitch -= dy * 0.005;
+        // Límites de rotación vertical para evitar inversión de cámara
+        viewer.inputPitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, viewer.inputPitch));
     });
 
     canvas.addEventListener("wheel", e => {
         e.preventDefault();
-
-        const factor = e.deltaY > 0 ? 1.08 : 0.92;
-        viewer.distance = Math.max(18, Math.min(260, viewer.distance * factor));
-
-        updateCamera(viewer);
+        // Zoom suave basado en factor
+        const factor = e.deltaY > 0 ? 1.1 : 0.9;
+        viewer.inputDistance = Math.max(15, Math.min(300, viewer.inputDistance * factor));
     }, { passive: false });
 }
 
@@ -2066,57 +2172,78 @@ function animate(viewer) {
 
     if (!viewer.renderer || !viewer.scene || !viewer.camera) return;
 
+    // --- IMPLEMENTACIÓN DE AMORTIGUACIÓN (SMOOTHING) PROFESIONAL ---
+    const dampingInfo = 0.12; // Factor de suavizado (menor = más suave)
+    const dampingZoom = 0.15;
+
+    // Interpolación lineal sutil (Lerp) hacia los valores de entrada
+    viewer.yaw += (viewer.inputYaw - viewer.yaw) * dampingInfo;
+    viewer.pitch += (viewer.inputPitch - viewer.pitch) * dampingInfo;
+    viewer.distance += (viewer.inputDistance - viewer.distance) * dampingZoom;
+
+    updateCamera(viewer);
     viewer.renderer.render(viewer.scene, viewer.camera);
 }
-
 function fitCamera(viewer) {
     const height = viewer.modelHeight || 40;
     const radius = viewer.modelRadius || 20;
     const maxSize = Math.max(height, radius * 2, 1);
 
-    viewer.distance = maxSize * 2.05;
+    // Distancia de cámara optimizada para encuadre profesional
+    viewer.inputDistance = maxSize * 1.9;
+    viewer.inputPitch = 0.25; // Ángulo picado sutil por defecto
+    viewer.inputYaw = 0.72;   // Ángulo isométrica sutil por defecto
+
+    // Seteo instantáneo inicial, luego animate() suavizará si hay cambios
+    viewer.yaw = viewer.inputYaw;
+    viewer.pitch = viewer.inputPitch;
+    viewer.distance = viewer.inputDistance;
+
     viewer.target.set(0, 0, 0);
-
-    viewer.pitch = 0.16;
-    viewer.yaw = 0.72;
-
     updateCamera(viewer);
 }
 
 function updateCamera(viewer) {
+    // Conversión de coordenadas esféricas a cartesianas con el pitch/yaw suavizados
     const x = viewer.distance * Math.cos(viewer.pitch) * Math.sin(viewer.yaw);
     const y = viewer.distance * Math.sin(viewer.pitch);
     const z = viewer.distance * Math.cos(viewer.pitch) * Math.cos(viewer.yaw);
 
     viewer.camera.position.set(x, y, z);
     viewer.camera.lookAt(viewer.target);
-    viewer.camera.near = 0.01;
-    viewer.camera.far = 10000;
+
+    // Ajuste dinámico de planos de frustum para precisión de sombras profundas
+    viewer.camera.near = Math.max(0.1, viewer.distance * 0.1);
+    viewer.camera.far = Math.max(1000, viewer.distance * 4);
     viewer.camera.updateProjectionMatrix();
 }
 
 function colorForMaterial(name) {
     const normalized = String(name || "").toUpperCase();
 
-    if (normalized.includes("HSLA")) return 0x6b7280;
-    if (normalized.includes("S355")) return 0x52616f;
-    if (normalized.includes("S275")) return 0x5f6f7f;
-    if (normalized.includes("S235")) return 0x7b8794;
-    if (normalized.includes("GLASS") || normalized.includes("VITR")) return 0x5f7f7a;
+    // Colores industriales estándar pulidos
+    if (normalized.includes("HSLA")) return 0x71717a; // Zinc
+    if (normalized.includes("S355")) return 0x52525b; // Acero oscuro
+    if (normalized.includes("S275")) return 0x71717a;
+    if (normalized.includes("S235")) return 0xa1a1aa; // Acero claro
+    if (normalized.includes("GLASS") || normalized.includes("VITR")) return 0x164e63; // Vidrio cian oscuro
 
-    return 0x667788;
+    return 0x71717a; // Por defecto
 }
 
 function showError(container, message) {
     container.innerHTML = `
         <div style="
-            padding:18px;
-            border-radius:18px;
-            background:#fff7ed;
-            color:#9a3412;
-            border:1px solid #fed7aa;
-            font-weight:700;">
-            ${message}
+            padding:20px;
+            border-radius:16px;
+            background:#fef2f2;
+            color:#991b1b;
+            border:1px solid #fecaca;
+            font-family:'Segoe UI', Arial, sans-serif;
+            font-weight:600;
+            font-size:14px;
+            box-shadow:0 10px 30px rgba(0,0,0,0.05);">
+            ⚠️ ${message}
         </div>
     `;
 }
