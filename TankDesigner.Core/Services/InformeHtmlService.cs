@@ -206,16 +206,15 @@ namespace TankDesigner.Core.Services
             html.Append($"{Html(Lang("Diámetro tornillo", "Bolt diameter"))}: {(diametroTornilloMostrar > 0 ? Formato(diametroTornilloMostrar, "0.###") + " mm" : "—")}");
             html.Append("</div></div>");
 
-            html.Append($"<div class='block'><div class='table-title'>{Html(Lang("Rigidizador y starter ring", "Stiffener and starter ring"))}</div><div class='multiline'>");
-            html.Append($"{Html(Lang("Rigidizador base", "Base stiffener"))}: {(rigidizadorRealValido ? Html(_resultado!.NombreRigidizadorBase) : "—")}<br/>");
+            html.Append($"<div class='block'><div class='table-title'>{Html(Lang("Rigidizador superior y anillo de arranque", "Top stiffener and starter ring"))}</div><div class='multiline'>");
+            html.Append($"{Html(Lang("Rigidizador superior", "Top stiffener"))}: {(rigidizadorRealValido ? Html(_resultado!.NombreRigidizadorBase) : "—")}<br/>");
             html.Append($"{Html(Lang("Altura rigidizador", "Stiffener height"))}: {(rigidizadorRealValido ? Formato(_resultado!.AlturaRigidizadorBase, "0.###") + " mm" : "—")}<br/>");
             html.Append($"{Html(Lang("Espesor rigidizador", "Stiffener thickness"))}: {(rigidizadorRealValido ? Formato(_resultado!.EspesorRigidizadorBase, "0.###") + " mm" : "—")}<br/>");
-            html.Append($"{Html(Lang("Peso rigidizador", "Stiffener weight"))}: {(rigidizadorRealValido ? Formato(_resultado!.PesoRigidizadorBase, "0.###") : "—")}<br/>");
-            html.Append($"{Html(Lang("Precio rigidizador", "Stiffener price"))}: {(rigidizadorRealValido ? Formato(_resultado!.PrecioRigidizadorBase, "0.###") + " €" : "—")}<br/>");
-            html.Append($"{Html(Lang("Starter Ring", "Starter Ring"))}: {(starterRingRealValido ? Html(Lang("Sí", "Yes")) : Html(Lang("No", "No")))}<br/>");
-            html.Append($"{Html(Lang("Altura starter ring", "Starter ring height"))}: {(starterRingRealValido ? Formato(_resultado!.AlturaStarterRing, "0.###") + " mm" : "—")}<br/>");
+            html.Append($"{Html(Lang("Peso rigidizador", "Stiffener weight"))}: {(rigidizadorRealValido ? Formato(_resultado!.PesoRigidizadorBase, "0.###") + " kg" : "—")}<br/>");
+            html.Append($"{Html(Lang("Anillo de arranque", "Starter ring"))}: {(starterRingRealValido ? Html(Lang("Sí", "Yes")) : Html(Lang("No", "No")))}<br/>");
+            html.Append($"{Html(Lang("Altura anillo de arranque", "Starter ring height"))}: {(starterRingRealValido ? Formato(_resultado!.AlturaStarterRing, "0.###") + " mm" : "—")}<br/>");
             html.Append($"{Html(Lang("Distancia F", "F distance"))}: {(starterRingRealValido ? Formato(_resultado!.DistanciaFStarterRing, "0.###") + " mm" : "—")}<br/>");
-            html.Append($"{Html(Lang("Shear Keys por línea", "Shear Keys per line"))}: {(starterRingRealValido ? _resultado!.ShearKeysPorLineaStarterRing.ToString(CultureInfo.InvariantCulture) : "—")}<br/>");
+            html.Append($"{Html(Lang("Shear Keys por línea", "Shear Keys per line"))}: {(starterRingRealValido ? _resultado!.ShearKeysPorLineaStarterRing.ToString(CultureInfo.InvariantCulture) + " ud/línea" : "—")}<br/>");
             html.Append($"{Html(Lang("Texto F", "F text"))}: {(starterRingRealValido && !string.IsNullOrWhiteSpace(_resultado!.FStarterRingTexto) ? Html(_resultado.FStarterRingTexto) : "—")}<br/>");
             html.Append($"{Html(Lang("Máx. Shear Keys por plancha", "Max Shear Keys per sheet"))}: {(starterRingRealValido && !string.IsNullOrWhiteSpace(_resultado!.MaxShearKeysPorPlanchaTexto) ? Html(_resultado.MaxShearKeysPorPlanchaTexto) : "—")}");
             html.Append("</div></div></div>");
@@ -255,8 +254,12 @@ namespace TankDesigner.Core.Services
             html.Append(GenerarTablaHtmlHidrodinamica(numeroAnillos));
             html.Append("</div>");
             html.Append("<div class='table-block'>");
-            html.Append($"<div class='table-title'>{Html(Lang("Rigidizadores", "Stiffeners"))}</div>");
+            html.Append($"<div class='table-title'>{Html(Lang("Rigidizador superior", "Top stiffener"))}</div>");
             html.Append(GenerarTablaHtmlRigidizadores(numeroAnillos));
+            html.Append("</div>");
+            html.Append("<div class='table-block'>");
+            html.Append($"<div class='table-title'>{Html(Lang("Anillo de arranque", "Starter ring"))}</div>");
+            html.Append(GenerarTablaHtmlStarterRing());
             html.Append("</div>");
 
             html.Append($"<div class='section-title'>{Html(Lang("Cargas globales derivadas del cálculo", "Global loads derived from the calculation"))}</div>");
@@ -1452,7 +1455,7 @@ namespace TankDesigner.Core.Services
             var lista = GenerarTablaHidrostatica(numeroAnillos);
             var sb = new StringBuilder();
             sb.Append("<table><thead><tr>");
-            sb.Append($"<th>{LangHtml("Anillo", "Ring")}</th><th>{LangHtml("Profundidad (m)", "Depth (m)")}</th><th>{LangHtml("Carga fluido (kN/m)", "Fluid load (kN/m)")}</th><th>{LangHtml("Tensión tracción", "Tensile stress")}</th><th>{LangHtml("Tracción admisible", "Allowable tension")}</th><th>{LangHtml("Aplastamiento", "Bearing stress")}</th><th>{LangHtml("Aplastamiento admisible", "Allowable bearing")}</th><th>{LangHtml("Cortante tornillos", "Bolt shear stress")}</th><th>{LangHtml("Cortante admisible", "Allowable shear")}</th>");
+            sb.Append($"<th>{LangHtml("Anillo", "Ring")}</th><th>{LangHtml("Profundidad (m)", "Depth (m)")}</th><th>{LangHtml("Carga fluido (kN/m)", "Fluid load (kN/m)")}</th><th>{LangHtml("Tensión tracción (MPa)", "Tensile stress (MPa)")}</th><th>{LangHtml("Tracción admisible (MPa)", "Allowable tension (MPa)")}</th><th>{LangHtml("Aplastamiento (MPa)", "Bearing stress (MPa)")}</th><th>{LangHtml("Aplastamiento admisible (MPa)", "Allowable bearing (MPa)")}</th><th>{LangHtml("Cortante tornillos (MPa)", "Bolt shear stress (MPa)")}</th><th>{LangHtml("Cortante admisible (MPa)", "Allowable shear (MPa)")}</th>");
             sb.Append("</tr></thead><tbody>");
 
             foreach (var item in lista)
@@ -1474,7 +1477,7 @@ namespace TankDesigner.Core.Services
             var lista = GenerarTablaAxial(numeroAnillos, factor);
             var sb = new StringBuilder();
             sb.Append("<table><thead><tr>");
-            sb.Append($"<th>{LangHtml("Anillo", "Ring")}</th><th>{LangHtml("Carga axial (kN/m)", "Axial load (kN/m)")}</th><th>{LangHtml("Tensión axial", "Axial stress")}</th><th>{LangHtml("Axial admisible", "Allowable axial")}</th><th>{LangHtml("Aplastamiento", "Bearing stress")}</th><th>{LangHtml("Aplastamiento admisible", "Allowable bearing")}</th><th>{LangHtml("Cortante tornillos", "Bolt shear")}</th><th>{LangHtml("Cortante admisible", "Allowable shear")}</th>");
+            sb.Append($"<th>{LangHtml("Anillo", "Ring")}</th><th>{LangHtml("Carga axial (kN/m)", "Axial load (kN/m)")}</th><th>{LangHtml("Tensión axial (MPa)", "Axial stress (MPa)")}</th><th>{LangHtml("Axial admisible (MPa)", "Allowable axial (MPa)")}</th><th>{LangHtml("Aplastamiento (MPa)", "Bearing stress (MPa)")}</th><th>{LangHtml("Aplastamiento admisible (MPa)", "Allowable bearing (MPa)")}</th><th>{LangHtml("Cortante tornillos (MPa)", "Bolt shear (MPa)")}</th><th>{LangHtml("Cortante admisible (MPa)", "Allowable shear (MPa)")}</th>");
             sb.Append("</tr></thead><tbody>");
 
             foreach (var item in lista)
@@ -1492,7 +1495,7 @@ namespace TankDesigner.Core.Services
             var lista = GenerarTablaHidrodinamica(numeroAnillos);
             var sb = new StringBuilder();
             sb.Append("<table><thead><tr>");
-            sb.Append($"<th>{LangHtml("Anillo", "Ring")}</th><th>{LangHtml("Carga total (kN/m)", "Total load (kN/m)")}</th><th>{LangHtml("Tensión tracción", "Tensile stress")}</th><th>{LangHtml("Tracción admisible", "Allowable tension")}</th><th>{LangHtml("Aplastamiento", "Bearing stress")}</th><th>{LangHtml("Aplastamiento admisible", "Allowable bearing")}</th><th>{LangHtml("Cortante tornillos", "Bolt shear")}</th><th>{LangHtml("Cortante admisible", "Allowable shear")}</th>");
+            sb.Append($"<th>{LangHtml("Anillo", "Ring")}</th><th>{LangHtml("Carga total (kN/m)", "Total load (kN/m)")}</th><th>{LangHtml("Tensión tracción (MPa)", "Tensile stress (MPa)")}</th><th>{LangHtml("Tracción admisible (MPa)", "Allowable tension (MPa)")}</th><th>{LangHtml("Aplastamiento (MPa)", "Bearing stress (MPa)")}</th><th>{LangHtml("Aplastamiento admisible (MPa)", "Allowable bearing (MPa)")}</th><th>{LangHtml("Cortante tornillos (MPa)", "Bolt shear (MPa)")}</th><th>{LangHtml("Cortante admisible (MPa)", "Allowable shear (MPa)")}</th>");
             sb.Append("</tr></thead><tbody>");
 
             foreach (var item in lista)
@@ -1510,7 +1513,7 @@ namespace TankDesigner.Core.Services
             var lista = GenerarRigidizadores(numeroAnillos);
             var sb = new StringBuilder();
             sb.Append("<table><thead><tr>");
-            sb.Append($"<th>{LangHtml("Rigidizador", "Stiffener")}</th><th>{LangHtml("Posición", "Position")}</th><th>{LangHtml("Altura", "Height")}</th><th>{LangHtml("Espesor", "Thickness")}</th>");
+            sb.Append($"<th>{LangHtml("Elemento", "Element")}</th><th>{LangHtml("Posición", "Position")}</th><th>{LangHtml("Altura (mm)", "Height (mm)")}</th><th>{LangHtml("Espesor (mm)", "Thickness (mm)")}</th>");
             sb.Append("</tr></thead><tbody>");
 
             foreach (var item in lista)
@@ -1533,30 +1536,22 @@ namespace TankDesigner.Core.Services
                     .OrderBy(a => a.NumeroAnillo)
                     .ToList();
 
-                var profundidadesAscendentes = anillosOrdenados
-                    .Select(a => a.Head)
-                    .Where(v => v > 0)
-                    .OrderBy(v => v)
-                    .ToList();
-
                 for (int i = 0; i < anillosOrdenados.Count; i++)
                 {
                     var anillo = anillosOrdenados[i];
-                    double profundidadMostrar = i < profundidadesAscendentes.Count
-                        ? profundidadesAscendentes[i]
-                        : anillo.Head;
+                    double profundidadMostrar = anillo.Head;
 
                     lista.Add(new TensionHidrostaticaRow
                     {
                         Anillo = anillo.NumeroAnillo,
-                        Profundidad = profundidadMostrar > 0 ? Formato(profundidadMostrar, "0.###") : "—",
-                        CargaFluido = anillo.HydrostaticHoopLoad > 0 ? Formato(anillo.HydrostaticHoopLoad, "0.###") : "—",
-                        TensionTraccion = anillo.NetTensileStress > 0 ? Formato(anillo.NetTensileStress, "0.###") : "—",
-                        TensionTraccionAdmisible = anillo.AllowableTensileStress > 0 ? Formato(anillo.AllowableTensileStress, "0.###") : "—",
-                        TensionAgujeros = anillo.HoleBearingStress > 0 ? Formato(anillo.HoleBearingStress, "0.###") : "—",
-                        TensionAgujerosAdmisible = anillo.AllowableBearingStress > 0 ? Formato(anillo.AllowableBearingStress, "0.###") : "—",
-                        TensionCortanteTornillos = anillo.BoltShearStress > 0 ? Formato(anillo.BoltShearStress, "0.###") : "—",
-                        TensionTornillosAdmisible = anillo.AllowableShearStress > 0 ? Formato(anillo.AllowableShearStress, "0.###") : "—"
+                        Profundidad = ValorConUnidad(profundidadMostrar, "m"),
+                        CargaFluido = ValorConUnidad(anillo.HydrostaticHoopLoad, "kN/m"),
+                        TensionTraccion = ValorConUnidad(anillo.NetTensileStress, "MPa"),
+                        TensionTraccionAdmisible = ValorConUnidad(anillo.AllowableTensileStress, "MPa"),
+                        TensionAgujeros = ValorConUnidad(anillo.HoleBearingStress, "MPa"),
+                        TensionAgujerosAdmisible = ValorConUnidad(anillo.AllowableBearingStress, "MPa"),
+                        TensionCortanteTornillos = ValorConUnidad(anillo.BoltShearStress, "MPa"),
+                        TensionTornillosAdmisible = ValorConUnidad(anillo.AllowableShearStress, "MPa")
                     });
                 }
 
@@ -1603,13 +1598,13 @@ namespace TankDesigner.Core.Services
                     lista.Add(new TensionAxialRow
                     {
                         Anillo = i + 1,
-                        CargaAxial = ValorSegunCaso(anillo.AxialLoad, anillo.WindAxialLoad, anillo.SeismicAxialLoad, esViento, esSismo),
-                        TensionAxial = ValorSegunCaso(anillo.AxialStress, anillo.WindAxialStress, anillo.SeismicAxialStress, esViento, esSismo),
-                        TensionAxialAdmisible = ValorSegunCaso(anillo.AllowableAxialStress, anillo.WindAllowableAxialStress, anillo.SeismicAllowableAxialStress, esViento, esSismo),
-                        TensionAgujeros = ValorSegunCaso(anillo.AxialHoleBearingStress, anillo.WindHoleBearingStress, anillo.SeismicHoleBearingStress, esViento, esSismo),
-                        TensionAgujerosAdmisible = ValorSegunCaso(anillo.AxialAllowableBearingStress, anillo.WindAllowableBearingStress, anillo.SeismicAllowableBearingStress, esViento, esSismo),
-                        TensionCortanteTornillos = ValorSegunCaso(anillo.AxialBoltShearStress, anillo.WindBoltShearStress, anillo.SeismicBoltShearStress, esViento, esSismo),
-                        TensionTornillosAdmisible = ValorSegunCaso(anillo.AxialAllowableShearStress, anillo.WindAllowableShearStress, anillo.SeismicAllowableShearStress, esViento, esSismo)
+                        CargaAxial = ValorSegunCaso(anillo.AxialLoad, anillo.WindAxialLoad, anillo.SeismicAxialLoad, esViento, esSismo, "kN/m"),
+                        TensionAxial = ValorSegunCaso(anillo.AxialStress, anillo.WindAxialStress, anillo.SeismicAxialStress, esViento, esSismo, "MPa"),
+                        TensionAxialAdmisible = ValorSegunCaso(anillo.AllowableAxialStress, anillo.WindAllowableAxialStress, anillo.SeismicAllowableAxialStress, esViento, esSismo, "MPa"),
+                        TensionAgujeros = ValorSegunCaso(anillo.AxialHoleBearingStress, anillo.WindHoleBearingStress, anillo.SeismicHoleBearingStress, esViento, esSismo, "MPa"),
+                        TensionAgujerosAdmisible = ValorSegunCaso(anillo.AxialAllowableBearingStress, anillo.WindAllowableBearingStress, anillo.SeismicAllowableBearingStress, esViento, esSismo, "MPa"),
+                        TensionCortanteTornillos = ValorSegunCaso(anillo.AxialBoltShearStress, anillo.WindBoltShearStress, anillo.SeismicBoltShearStress, esViento, esSismo, "MPa"),
+                        TensionTornillosAdmisible = ValorSegunCaso(anillo.AxialAllowableShearStress, anillo.WindAllowableShearStress, anillo.SeismicAllowableShearStress, esViento, esSismo, "MPa")
                     });
                 }
 
@@ -1663,10 +1658,15 @@ namespace TankDesigner.Core.Services
 
         // Devuelve el valor formateado según el caso que se esté pintando en la tabla axial:
         // axial normal, axial por viento o axial por sismo.
-        private string ValorSegunCaso(double axial, double wind, double seismic, bool esViento, bool esSismo)
+        private string ValorSegunCaso(double axial, double wind, double seismic, bool esViento, bool esSismo, string unidad)
         {
             double valor = esSismo ? seismic : esViento ? wind : axial;
-            return valor > 0 ? Formato(valor, "0.###") : "—";
+            return ValorConUnidad(valor, unidad);
+        }
+
+        private string ValorConUnidad(double valor, string unidad)
+        {
+            return valor > 0 ? Formato(valor, "0.###") + " " + unidad : "—";
         }
 
         // Construye las filas de datos para la tabla hidrodinámica.
@@ -1690,13 +1690,13 @@ namespace TankDesigner.Core.Services
                     lista.Add(new TensionHidrodinamicaRow
                     {
                         Anillo = i + 1,
-                        CargaTotal = anillo.CombinedTotalHoopLoad > 0 ? Formato(anillo.CombinedTotalHoopLoad, "0.###") : "—",
-                        TensionTraccion = anillo.CombinedNetTensileStress > 0 ? Formato(anillo.CombinedNetTensileStress, "0.###") : "—",
-                        TensionTraccionAdmisible = anillo.CombinedAllowableTensileStress > 0 ? Formato(anillo.CombinedAllowableTensileStress, "0.###") : "—",
-                        TensionAgujeros = anillo.CombinedHoleBearingStress > 0 ? Formato(anillo.CombinedHoleBearingStress, "0.###") : "—",
-                        TensionAgujerosAdmisible = anillo.CombinedAllowableBearingStress > 0 ? Formato(anillo.CombinedAllowableBearingStress, "0.###") : "—",
-                        TensionCortanteTornillos = anillo.CombinedBoltShearStress > 0 ? Formato(anillo.CombinedBoltShearStress, "0.###") : "—",
-                        TensionTornillosAdmisible = anillo.CombinedAllowableShearStress > 0 ? Formato(anillo.CombinedAllowableShearStress, "0.###") : "—"
+                        CargaTotal = ValorConUnidad(anillo.CombinedTotalHoopLoad, "kN/m"),
+                        TensionTraccion = ValorConUnidad(anillo.CombinedNetTensileStress, "MPa"),
+                        TensionTraccionAdmisible = ValorConUnidad(anillo.CombinedAllowableTensileStress, "MPa"),
+                        TensionAgujeros = ValorConUnidad(anillo.CombinedHoleBearingStress, "MPa"),
+                        TensionAgujerosAdmisible = ValorConUnidad(anillo.CombinedAllowableBearingStress, "MPa"),
+                        TensionCortanteTornillos = ValorConUnidad(anillo.CombinedBoltShearStress, "MPa"),
+                        TensionTornillosAdmisible = ValorConUnidad(anillo.CombinedAllowableShearStress, "MPa")
                     });
                 }
 
@@ -1721,6 +1721,33 @@ namespace TankDesigner.Core.Services
             return lista;
         }
 
+
+        private string GenerarTablaHtmlStarterRing()
+        {
+            var sb = new StringBuilder();
+            sb.Append("<table><thead><tr>");
+            sb.Append($"<th>{LangHtml("Elemento", "Element")}</th><th>{LangHtml("Posición", "Position")}</th><th>{LangHtml("Altura (mm)", "Height (mm)")}</th><th>{LangHtml("Distancia F (mm)", "F distance (mm)")}</th><th>{LangHtml("Shear Keys", "Shear Keys")}</th>");
+            sb.Append("</tr></thead><tbody>");
+
+            if (_resultado != null && _resultado.TieneStarterRing && _resultado.AlturaStarterRing > 0)
+            {
+                sb.Append("<tr>");
+                sb.Append($"<td>{Html(Lang("Anillo de arranque", "Starter ring"))}</td>");
+                sb.Append($"<td>{Html(Lang("Base del tanque; no es rigidizador", "Tank base; not a stiffener"))}</td>");
+                sb.Append($"<td>{Formato(_resultado.AlturaStarterRing, "0.###")} mm</td>");
+                sb.Append($"<td>{(_resultado.DistanciaFStarterRing > 0 ? Formato(_resultado.DistanciaFStarterRing, "0.###") + " mm" : "—")}</td>");
+                sb.Append($"<td>{(_resultado.ShearKeysPorLineaStarterRing > 0 ? _resultado.ShearKeysPorLineaStarterRing.ToString(CultureInfo.InvariantCulture) + " ud/línea" : "—")}</td>");
+                sb.Append("</tr>");
+            }
+            else
+            {
+                sb.Append($"<tr><td>{Html(Lang("Anillo de arranque", "Starter ring"))}</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>");
+            }
+
+            sb.Append("</tbody></table>");
+            return sb.ToString();
+        }
+
         // Construye las filas de rigidizadores para el informe técnico.
         // Si no hay datos reales, devuelve una fila vacía con "—".
         private List<RigidizadorRow> GenerarRigidizadores(int numeroAnillos)
@@ -1738,7 +1765,7 @@ namespace TankDesigner.Core.Services
                 lista.Add(new RigidizadorRow
                 {
                     Rigidizador = _resultado!.NombreRigidizadorBase,
-                    Posicion = Lang("Base del tanque", "Tank base"),
+                    Posicion = Lang("Coronación / rigidizador superior", "Top shell / top stiffener"),
                     ModuloRequerido = _resultado.AlturaRigidizadorBase > 0
                         ? Formato(_resultado.AlturaRigidizadorBase, "0.###") + " mm"
                         : "—",
@@ -1748,18 +1775,6 @@ namespace TankDesigner.Core.Services
                 });
             }
 
-            if (_resultado != null && _resultado.TieneStarterRing && _resultado.AlturaStarterRing > 0)
-            {
-                lista.Add(new RigidizadorRow
-                {
-                    Rigidizador = "Starter Ring",
-                    Posicion = Lang("Anillo de arranque", "Starter ring"),
-                    ModuloRequerido = Formato(_resultado.AlturaStarterRing, "0.###") + " mm",
-                    ModuloProvisto = _resultado.DistanciaFStarterRing > 0
-                        ? "F = " + Formato(_resultado.DistanciaFStarterRing, "0.###") + " mm"
-                        : "—"
-                });
-            }
 
             if (lista.Count == 0)
             {
