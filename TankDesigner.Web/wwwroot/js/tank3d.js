@@ -78,6 +78,7 @@ function disposeViewer(container) {
 
     viewers.delete(container);
 }
+
 function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
     const shell = document.createElement("div");
 
@@ -219,6 +220,7 @@ function addMouseHelpPanel(shell) {
 
     shell.appendChild(panel);
 }
+
 function addScaleBadge(shell, metersPerUnit, tank) {
     const vigas = tank.vigasTechoConico && tank.vigasTechoConico.aplica === true
         ? `<br>Vigas radiales: <strong style="color:#fca5a5">${tank.vigasTechoConico.numeroVigas || 0}</strong>`
@@ -577,6 +579,7 @@ function addStarterRing(group, radius, height, tank) {
 
     return height;
 }
+
 function formatTechnicalValue(value, suffix) {
     const n = Number(value);
     if (!Number.isFinite(n) || n <= 0) return "—";
@@ -697,16 +700,14 @@ function addRoof(group, radius, height, roofRaw, vigasTechoConico, scale) {
 }
 
 function addManhole(group, radius, height) {
+    // MODIFICADO: Se deja únicamente la placa circular limpia pegada al tanque.
     const angle = Math.PI * 1.82;
     const y = height * 0.30;
 
     const radial = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
-    const tangent = new THREE.Vector3(-Math.sin(angle), 0, Math.cos(angle));
-    const vertical = new THREE.Vector3(0, 1, 0);
 
     const manholeRadius = Math.max(radius * 0.105, 0.42);
     const coverThickness = Math.max(radius * 0.018, 0.06);
-    const boltRadius = Math.max(radius * 0.006, 0.022);
 
     const materialCover = new THREE.MeshStandardMaterial({
         color: 0x94a3b8,
@@ -714,13 +715,8 @@ function addManhole(group, radius, height) {
         roughness: 0.26
     });
 
-    const materialFrame = new THREE.MeshStandardMaterial({
-        color: 0x475569,
-        metalness: 0.78,
-        roughness: 0.24
-    });
-
-    const center = radial.clone().multiplyScalar(radius + coverThickness * 0.7);
+    // Se posiciona el centro justo en la pared exterior del tanque
+    const center = radial.clone().multiplyScalar(radius + coverThickness * 0.3);
     center.y = y;
 
     const quaternion = new THREE.Quaternion();
@@ -737,7 +733,7 @@ function addManhole(group, radius, height) {
     cover.receiveShadow = true;
 
     cover.userData = {
-        tipo: "Manhole",
+        tipo: "Manhole (Placa)",
         material: "Acero",
         altura: formatTechnicalValue(y, "u.3D"),
         espesor: formatTechnicalValue(coverThickness, "u.3D"),
@@ -745,40 +741,6 @@ function addManhole(group, radius, height) {
     };
 
     group.add(cover);
-
-    const frame = new THREE.Mesh(
-        new THREE.TorusGeometry(manholeRadius * 1.08, Math.max(radius * 0.010, 0.035), 12, 64),
-        materialFrame
-    );
-
-    frame.position.copy(center.clone().add(radial.clone().multiplyScalar(coverThickness * 0.9)));
-    frame.quaternion.copy(quaternion);
-    frame.castShadow = true;
-    frame.receiveShadow = true;
-    group.add(frame);
-
-    const boltCount = 16;
-
-    for (let i = 0; i < boltCount; i++) {
-        const a = (Math.PI * 2 * i) / boltCount;
-
-        const boltPos = center.clone()
-            .add(tangent.clone().multiplyScalar(Math.cos(a) * manholeRadius * 0.86))
-            .add(vertical.clone().multiplyScalar(Math.sin(a) * manholeRadius * 0.86))
-            .add(radial.clone().multiplyScalar(coverThickness));
-
-        const bolt = new THREE.Mesh(
-            new THREE.CylinderGeometry(boltRadius, boltRadius, coverThickness * 1.35, 8),
-            materialFrame
-        );
-
-        bolt.position.copy(boltPos);
-        bolt.quaternion.copy(quaternion);
-        bolt.castShadow = true;
-        bolt.receiveShadow = true;
-
-        group.add(bolt);
-    }
 }
 
 function addRoofVent(group, radius, height, roofRaw) {
@@ -1114,6 +1076,7 @@ function addDomeRoof(group, radius, height) {
     addDomeRoofRibs(group, radius * 0.99, height, domeHeight);
     addDomeSkirtRing(group, radius, height);
 }
+
 function addDomeSkirtRing(group, radius, height) {
     const material = new THREE.MeshStandardMaterial({
         color: 0xd1d5db,
@@ -1138,6 +1101,7 @@ function addDomeSkirtRing(group, radius, height) {
     addCircularRail(group, radius * 1.018, height + skirtHeight, skirtThickness, material);
     addCircularRail(group, radius * 1.018, height, skirtThickness * 0.8, material);
 }
+
 function addDomeRoofRibs(group, radius, height, domeHeight) {
     const material = new THREE.MeshStandardMaterial({
         color: 0xcbd5e1,
@@ -1320,6 +1284,7 @@ function addLadder(group, radius, height, escalera, scale) {
 }
 
 function addVerticalLadder(group, radius, height, angleOffset = 0, scale) {
+    // RESTAURADO: Mantiene los materiales y llamadas de jaula originales
     const ladderMaterial = new THREE.MeshStandardMaterial({
         color: 0xd97706,
         emissive: new THREE.Color(0x7c2d12),
@@ -1387,6 +1352,7 @@ function addVerticalLadder(group, radius, height, angleOffset = 0, scale) {
         addCylinderBetween(group, left, right, rungRadius, ladderMaterial, 10);
     }
 
+    // RESTAURADO: Se vuelve a dibujar la jaula de recubrimiento perimetral
     addCircularLadderCage(group, radius, height, radial, tangent, centerBase, cageMaterial, scale);
 
     addVerticalLadderIntermediatePlatform(
@@ -1495,7 +1461,9 @@ function addVerticalLadderIntermediatePlatform(
         10
     );
 }
+
 function addCircularLadderCage(group, radius, height, radial, tangent, centerBase, material, scale) {
+    // RESTAURADO: Generación intacta de la jaula perimetral de seguridad
     const cageRadius = Math.max(radius * 0.068, 0.50);
     const tubeRadius = Math.max(radius * 0.0024, 0.012);
     const cageCenter = centerBase.clone().add(radial.clone().multiplyScalar(cageRadius * 0.78));
@@ -2100,6 +2068,7 @@ function animate(viewer) {
 
     viewer.renderer.render(viewer.scene, viewer.camera);
 }
+
 function fitCamera(viewer) {
     const height = viewer.modelHeight || 40;
     const radius = viewer.modelRadius || 20;
