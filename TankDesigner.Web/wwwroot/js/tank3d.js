@@ -86,25 +86,17 @@ function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
     shell.style.borderRadius = "24px";
     shell.style.overflow = "hidden";
     shell.style.background = `
-    radial-gradient(circle at 52% 42%,
-    rgba(255,255,255,1) 0%,
-    rgba(241,245,249,0.98) 45%,
-    rgba(226,232,240,0.96) 100%)
-`;
-
-    scene.background = new THREE.Color(0xf1f5f9);
-    scene.fog = null;
+        radial-gradient(circle at 52% 42%,
+        rgba(255,255,255,1) 0%,
+        rgba(241,245,249,0.98) 48%,
+        rgba(226,232,240,0.96) 100%)
+    `;
 
     container.appendChild(shell);
 
-    addScaleBadge(shell, metersPerUnit, tank);
-    addRoofControls(shell, container, tank, dotNetRef);
-    addTechnicalControls(shell, container, tank, dotNetRef);
-    addTechnicalInfoOverlay(shell);
-    addMouseHelpPanel(shell);
-
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xe8eef6);
+    scene.background = new THREE.Color(0xf1f5f9);
+    scene.fog = null;
 
     const camera = new THREE.PerspectiveCamera(34, 1, 0.01, 10000);
 
@@ -119,17 +111,16 @@ function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.45;
+    renderer.toneMappingExposure = 1.25;
 
     shell.appendChild(renderer.domElement);
-    addDownloadPngButton(shell, renderer);
 
     const group = new THREE.Group();
     scene.add(group);
 
-    scene.add(new THREE.AmbientLight(0xffffff, 1.65));
+    scene.add(new THREE.AmbientLight(0xffffff, 1.35));
 
-    const key = new THREE.DirectionalLight(0xffffff, 2.1);
+    const key = new THREE.DirectionalLight(0xffffff, 2.0);
     key.position.set(36, 42, 32);
     key.castShadow = true;
     key.shadow.mapSize.width = 2048;
@@ -142,16 +133,23 @@ function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
     key.shadow.camera.bottom = -80;
     scene.add(key);
 
-    const fill = new THREE.DirectionalLight(0xffffff, 1.25);
+    const fill = new THREE.DirectionalLight(0xffffff, 0.95);
     fill.position.set(-32, 20, -28);
     scene.add(fill);
 
-    const rim = new THREE.DirectionalLight(0xffffff, 0.85);
+    const rim = new THREE.DirectionalLight(0xffffff, 0.75);
     rim.position.set(-24, 28, 44);
     scene.add(rim);
 
-    const hemi = new THREE.HemisphereLight(0xffffff, 0x94a3b8, 0.8);
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x94a3b8, 0.7);
     scene.add(hemi);
+
+    addScaleBadge(shell, metersPerUnit, tank);
+    addRoofControls(shell, container, tank, dotNetRef);
+    addTechnicalControls(shell, container, tank, dotNetRef);
+    addTechnicalInfoOverlay(shell);
+    addMouseHelpPanel(shell);
+    addDownloadPngButton(shell, renderer);
 
     const viewer = {
         container,
@@ -320,7 +318,7 @@ function addTechnicalControls(shell, container, tank, dotNetRef) {
     panel.style.left = "18px";
     panel.style.bottom = "72px";
     panel.style.zIndex = "9";
-    panel.style.width = "190";
+    panel.style.width = "190px";
     panel.style.padding = "14px";
     panel.style.borderRadius = "16px";
     panel.style.background = "rgba(15,23,42,0.92)";
