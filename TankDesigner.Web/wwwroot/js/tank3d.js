@@ -77,13 +77,16 @@ function disposeViewer(container) {
     viewers.delete(container);
 }
 function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
+
     const shell = document.createElement("div");
+
     shell.style.position = "relative";
     shell.style.width = "100%";
     shell.style.height = "100%";
     shell.style.minHeight = "560px";
     shell.style.borderRadius = "24px";
     shell.style.overflow = "hidden";
+
     container.appendChild(shell);
 
     addScaleBadge(shell, metersPerUnit, tank);
@@ -92,31 +95,80 @@ function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
     addTechnicalInfoOverlay(shell);
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xf8fafc);
 
-    const camera = new THREE.PerspectiveCamera(42, 1, 0.01, 10000);
+    scene.background = new THREE.Color(0xf4f7fb);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+    scene.fog = new THREE.Fog(0xf4f7fb, 90, 220);
+
+    const camera = new THREE.PerspectiveCamera(38, 1, 0.01, 10000);
+
+    const renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: true,
+        preserveDrawingBuffer: true
+    });
+
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
+    renderer.physicallyCorrectLights = true;
+
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.25;
+
     shell.appendChild(renderer.domElement);
+
     addDownloadPngButton(shell, renderer);
 
     const group = new THREE.Group();
     scene.add(group);
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.76));
+    scene.add(new THREE.AmbientLight(0xffffff, 0.42));
 
-    const key = new THREE.DirectionalLight(0xffffff, 1.15);
-    key.position.set(28, 40, 26);
+    const key = new THREE.DirectionalLight(0xffffff, 2.6);
+
+    key.position.set(40, 52, 36);
+
     key.castShadow = true;
+
+    key.shadow.mapSize.width = 4096;
+    key.shadow.mapSize.height = 4096;
+
+    key.shadow.camera.near = 1;
+    key.shadow.camera.far = 250;
+
+    key.shadow.camera.left = -80;
+    key.shadow.camera.right = 80;
+    key.shadow.camera.top = 80;
+    key.shadow.camera.bottom = -80;
+
+    key.shadow.bias = -0.00008;
+
     scene.add(key);
 
-    const fill = new THREE.DirectionalLight(0xffffff, 0.45);
-    fill.position.set(-30, 18, -26);
+    const fill = new THREE.DirectionalLight(0xdbeafe, 1.2);
+
+    fill.position.set(-32, 18, -28);
+
     scene.add(fill);
+
+    const rim = new THREE.DirectionalLight(0xffffff, 1.0);
+
+    rim.position.set(-20, 30, 42);
+
+    scene.add(rim);
+
+    const hemi = new THREE.HemisphereLight(
+        0xffffff,
+        0xb6c2cf,
+        0.65
+    );
+
+    scene.add(hemi);
 
     const viewer = {
         container,
@@ -125,8 +177,8 @@ function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
         camera,
         renderer,
         group,
-        yaw: 0.85,
-        pitch: 0.34,
+        yaw: 0.82,
+        pitch: 0.32,
         distance: 72,
         target: new THREE.Vector3(0, 0, 0),
         isDragging: false,
@@ -138,14 +190,19 @@ function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
     renderer.__tank3dCamera = camera;
 
     bindControls(viewer);
+
     bindTechnicalHover(viewer);
+
     resize(viewer);
 
     const resizeObserver = new ResizeObserver(() => resize(viewer));
+
     resizeObserver.observe(container);
+
     viewer.resizeObserver = resizeObserver;
 
     animate(viewer);
+
     return viewer;
 }
 
@@ -364,11 +421,11 @@ function buildTank(viewer, tank, rings, scale) {
         const shellGeometry = new THREE.CylinderGeometry(radius, radius, height, 96, 1, true);
         const shellMaterial = new THREE.MeshStandardMaterial({
             color,
-            metalness: 0.72,
-            roughness: 0.30,
-            transparent: true,
-            opacity: 0.88,
+            metalness: 0.82,
+            roughness: 0.34,
+            envMapIntensity: 1.2,
             side: THREE.DoubleSide
+        });
         });
 
         const shell = new THREE.Mesh(shellGeometry, shellMaterial);
@@ -492,9 +549,10 @@ function addStarterRing(group, radius, height, tank) {
     const concreteRadius = radius * 1.20;
 
     const concreteMaterial = new THREE.MeshStandardMaterial({
-        color: 0xb9b0a2,
+        color: 0x9f9b93
         metalness: 0.02,
-        roughness: 0.96
+        roughness: 0.96,
+        roughness: 1
     });
 
     const concrete = new THREE.Mesh(
@@ -628,9 +686,12 @@ function addRoofGuardrail(group, radius, height, roofRaw) {
     if (roof.type === "none") return;
 
     const material = new THREE.MeshStandardMaterial({
-        color: 0xe2e8f0,
+        color: 0xe5e7eb,
         metalness: 0.72,
-        roughness: 0.22
+        roughness: 0.28,
+        envMapIntensity: 1.4,
+        side: THREE.DoubleSide
+    });
     });
 
     const postRadius = Math.max(radius * 0.0045, 0.022);
@@ -1289,19 +1350,38 @@ function addRingSeam(group, radius, y) {
 }
 
 function addBottomDisc(group, radius) {
-    const geometry = new THREE.CircleGeometry(radius, 96);
+
     const material = new THREE.MeshStandardMaterial({
-        color: 0xe2e8f0,
-        metalness: 0.42,
-        roughness: 0.38,
-        side: THREE.DoubleSide
+        color: 0xd6dde5,
+        metalness: 0.24,
+        roughness: 0.82
     });
 
-    const disc = new THREE.Mesh(geometry, material);
+    const disc = new THREE.Mesh(
+        new THREE.CircleGeometry(radius, 128),
+        material
+    );
+
     disc.rotation.x = -Math.PI / 2;
-    disc.position.y = 0;
+
     disc.receiveShadow = true;
+
     group.add(disc);
+
+    const shadow = new THREE.Mesh(
+        new THREE.CircleGeometry(radius * 1.25, 128),
+        new THREE.MeshBasicMaterial({
+            color: 0x000000,
+            transparent: true,
+            opacity: 0.08
+        })
+    );
+
+    shadow.rotation.x = -Math.PI / 2;
+
+    shadow.position.y = -0.01;
+
+    group.add(shadow);
 }
 
 function addReferenceGrid(group, radius, height) {
@@ -2115,8 +2195,9 @@ function resize(viewer) {
 }
 
 function animate(viewer) {
+    viewer.group.rotation.y += 0.0005;
     viewer.animationId = requestAnimationFrame(() => animate(viewer));
-
+    viewer.distance = maxSize * 2.75;
     if (!viewer.renderer || !viewer.scene || !viewer.camera) return;
 
     viewer.renderer.render(viewer.scene, viewer.camera);
@@ -2148,15 +2229,20 @@ function updateCamera(viewer) {
 }
 
 function colorForMaterial(name) {
+
     const normalized = String(name || "").toUpperCase();
 
-    if (normalized.includes("HSLA")) return 0x2563eb;
-    if (normalized.includes("S355")) return 0x0f766e;
-    if (normalized.includes("S275")) return 0x7c3aed;
-    if (normalized.includes("S235")) return 0x64748b;
-    if (normalized.includes("GLASS") || normalized.includes("VITR")) return 0x0891b2;
+    if (normalized.includes("HSLA")) return 0x1e40af;
 
-    return 0x2563eb;
+    if (normalized.includes("S355")) return 0x0f766e;
+
+    if (normalized.includes("S275")) return 0x1d2b53;
+
+    if (normalized.includes("S235")) return 0x475569;
+
+    if (normalized.includes("GLASS")) return 0x0f766e;
+
+    return 0x1d4ed8;
 }
 
 function showError(container, message) {
