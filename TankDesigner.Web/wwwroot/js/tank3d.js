@@ -97,11 +97,11 @@ function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
     const scene = new THREE.Scene();
 
     shell.style.background = `
-    radial-gradient(circle at 50% 42%, rgba(37,99,235,0.18) 0%, rgba(15,23,42,0.96) 48%, #020617 100%)
+    radial-gradient(circle at 52% 42%, rgba(226,232,240,0.18) 0%, rgba(30,41,59,0.92) 48%, #0f172a 100%)
 `;
 
-    scene.background = new THREE.Color(0x06111f);
-    scene.fog = new THREE.Fog(0x06111f, 90, 220);
+    scene.background = new THREE.Color(0x1e293b);
+    scene.fog = new THREE.Fog(0x1e293b, 120, 260);
 
     const camera = new THREE.PerspectiveCamera(38, 1, 0.01, 10000);
 
@@ -213,41 +213,29 @@ function addMouseHelpPanel(shell) {
     const panel = document.createElement("div");
 
     panel.innerHTML = `
-        <div style="font-weight:800;font-size:14px;margin-bottom:10px;color:#ffffff;">
+        <div style="font-weight:800;font-size:13px;margin-bottom:8px;color:#ffffff;">
             Controles de visualización
         </div>
 
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
-            <div style="display:flex;gap:10px;align-items:flex-start;">
-                <div style="font-size:22px;">🖱️</div>
-                <div>
-                    <strong style="color:#ffffff;">Rotar modelo</strong><br>
-                    <span style="color:#cbd5e1;">Mantén pulsado el botón izquierdo y arrastra.</span>
-                </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+            <div>
+                <strong style="color:#ffffff;">🖱️ Rotar</strong><br>
+                <span style="color:#cbd5e1;">Botón izquierdo y arrastrar.</span>
             </div>
 
-            <div style="display:flex;gap:10px;align-items:flex-start;">
-                <div style="font-size:22px;">🔍</div>
-                <div>
-                    <strong style="color:#ffffff;">Acercar / alejar</strong><br>
-                    <span style="color:#cbd5e1;">Usa la rueda del ratón para hacer zoom.</span>
-                </div>
+            <div>
+                <strong style="color:#ffffff;">🔍 Zoom</strong><br>
+                <span style="color:#cbd5e1;">Rueda del ratón.</span>
             </div>
 
-            <div style="display:flex;gap:10px;align-items:flex-start;">
-                <div style="font-size:22px;">✋</div>
-                <div>
-                    <strong style="color:#ffffff;">Mover vista</strong><br>
-                    <span style="color:#cbd5e1;">Arrastra para explorar detalles del tanque.</span>
-                </div>
+            <div>
+                <strong style="color:#ffffff;">✋ Explorar</strong><br>
+                <span style="color:#cbd5e1;">Mueve la vista alrededor.</span>
             </div>
 
-            <div style="display:flex;gap:10px;align-items:flex-start;">
-                <div style="font-size:22px;">💡</div>
-                <div>
-                    <strong style="color:#ffffff;">Información</strong><br>
-                    <span style="color:#cbd5e1;">Pasa el cursor sobre piezas para ver datos técnicos.</span>
-                </div>
+            <div>
+                <strong style="color:#ffffff;">ℹ️ Datos</strong><br>
+                <span style="color:#cbd5e1;">Pasa el cursor sobre piezas.</span>
             </div>
         </div>
     `;
@@ -257,13 +245,13 @@ function addMouseHelpPanel(shell) {
     panel.style.right = "18px";
     panel.style.bottom = "18px";
     panel.style.zIndex = "7";
-    panel.style.padding = "16px 18px";
+    panel.style.padding = "14px 16px";
     panel.style.borderRadius = "18px";
     panel.style.background = "rgba(15,23,42,0.78)";
-    panel.style.border = "1px solid rgba(148,163,184,0.28)";
+    panel.style.border = "1px solid rgba(148,163,184,0.30)";
     panel.style.boxShadow = "0 20px 55px rgba(0,0,0,0.28)";
     panel.style.backdropFilter = "blur(14px)";
-    panel.style.font = "13px Arial";
+    panel.style.font = "12px Arial";
     panel.style.pointerEvents = "none";
 
     shell.appendChild(panel);
@@ -483,9 +471,9 @@ function buildTank(viewer, tank, rings, scale) {
         const shellGeometry = new THREE.CylinderGeometry(radius, radius, height, 96, 1, true);
         const shellMaterial = new THREE.MeshStandardMaterial({
             color,
-            metalness: 0.82,
-            roughness: 0.34,
-            envMapIntensity: 1.2,
+            metalness: 0.55,
+            roughness: 0.46,
+            envMapIntensity: 0.9,
             side: THREE.DoubleSide
         });
 
@@ -1410,14 +1398,14 @@ function addRingSeam(group, radius, y) {
 
 function addBottomDisc(group, radius) {
     const material = new THREE.MeshStandardMaterial({
-        color: 0x2f3744,
-        metalness: 0.18,
+        color: 0x475569,
+        metalness: 0.12,
         roughness: 0.88,
         side: THREE.DoubleSide
     });
 
     const disc = new THREE.Mesh(
-        new THREE.CircleGeometry(radius * 1.24, 160),
+        new THREE.CircleGeometry(radius * 1.22, 160),
         material
     );
 
@@ -1426,32 +1414,6 @@ function addBottomDisc(group, radius) {
     disc.receiveShadow = true;
 
     group.add(disc);
-
-    const gridMaterial = new THREE.LineBasicMaterial({
-        color: 0x64748b,
-        transparent: true,
-        opacity: 0.16
-    });
-
-    const gridSize = radius * 2.35;
-    const step = gridSize / 16;
-
-    for (let i = -8; i <= 8; i++) {
-        const x = i * step;
-
-        const line1 = new THREE.BufferGeometry().setFromPoints([
-            new THREE.Vector3(x, -0.005, -gridSize / 2),
-            new THREE.Vector3(x, -0.005, gridSize / 2)
-        ]);
-
-        const line2 = new THREE.BufferGeometry().setFromPoints([
-            new THREE.Vector3(-gridSize / 2, -0.005, x),
-            new THREE.Vector3(gridSize / 2, -0.005, x)
-        ]);
-
-        group.add(new THREE.Line(line1, gridMaterial));
-        group.add(new THREE.Line(line2, gridMaterial));
-    }
 }
 
 function addReferenceGrid(group, radius, height) {
@@ -2276,10 +2238,10 @@ function fitCamera(viewer) {
     const radius = viewer.modelRadius || 20;
     const maxSize = Math.max(height, radius * 2, 1);
 
-    viewer.distance = maxSize * 2.75;
+    viewer.distance = maxSize * 2.35;
     viewer.target.set(0, 0, 0);
-    viewer.pitch = 0.32;
-    viewer.yaw = 0.82;
+    viewer.pitch = 0.24;
+    viewer.yaw = 0.72;
 
     updateCamera(viewer);
 }
@@ -2297,20 +2259,15 @@ function updateCamera(viewer) {
 }
 
 function colorForMaterial(name) {
-
     const normalized = String(name || "").toUpperCase();
 
-    if (normalized.includes("HSLA")) return 0x1e40af;
+    if (normalized.includes("HSLA")) return 0x3b4f63;
+    if (normalized.includes("S355")) return 0x2f5f5a;
+    if (normalized.includes("S275")) return 0x34495e;
+    if (normalized.includes("S235")) return 0x5b6673;
+    if (normalized.includes("GLASS") || normalized.includes("VITR")) return 0x2f5f5a;
 
-    if (normalized.includes("S355")) return 0x0f766e;
-
-    if (normalized.includes("S275")) return 0x1d2b53;
-
-    if (normalized.includes("S235")) return 0x475569;
-
-    if (normalized.includes("GLASS")) return 0x0f766e;
-
-    return 0x1d4ed8;
+    return 0x34495e;
 }
 
 function showError(container, message) {
