@@ -452,9 +452,156 @@ function getStarterRingHeight(tank, scale) {
         Number(tank?.resultado?.starterRingHeight) ||
         0;
 
-    if (rawHeight <= 0 || !scale || scale <= 0) return 0;
+    if (rawHeight > 0) {
+        return rawHeight > 50 ? rawHeight * scale / 1000 : rawHeight * scale;
+    }
 
-    return rawHeight > 50 ? rawHeight * scale / 1000 : rawHeight * scale;
+    const tieneStarter =
+        tank?.tieneStarterRing === true ||
+        tank?.starterRing === true ||
+        tank?.resultado?.tieneStarterRing === true;
+
+    if (tieneStarter) {
+        return 0.45 * scale;
+    }
+
+    return 0;
+}
+
+function addStarterRing(group, radius, height, tank) {
+    const starterGroup = new THREE.Group();
+
+    const concreteHeight = Math.max(height * 0.55, 0.22);
+    const concreteRadius = radius * 1.16;
+
+    const concreteMaterial = new THREE.MeshStandardMaterial({
+        color: 0xc9c3b8,
+        metalness: 0.04,
+        roughness: 0.92
+    });
+
+    const concrete = new THREE.Mesh(
+        new THREE.CylinderGeometry(concreteRadius, concreteRadius, concreteHeight, 128),
+        concreteMaterial
+    );
+
+    concrete.position.y = -concreteHeight / 2;
+    concrete.receiveShadow = true;
+    concrete.castShadow = false;
+    starterGroup.add(concrete);
+
+    const starterMaterial = new THREE.MeshStandardMaterial({
+        color: 0x777848,
+        metalness: 0.45,
+        roughness: 0.48,
+        side: THREE.DoubleSide
+    });
+
+    const starter = new THREE.Mesh(
+        new THREE.CylinderGeometry(radius * 1.025, radius * 1.025, height, 128, 1, true),
+        starterMaterial
+    );
+
+    starter.position.y = height / 2;
+    starter.castShadow = true;
+    starter.receiveShadow = true;
+
+    starter.userData = {
+        tipo: "Starter ring / anillo de arranque",
+        material: "Anillo base rellenable",
+        altura: formatTechnicalValue(height, "u.3D"),
+        espesor: "Base de mortero / concreto",
+        diametro: formatTechnicalValue(radius * 2, "u.3D")
+    };
+
+    starterGroup.add(starter);
+
+    const capMaterial = new THREE.MeshStandardMaterial({
+        color: 0x9a9b62,
+        metalness: 0.62,
+        roughness: 0.32
+    });
+
+    const topCap = new THREE.Mesh(
+        new THREE.TorusGeometry(radius * 1.026, Math.max(radius * 0.012, 0.035), 16, 128),
+        capMaterial
+    );
+
+    topCap.rotation.x = Math.PI / 2;
+    topCap.position.y = height;
+    topCap.castShadow = true;
+    topCap.receiveShadow = true;
+    starterGroup.add(topCap);
+
+    const bottomCap = new THREE.Mesh(
+        new THREE.TorusGeometry(radius * 1.026, Math.max(radius * 0.010, 0.03), 16, 128),
+        capMaterial
+    );
+
+    bottomCap.rotation.x = Math.PI / 2;
+    bottomCap.position.y = 0;
+    starterGroup.add(bottomCap);
+
+    const plateMaterial = new THREE.MeshStandardMaterial({
+        color: 0x626337,
+        metalness: 0.5,
+        roughness: 0.42
+    });
+
+    const plateCount = Math.max(18, Math.min(40, Math.floor(radius * 2.2)));
+
+    for (let i = 0; i < plateCount; i++) {
+        const angle = (Math.PI * 2 * i) / plateCount;
+        const plateWidth = Math.max(radius * 0.030, 0.12);
+        const plateDepth = Math.max(radius * 0.010, 0.035);
+
+        const plate = new THREE.Mesh(
+            new THREE.BoxGeometry(plateWidth, height * 0.78, plateDepth),
+            plateMaterial
+        );
+
+        plate.position.set(
+            Math.cos(angle) * radius * 1.045,
+            height * 0.42,
+            Math.sin(angle) * radius * 1.045
+        );
+
+        plate.lookAt(0, height * 0.42, 0);
+        plate.castShadow = true;
+        plate.receiveShadow = true;
+        starterGroup.add(plate);
+    }
+
+    const boltMaterial = new THREE.MeshStandardMaterial({
+        color: 0xd1d5db,
+        metalness: 0.9,
+        roughness: 0.18
+    });
+
+    const boltCount = Math.max(64, Math.min(144, Math.floor(radius * 8)));
+
+    for (let i = 0; i < boltCount; i++) {
+        const angle = (Math.PI * 2 * i) / boltCount;
+
+        const bolt = new THREE.Mesh(
+            new THREE.SphereGeometry(Math.max(radius * 0.004, 0.018), 10, 10),
+            boltMaterial
+        );
+
+        bolt.position.set(
+            Math.cos(angle) * radius * 1.035,
+            height * 0.93,
+            Math.sin(angle) * radius * 1.035
+        );
+
+        bolt.castShadow = true;
+        starterGroup.add(bolt);
+    }
+
+    group.add(starterGroup);
+
+    addRingSeam(group, radius * 1.025, 0);
+    addRingSeam(group, radius * 1.025, height);
 }
 
 function addStarterRing(group, radius, height, tank) {
@@ -1289,10 +1436,107 @@ function addVerticalLadder(group, radius, height, angleOffset = 0, scale) {
     }
 
     addCircularLadderCage(group, radius, height, radial, tangent, centerBase, cageMaterial, scale);
+
+    addVerticalLadderIntermediatePlatform(
+        group,
+        radius,
+        height,
+        radial,
+        tangent,
+        platformMaterial,
+        cageMaterial,
+        centerBase,
+        railHalfWidth
+    );
+
     addVerticalLadderTopPlatform(group, radius, height, radial, tangent, platformMaterial, cageMaterial, centerBase, railHalfWidth);
     addLadderTankBrackets(group, radius, height, radial, tangent, centerBase, cageMaterial);
 }
 
+function addVerticalLadderIntermediatePlatform(group, radius, height, radial, tangent, platformMaterial, railMaterial, centerBase, railHalfWidth) {
+    const platformY = height * 0.46;
+
+    if (platformY <= 0.8) return;
+
+    const width = Math.max(railHalfWidth * 4.2, 1.55);
+    const depth = Math.max(railHalfWidth * 2.8, 1.05);
+    const thickness = Math.max(radius * 0.008, 0.055);
+
+    const center = centerBase.clone().add(radial.clone().multiplyScalar(depth * 0.75));
+    center.y = platformY;
+
+    const platform = new THREE.Mesh(
+        new THREE.BoxGeometry(width, thickness, depth),
+        platformMaterial
+    );
+
+    platform.position.copy(center);
+    platform.rotation.y = -Math.atan2(radial.z, radial.x) + Math.PI / 2;
+    platform.castShadow = true;
+    platform.receiveShadow = true;
+
+    platform.userData = {
+        tipo: "Plataforma intermedia de escalera",
+        material: "Acero galvanizado",
+        altura: formatTechnicalValue(platformY, "u.3D"),
+        espesor: "—",
+        diametro: "—"
+    };
+
+    group.add(platform);
+
+    const railHeight = Math.max(radius * 0.075, 0.72);
+    const railRadius = Math.max(radius * 0.004, 0.020);
+
+    addPlatformRails(
+        group,
+        center,
+        radial,
+        tangent,
+        width,
+        depth,
+        platformY,
+        thickness,
+        railHeight,
+        railRadius,
+        railMaterial,
+        {
+            openBack: true,
+            openFront: false
+        }
+    );
+
+    const supportRadius = Math.max(radius * 0.006, 0.025);
+
+    const leftOuter = center.clone()
+        .add(tangent.clone().multiplyScalar(-width * 0.38))
+        .add(radial.clone().multiplyScalar(depth * 0.35));
+
+    const rightOuter = center.clone()
+        .add(tangent.clone().multiplyScalar(width * 0.38))
+        .add(radial.clone().multiplyScalar(depth * 0.35));
+
+    const leftBottom = centerBase.clone()
+        .add(tangent.clone().multiplyScalar(-width * 0.32))
+        .add(radial.clone().multiplyScalar(-depth * 0.05));
+
+    const rightBottom = centerBase.clone()
+        .add(tangent.clone().multiplyScalar(width * 0.32))
+        .add(radial.clone().multiplyScalar(-depth * 0.05));
+
+    leftOuter.y = platformY - thickness;
+    rightOuter.y = platformY - thickness;
+    leftBottom.y = platformY - Math.max(radius * 0.22, 1.25);
+    rightBottom.y = platformY - Math.max(radius * 0.22, 1.25);
+
+    addCylinderBetween(group, leftBottom, leftOuter, supportRadius, railMaterial, 10);
+    addCylinderBetween(group, rightBottom, rightOuter, supportRadius, railMaterial, 10);
+
+    const tankBracket = radial.clone().multiplyScalar(radius * 1.002);
+    tankBracket.y = platformY;
+
+    addCylinderBetween(group, tankBracket, center, supportRadius * 0.85, railMaterial, 8);
+}
 function addCircularLadderCage(group, radius, height, radial, tangent, centerBase, material, scale) {
     const cageRadius = Math.max(radius * 0.068, 0.50);
     const tubeRadius = Math.max(radius * 0.0024, 0.012);
