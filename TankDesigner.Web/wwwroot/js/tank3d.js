@@ -407,7 +407,7 @@ function buildTank(viewer, tank, rings, scale) {
         currentY += height;
     });
 
-    addBottomDisc(viewer.group, radius);
+    addBottomDisc(viewer.group, radius * 0.98);
 
     if (technicalViewState.showWater) {
         addWaterLevelIfAvailable(viewer.group, radius, currentY, tank, scale);
@@ -443,7 +443,6 @@ function buildTank(viewer, tank, rings, scale) {
     viewer.modelRadius = radius;
     viewer.modelHeight = currentY;
 }
-
 function getStarterRingHeight(tank, scale) {
     const rawHeight =
         Number(tank?.alturaStarterRing) ||
@@ -456,16 +455,155 @@ function getStarterRingHeight(tank, scale) {
         return rawHeight > 50 ? rawHeight * scale / 1000 : rawHeight * scale;
     }
 
-    const tieneStarter =
-        tank?.tieneStarterRing === true ||
-        tank?.starterRing === true ||
-        tank?.resultado?.tieneStarterRing === true;
+    return 0;
+}
 
-    if (tieneStarter) {
-        return 0.45 * scale;
+function addStarterRing(group, radius, height, tank) {
+    const starterGroup = new THREE.Group();
+
+    const realHeightMm =
+        Number(tank?.alturaStarterRing) ||
+        Number(tank?.starterRingHeight) ||
+        Number(tank?.resultado?.alturaStarterRing) ||
+        Number(tank?.resultado?.starterRingHeight) ||
+        0;
+
+    const tooltipData = {
+        tipo: "Starter ring / anillo de arranque",
+        material: "Anillo base rellenable",
+        altura: realHeightMm > 0 ? `${realHeightMm} mm` : formatTechnicalValue(height, "u.3D"),
+        espesor: "Base de mortero / concreto",
+        diametro: formatTechnicalValue(radius * 2, "u.3D")
+    };
+
+    const concreteHeight = Math.max(height * 0.72, 0.35);
+    const concreteRadius = radius * 1.18;
+
+    const concreteMaterial = new THREE.MeshStandardMaterial({
+        color: 0xbfb8aa,
+        metalness: 0.03,
+        roughness: 0.95
+    });
+
+    const concrete = new THREE.Mesh(
+        new THREE.CylinderGeometry(concreteRadius, concreteRadius, concreteHeight, 160),
+        concreteMaterial
+    );
+
+    concrete.position.y = -concreteHeight / 2;
+    concrete.receiveShadow = true;
+    concrete.userData = tooltipData;
+    starterGroup.add(concrete);
+
+    const starterMaterial = new THREE.MeshStandardMaterial({
+        color: 0x777848,
+        metalness: 0.52,
+        roughness: 0.38,
+        side: THREE.DoubleSide
+    });
+
+    const starter = new THREE.Mesh(
+        new THREE.CylinderGeometry(radius * 1.045, radius * 1.045, height, 160, 1, true),
+        starterMaterial
+    );
+
+    starter.position.y = height / 2;
+    starter.castShadow = true;
+    starter.receiveShadow = true;
+    starter.userData = tooltipData;
+    starterGroup.add(starter);
+
+    const darkRingMaterial = new THREE.MeshStandardMaterial({
+        color: 0x2f2f20,
+        metalness: 0.75,
+        roughness: 0.24
+    });
+
+    const topRing = new THREE.Mesh(
+        new THREE.TorusGeometry(radius * 1.047, Math.max(radius * 0.014, 0.045), 18, 160),
+        darkRingMaterial
+    );
+
+    topRing.rotation.x = Math.PI / 2;
+    topRing.position.y = height;
+    topRing.castShadow = true;
+    topRing.userData = tooltipData;
+    starterGroup.add(topRing);
+
+    const bottomRing = new THREE.Mesh(
+        new THREE.TorusGeometry(radius * 1.047, Math.max(radius * 0.012, 0.038), 18, 160),
+        darkRingMaterial
+    );
+
+    bottomRing.rotation.x = Math.PI / 2;
+    bottomRing.position.y = 0.03;
+    bottomRing.userData = tooltipData;
+    starterGroup.add(bottomRing);
+
+    const plateMaterial = new THREE.MeshStandardMaterial({
+        color: 0x5f6035,
+        metalness: 0.55,
+        roughness: 0.36
+    });
+
+    const plateCount = Math.max(24, Math.min(44, Math.floor(radius * 2.8)));
+
+    for (let i = 0; i < plateCount; i++) {
+        const angle = (Math.PI * 2 * i) / plateCount;
+
+        const plate = new THREE.Mesh(
+            new THREE.BoxGeometry(
+                Math.max(radius * 0.034, 0.16),
+                height * 0.82,
+                Math.max(radius * 0.012, 0.045)
+            ),
+            plateMaterial
+        );
+
+        plate.position.set(
+            Math.cos(angle) * radius * 1.062,
+            height * 0.43,
+            Math.sin(angle) * radius * 1.062
+        );
+
+        plate.lookAt(0, height * 0.43, 0);
+        plate.castShadow = true;
+        plate.receiveShadow = true;
+        plate.userData = tooltipData;
+        starterGroup.add(plate);
     }
 
-    return 0;
+    const boltMaterial = new THREE.MeshStandardMaterial({
+        color: 0xd7dce2,
+        metalness: 0.95,
+        roughness: 0.16
+    });
+
+    const boltCount = Math.max(96, Math.min(180, Math.floor(radius * 10)));
+
+    for (let i = 0; i < boltCount; i++) {
+        const angle = (Math.PI * 2 * i) / boltCount;
+
+        const bolt = new THREE.Mesh(
+            new THREE.SphereGeometry(Math.max(radius * 0.0045, 0.022), 10, 10),
+            boltMaterial
+        );
+
+        bolt.position.set(
+            Math.cos(angle) * radius * 1.054,
+            height * 0.90,
+            Math.sin(angle) * radius * 1.054
+        );
+
+        bolt.castShadow = true;
+        bolt.userData = tooltipData;
+        starterGroup.add(bolt);
+    }
+
+    group.add(starterGroup);
+
+    addRingSeam(group, radius * 1.045, 0);
+    addRingSeam(group, radius * 1.045, height);
 }
 
 function addStarterRing(group, radius, height, tank) {
