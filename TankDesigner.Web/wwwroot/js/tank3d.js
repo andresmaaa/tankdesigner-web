@@ -2303,7 +2303,6 @@ function addManhole(group, radius, height) {
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
         const overlay = viewer.shell.querySelector("#tank3d-tech-overlay");
-
         if (!overlay) return;
 
         viewer.renderer.domElement.addEventListener("mousemove", event => {
@@ -2491,6 +2490,6 @@ function addManhole(group, radius, height) {
     `;
     }
 
-    window.tank3d = {
-        renderTank3D: renderTank3D
-    };
+window.tank3d = {
+    renderTank3D: renderTank3D
+};
