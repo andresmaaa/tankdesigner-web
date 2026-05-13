@@ -1646,28 +1646,30 @@ function addManhole(group, radius, height) {
     }
 
     function addVerticalLadder(group, radius, height, angleOffset = 0, scale) {
-        const ladderMaterial = new THREE.MeshStandardMaterial({
+        const ladderMaterial = markAlwaysVisibleMaterial(new THREE.MeshStandardMaterial({
             color: 0xd97706,
             metalness: 0.82,
             roughness: 0.2,
             envMapIntensity: 1.1
-        });
+        }));
 
-        const cageMaterial = new THREE.MeshStandardMaterial({
+        const cageMaterial = markAlwaysVisibleMaterial(new THREE.MeshStandardMaterial({
             color: 0xcbd5e1,
             metalness: 0.88,
             roughness: 0.16,
             transparent: true,
             opacity: 0.62,
             envMapIntensity: 1.1
-        });
+        }));
 
-        const platformMaterial = new THREE.MeshStandardMaterial({
+        const platformMaterial = markAlwaysVisibleMaterial(new THREE.MeshStandardMaterial({
             color: 0x64748b,
             metalness: 0.82,
             roughness: 0.2,
             envMapIntensity: 1.1
-        });
+        }));
+
+
 
         const angle = -Math.PI / 4 + angleOffset;
         const radial = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
@@ -2274,29 +2276,33 @@ function addManhole(group, radius, height) {
         }
     }
 
-    function addCylinderBetween(group, start, end, radius, material, segments) {
-        const direction = new THREE.Vector3().subVectors(end, start);
-        const length = direction.length();
+function addCylinderBetween(group, start, end, radius, material, segments) {
+    const direction = new THREE.Vector3().subVectors(end, start);
+    const length = direction.length();
 
-        if (length <= 0) return;
+    if (length <= 0) return;
 
-        const geometry = new THREE.CylinderGeometry(radius, radius, length, segments || 16, 1, false);
-        const mesh = new THREE.Mesh(geometry, material);
+    const geometry = new THREE.CylinderGeometry(radius, radius, length, segments || 16, 1, false);
+    const mesh = new THREE.Mesh(geometry, material);
 
-        mesh.position.copy(start).add(end).multiplyScalar(0.5);
+    mesh.position.copy(start).add(end).multiplyScalar(0.5);
 
-        const quaternion = new THREE.Quaternion();
-        quaternion.setFromUnitVectors(
-            new THREE.Vector3(0, 1, 0),
-            direction.clone().normalize()
-        );
+    const quaternion = new THREE.Quaternion();
+    quaternion.setFromUnitVectors(
+        new THREE.Vector3(0, 1, 0),
+        direction.clone().normalize()
+    );
 
-        mesh.quaternion.copy(quaternion);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
+    mesh.quaternion.copy(quaternion);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
 
-        group.add(mesh);
+    if (material?.userData?.alwaysVisible) {
+        mesh.renderOrder = 100;
     }
+
+    group.add(mesh);
+}
 
 
     function bindTechnicalHover(viewer) {
@@ -2705,6 +2711,15 @@ function addRoofVent(group, radius, height, roofRaw) {
     };
 
     group.add(vent);
+}
+
+function markAlwaysVisibleMaterial(material) {
+    material.depthTest = false;
+    material.depthWrite = false;
+    material.transparent = true;
+    material.userData = material.userData || {};
+    material.userData.alwaysVisible = true;
+    return material;
 }
 window.tank3d = {
     renderTank3D: renderTank3D
