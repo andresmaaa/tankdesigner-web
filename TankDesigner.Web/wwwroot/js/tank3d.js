@@ -2489,7 +2489,223 @@ function addManhole(group, radius, height) {
         </div>
     `;
     }
+function addScaleBadge(shell, metersPerUnit, tank) {
+    const badge = document.createElement("div");
+    badge.innerHTML = `
+        <strong>Escala automática</strong><br>
+        1 u. 3D = ${metersPerUnit.toFixed(2)} m<br>
+        Techo: ${normalizarTecho(tank.techo).label}
+    `;
 
+    badge.style.position = "absolute";
+    badge.style.right = "22px";
+    badge.style.bottom = "100px";
+    badge.style.zIndex = "5";
+    badge.style.padding = "12px 14px";
+    badge.style.borderRadius = "16px";
+    badge.style.background = "rgba(15,23,42,0.88)";
+    badge.style.color = "#ffffff";
+    badge.style.font = "13px Arial";
+    badge.style.lineHeight = "1.45";
+
+    shell.appendChild(badge);
+}
+
+function addRoofControls(shell, container, tank, dotNetRef) {
+    return;
+}
+
+function addTechnicalControls(shell, container, tank, dotNetRef) {
+    const panel = document.createElement("div");
+
+    panel.style.position = "absolute";
+    panel.style.left = "20px";
+    panel.style.bottom = "100px";
+    panel.style.zIndex = "9";
+    panel.style.width = "190px";
+    panel.style.padding = "14px";
+    panel.style.borderRadius = "16px";
+    panel.style.background = "rgba(15,23,42,0.88)";
+    panel.style.color = "white";
+    panel.style.font = "13px Arial";
+
+    panel.innerHTML = `
+        <strong>Vista técnica</strong>
+        ${createTechnicalCheckbox("Techo", "showRoof")}
+        ${createTechnicalCheckbox("Barandilla", "showGuardrail")}
+        ${createTechnicalCheckbox("Conexiones", "showConnections")}
+        ${createTechnicalCheckbox("Escalera", "showLadder")}
+        ${createTechnicalCheckbox("Agua", "showWater")}
+        ${createTechnicalCheckbox("Referencias", "showReferences")}
+    `;
+
+    panel.querySelectorAll("input").forEach(input => {
+        input.addEventListener("change", () => {
+            technicalViewState[input.dataset.key] = input.checked;
+            renderTank3D(container, tank, dotNetRef);
+        });
+    });
+
+    shell.appendChild(panel);
+}
+
+function createTechnicalCheckbox(label, key) {
+    return `
+        <label style="display:flex;gap:8px;margin-top:8px;align-items:center;">
+            <input type="checkbox" data-key="${key}" ${technicalViewState[key] ? "checked" : ""}>
+            <span>${label}</span>
+        </label>
+    `;
+}
+
+function addTechnicalInfoOverlay(shell) {
+    const overlay = document.createElement("div");
+    overlay.id = "tank3d-tech-overlay";
+    overlay.style.position = "absolute";
+    overlay.style.left = "50%";
+    overlay.style.top = "20px";
+    overlay.style.transform = "translateX(-50%)";
+    overlay.style.padding = "12px 16px";
+    overlay.style.borderRadius = "14px";
+    overlay.style.background = "rgba(255,255,255,0.95)";
+    overlay.style.color = "#111827";
+    overlay.style.font = "13px Arial";
+    overlay.style.zIndex = "20";
+    overlay.style.pointerEvents = "none";
+    overlay.style.display = "none";
+    overlay.style.boxShadow = "0 15px 40px rgba(0,0,0,0.15)";
+    shell.appendChild(overlay);
+}
+
+function addDownloadPngButton(shell, renderer) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "Descargar PNG";
+
+    button.style.position = "absolute";
+    button.style.right = "20px";
+    button.style.top = "20px";
+    button.style.zIndex = "8";
+    button.style.border = "0";
+    button.style.borderRadius = "12px";
+    button.style.padding = "10px 14px";
+    button.style.background = "#ffffff";
+    button.style.color = "#111827";
+    button.style.font = "700 13px Arial";
+    button.style.cursor = "pointer";
+
+    button.addEventListener("click", () => {
+        renderer.render(renderer.__tank3dScene, renderer.__tank3dCamera);
+        const link = document.createElement("a");
+        link.download = `tank-3d-${new Date().toISOString().slice(0, 10)}.png`;
+        link.href = renderer.domElement.toDataURL("image/png");
+        link.click();
+    });
+
+    shell.appendChild(button);
+}
+
+function addMouseHelpPanel(shell) {
+    const panel = document.createElement("div");
+    panel.innerHTML = `Rotar: clic izquierdo · Zoom: rueda · Datos: cursor`;
+
+    panel.style.position = "absolute";
+    panel.style.left = "50%";
+    panel.style.bottom = "20px";
+    panel.style.transform = "translateX(-50%)";
+    panel.style.zIndex = "12";
+    panel.style.padding = "10px 18px";
+    panel.style.borderRadius = "18px";
+    panel.style.background = "rgba(15,23,42,0.88)";
+    panel.style.color = "#ffffff";
+    panel.style.font = "12px Arial";
+    panel.style.pointerEvents = "none";
+
+    shell.appendChild(panel);
+}
+
+function getStarterRingHeight(tank, scale) {
+    const rawHeight =
+        Number(tank?.alturaStarterRing) ||
+        Number(tank?.starterRingHeight) ||
+        Number(tank?.starterRingAltura) ||
+        Number(tank?.starterRingAlturaMm) ||
+        Number(tank?.alturaStarterRingMm) ||
+        540;
+
+    return rawHeight > 50 ? rawHeight * scale / 1000 : rawHeight * scale;
+}
+
+function getStarterRingHeightMm(tank) {
+    return Number(tank?.alturaStarterRing) ||
+        Number(tank?.starterRingHeight) ||
+        Number(tank?.starterRingAltura) ||
+        Number(tank?.starterRingAlturaMm) ||
+        Number(tank?.alturaStarterRingMm) ||
+        540;
+}
+
+function formatTechnicalValue(value, suffix) {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n <= 0) return "—";
+    return `${n} ${suffix}`;
+}
+
+function normalizarTecho(value) {
+    const text = String(value || "None").trim();
+    const t = text.toUpperCase();
+
+    if (!t || t === "—" || t.includes("NONE") || t.includes("SIN") || t.includes("ABIERTO")) {
+        return { type: "none", label: "Sin techo / abierto" };
+    }
+
+    if (t.includes("DOME") || t.includes("DOMO") || t.includes("CUPULA") || t.includes("CÚPULA")) {
+        return { type: "dome", label: text };
+    }
+
+    if (t.includes("CONE") || t.includes("CONIC") || t.includes("CÓNIC") || t.includes("CONO")) {
+        return { type: "cone", label: text };
+    }
+
+    if (t.includes("FLAT") || t.includes("PLANO")) {
+        return { type: "flat", label: text };
+    }
+
+    return { type: "flat", label: text };
+}
+
+function addRoofVent(group, radius, height, roofRaw) {
+    const roof = normalizarTecho(roofRaw);
+    if (roof.type === "none") return;
+
+    const ventRadius = Math.max(radius * 0.04, 0.20);
+    const ventHeight = Math.max(radius * 0.09, 0.42);
+
+    const material = new THREE.MeshStandardMaterial({
+        color: 0x64748b,
+        metalness: 0.8,
+        roughness: 0.22
+    });
+
+    const vent = new THREE.Mesh(
+        new THREE.CylinderGeometry(ventRadius, ventRadius, ventHeight, 32),
+        material
+    );
+
+    vent.position.set(radius * 0.32, height + ventHeight * 0.65, -radius * 0.18);
+    vent.castShadow = true;
+    vent.receiveShadow = true;
+
+    vent.userData = {
+        tipo: "Ventilación de techo",
+        material: "Acero",
+        altura: "Techo",
+        espesor: "—",
+        diametro: formatTechnicalValue(ventRadius * 2, "u.3D")
+    };
+
+    group.add(vent);
+}
 window.tank3d = {
     renderTank3D: renderTank3D
 };
