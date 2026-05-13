@@ -373,6 +373,7 @@ function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
     animate(viewer);
 
     return viewer;
+}
 // BUILD TANK PROFESIONAL
 
 function buildTank(viewer, tank, rings, scale) {
