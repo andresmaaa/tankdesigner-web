@@ -1929,7 +1929,7 @@ function addLadderTankBrackets(group, radius, height, radial, tangent, centerBas
 }
 
 function createAlwaysVisibleMaterial(color, metalness, roughness, opacity) {
-    const material = new THREE.MeshStandardMaterial({
+    return new THREE.MeshStandardMaterial({
         color,
         metalness,
         roughness,
@@ -1938,13 +1938,6 @@ function createAlwaysVisibleMaterial(color, metalness, roughness, opacity) {
         opacity,
         envMapIntensity: 1.1
     });
-
-    material.depthTest = false;
-    material.depthWrite = false;
-    material.userData = material.userData || {};
-    material.userData.alwaysVisible = true;
-
-    return material;
 }
 
     function addHelicalStair(group, radius, height, angleOffset = 0) {
@@ -2291,6 +2284,8 @@ function addCylinderBetween(group, start, end, radius, material, segments) {
     mesh.quaternion.copy(quaternion);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
+
+    group.add(mesh);
 
     if (material?.userData?.alwaysVisible) {
         mesh.renderOrder = 200;
