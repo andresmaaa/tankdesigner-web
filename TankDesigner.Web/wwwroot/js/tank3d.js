@@ -1645,105 +1645,183 @@ function addManhole(group, radius, height) {
         }
     }
 
-    function addVerticalLadder(group, radius, height, angleOffset = 0, scale) {
-        const ladderMaterial = markAlwaysVisibleMaterial(new THREE.MeshStandardMaterial({
-            color: 0xd97706,
-            metalness: 0.82,
-            roughness: 0.2,
-            envMapIntensity: 1.1
-        }));
+function addVerticalLadder(group, radius, height, angleOffset = 0, scale) {
+    const ladderMaterial = markAlwaysVisibleMaterial(new THREE.MeshStandardMaterial({
+        color: 0xd97706,
+        metalness: 0.82,
+        roughness: 0.2,
+        envMapIntensity: 1.1
+    }));
 
-        const cageMaterial = markAlwaysVisibleMaterial(new THREE.MeshStandardMaterial({
-            color: 0xcbd5e1,
-            metalness: 0.88,
-            roughness: 0.16,
-            transparent: true,
-            opacity: 0.62,
-            envMapIntensity: 1.1
-        }));
+    const cageMaterial = markAlwaysVisibleMaterial(new THREE.MeshStandardMaterial({
+        color: 0xcbd5e1,
+        metalness: 0.88,
+        roughness: 0.16,
+        transparent: true,
+        opacity: 0.62,
+        envMapIntensity: 1.1
+    }));
 
-        const platformMaterial = markAlwaysVisibleMaterial(new THREE.MeshStandardMaterial({
-            color: 0x64748b,
-            metalness: 0.82,
-            roughness: 0.2,
-            envMapIntensity: 1.1
-        }));
+    const platformMaterial = markAlwaysVisibleMaterial(new THREE.MeshStandardMaterial({
+        color: 0x64748b,
+        metalness: 0.82,
+        roughness: 0.22,
+        envMapIntensity: 1.1
+    }));
 
+    const angle = -Math.PI / 4 + angleOffset;
+    const radial = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
+    const tangent = new THREE.Vector3(-Math.sin(angle), 0, Math.cos(angle));
 
+    const ladderRadius = radius + Math.max(radius * 0.018, 0.14);
+    const centerBase = radial.clone().multiplyScalar(ladderRadius);
 
-        const angle = -Math.PI / 4 + angleOffset;
-        const radial = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
-        const tangent = new THREE.Vector3(-Math.sin(angle), 0, Math.cos(angle));
+    const railHalfWidth = Math.max(radius * 0.030, 0.30);
+    const railRadius = Math.max(radius * 0.0052, 0.025);
+    const rungRadius = Math.max(radius * 0.0042, 0.020);
 
-        const ladderRadius = radius + Math.max(radius * 0.018, 0.14);
-        const centerBase = radial.clone().multiplyScalar(ladderRadius);
+    const bottomY = Math.max(height * 0.010, 0.05);
+    const topY = height + Math.max(radius * 0.10, 0.75);
 
-        const railHalfWidth = Math.max(radius * 0.030, 0.30);
-        const railRadius = Math.max(radius * 0.0052, 0.025);
-        const rungRadius = Math.max(radius * 0.0042, 0.020);
+    const leftRailBottom = centerBase.clone().add(tangent.clone().multiplyScalar(-railHalfWidth));
+    leftRailBottom.y = bottomY;
 
-        const bottomY = Math.max(height * 0.010, 0.05);
-        const topY = height + Math.max(radius * 0.10, 0.75);
+    const leftRailTop = centerBase.clone().add(tangent.clone().multiplyScalar(-railHalfWidth));
+    leftRailTop.y = topY;
 
-        const leftRailBottom = centerBase.clone().add(tangent.clone().multiplyScalar(-railHalfWidth));
-        leftRailBottom.y = bottomY;
+    const rightRailBottom = centerBase.clone().add(tangent.clone().multiplyScalar(railHalfWidth));
+    rightRailBottom.y = bottomY;
 
-        const leftRailTop = centerBase.clone().add(tangent.clone().multiplyScalar(-railHalfWidth));
-        leftRailTop.y = topY;
+    const rightRailTop = centerBase.clone().add(tangent.clone().multiplyScalar(railHalfWidth));
+    rightRailTop.y = topY;
 
-        const rightRailBottom = centerBase.clone().add(tangent.clone().multiplyScalar(railHalfWidth));
-        rightRailBottom.y = bottomY;
+    addCylinderBetween(group, leftRailBottom, leftRailTop, railRadius, ladderMaterial, 16);
+    addCylinderBetween(group, rightRailBottom, rightRailTop, railRadius, ladderMaterial, 16);
 
-        const rightRailTop = centerBase.clone().add(tangent.clone().multiplyScalar(railHalfWidth));
-        rightRailTop.y = topY;
+    const modelRungSpacing = scale && scale > 0 ? 0.30 * scale : 0.26;
+    const rungSpacing = Math.max(Math.min(modelRungSpacing, 0.38), 0.16);
+    const rungCount = Math.max(14, Math.floor((topY - bottomY) / rungSpacing));
 
-        addCylinderBetween(group, leftRailBottom, leftRailTop, railRadius, ladderMaterial, 16);
-        addCylinderBetween(group, rightRailBottom, rightRailTop, railRadius, ladderMaterial, 16);
+    for (let i = 1; i < rungCount; i++) {
+        const y = bottomY + ((topY - bottomY) * i) / rungCount;
 
-        const modelRungSpacing = scale && scale > 0 ? 0.30 * scale : 0.26;
-        const rungSpacing = Math.max(Math.min(modelRungSpacing, 0.38), 0.16);
-        const rungCount = Math.max(14, Math.floor((topY - bottomY) / rungSpacing));
+        const left = centerBase.clone().add(tangent.clone().multiplyScalar(-railHalfWidth));
+        left.y = y;
 
-        for (let i = 1; i < rungCount; i++) {
-            const y = bottomY + ((topY - bottomY) * i) / rungCount;
+        const right = centerBase.clone().add(tangent.clone().multiplyScalar(railHalfWidth));
+        right.y = y;
 
-            const left = centerBase.clone().add(tangent.clone().multiplyScalar(-railHalfWidth));
-            left.y = y;
-
-            const right = centerBase.clone().add(tangent.clone().multiplyScalar(railHalfWidth));
-            right.y = y;
-
-            addCylinderBetween(group, left, right, rungRadius, ladderMaterial, 12);
-        }
-
-        addCircularLadderCage(group, radius, height, radial, tangent, centerBase, cageMaterial, scale);
-
-        addVerticalLadderIntermediatePlatform(
-            group,
-            radius,
-            height,
-            radial,
-            tangent,
-            platformMaterial,
-            cageMaterial,
-            centerBase,
-            railHalfWidth
-        );
-
-        addVerticalLadderTopPlatform(
-            group,
-            radius,
-            height,
-            radial,
-            tangent,
-            platformMaterial,
-            cageMaterial,
-            centerBase,
-            railHalfWidth
-        );
-
-        addLadderTankBrackets(group, radius, height, radial, tangent, centerBase, cageMaterial);
+        addCylinderBetween(group, left, right, rungRadius, ladderMaterial, 12);
     }
+
+    addCircularLadderCage(group, radius, height, radial, tangent, centerBase, cageMaterial, scale);
+
+    addVerticalLadderIntermediatePlatform(
+        group,
+        radius,
+        height,
+        radial,
+        tangent,
+        platformMaterial,
+        cageMaterial,
+        centerBase,
+        railHalfWidth
+    );
+
+    addVerticalLadderTopPlatform(
+        group,
+        radius,
+        height,
+        radial,
+        tangent,
+        platformMaterial,
+        cageMaterial,
+        centerBase,
+        railHalfWidth
+    );
+
+    addLadderTankBrackets(group, radius, height, radial, tangent, centerBase, cageMaterial);
+}
+
+
+
+function addVerticalLadderTopPlatform(group, radius, height, radial, tangent, platformMaterial, railMaterial, centerBase, railHalfWidth) {
+    const width = Math.max(railHalfWidth * 4.2, 1.45);
+    const depth = Math.max(railHalfWidth * 2.8, 1.05);
+    const thickness = Math.max(radius * 0.006, 0.040);
+    const passageWidth = railHalfWidth * 1.45;
+
+    const center = centerBase.clone().add(radial.clone().multiplyScalar(depth * 0.72));
+    center.y = height + thickness * 1.5;
+
+    addSplitPlatform(group, center, radial, tangent, width, depth, thickness, passageWidth, platformMaterial);
+
+    const railHeight = Math.max(radius * 0.070, 0.65);
+    const railRadius = Math.max(radius * 0.0034, 0.018);
+
+    addPlatformRails(group, center, radial, tangent, width, depth, height, thickness, railHeight, railRadius, railMaterial, {
+        openBack: true,
+        openFront: true,
+        openMiddle: true
+    });
+}
+
+function addSplitPlatform(group, center, radial, tangent, width, depth, thickness, passageWidth, material) {
+    const sideWidth = Math.max((width - passageWidth) / 2, 0.22);
+
+    const leftCenter = center.clone().add(tangent.clone().multiplyScalar(-(passageWidth / 2 + sideWidth / 2)));
+    const rightCenter = center.clone().add(tangent.clone().multiplyScalar(passageWidth / 2 + sideWidth / 2));
+
+    [leftCenter, rightCenter].forEach(partCenter => {
+        const platform = new THREE.Mesh(
+            new THREE.BoxGeometry(sideWidth, thickness, depth),
+            material
+        );
+
+        platform.position.copy(partCenter);
+        platform.rotation.y = -Math.atan2(radial.z, radial.x) + Math.PI / 2;
+        platform.castShadow = true;
+        platform.receiveShadow = true;
+        platform.renderOrder = 100;
+
+        platform.userData = {
+            tipo: "Plataforma de escalera",
+            material: "Acero galvanizado",
+            altura: formatTechnicalValue(center.y, "u.3D"),
+            espesor: "—",
+            diametro: "—"
+        };
+
+        group.add(platform);
+    });
+}
+
+function addPlatformRails(group, center, radial, tangent, width, depth, y, thickness, railHeight, railRadius, material, options = {}) {
+    const p1 = center.clone().add(tangent.clone().multiplyScalar(-width / 2)).add(radial.clone().multiplyScalar(depth / 2));
+    const p2 = center.clone().add(tangent.clone().multiplyScalar(width / 2)).add(radial.clone().multiplyScalar(depth / 2));
+    const p3 = center.clone().add(tangent.clone().multiplyScalar(-width / 2)).add(radial.clone().multiplyScalar(-depth / 2));
+    const p4 = center.clone().add(tangent.clone().multiplyScalar(width / 2)).add(radial.clone().multiplyScalar(-depth / 2));
+
+    const posts = [p1, p2, p3, p4];
+    const tops = [];
+
+    posts.forEach(p => {
+        const bottom = p.clone();
+        bottom.y = y + thickness;
+
+        const top = p.clone();
+        top.y = bottom.y + railHeight;
+        tops.push(top);
+
+        addCylinderBetween(group, bottom, top, railRadius, material, 12);
+    });
+
+    if (!options.openFront) addCylinderBetween(group, tops[0], tops[1], railRadius, material, 12);
+    if (!options.openBack) addCylinderBetween(group, tops[2], tops[3], railRadius, material, 12);
+
+    addCylinderBetween(group, tops[0], tops[2], railRadius, material, 12);
+    addCylinderBetween(group, tops[1], tops[3], railRadius, material, 12);
+}
 
     function addVerticalLadderIntermediatePlatform(
         group,
