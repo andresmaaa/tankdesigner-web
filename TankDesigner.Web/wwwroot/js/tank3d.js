@@ -1672,7 +1672,7 @@ function addVerticalLadder(group, radius, height, angleOffset = 0, scale) {
     const radial = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
     const tangent = new THREE.Vector3(-Math.sin(angle), 0, Math.cos(angle));
 
-    const ladderRadius = radius + Math.max(radius * 0.035, 0.35);
+    const ladderRadius = radius + Math.max(radius * 0.115, 0.78);
     const centerBase = radial.clone().multiplyScalar(ladderRadius);
 
     const railHalfWidth = Math.max(radius * 0.032, 0.32);
@@ -1841,8 +1841,7 @@ function addPlatformRails(group, center, radial, tangent, width, depth, y, thick
 function addCircularLadderCage(group, radius, height, radial, tangent, centerBase, material, scale) {
     const cageRadius = Math.max(radius * 0.068, 0.50);
     const tubeRadius = Math.max(radius * 0.0024, 0.012);
-    const cageCenter = centerBase.clone().add(radial.clone().multiplyScalar(cageRadius * 0.78));
-
+    const cageCenter = centerBase.clone().add(radial.clone().multiplyScalar(cageRadius * 1.05));
     const startY = scale && scale > 0
         ? Math.max(2.20 * scale, height * 0.10)
         : height * 0.14;
