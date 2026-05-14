@@ -1672,7 +1672,7 @@ function addVerticalLadder(group, radius, height, angleOffset = 0, scale) {
     const radial = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
     const tangent = new THREE.Vector3(-Math.sin(angle), 0, Math.cos(angle));
 
-    const ladderRadius = radius + Math.max(radius * 0.115, 0.78);
+    const ladderRadius = radius + Math.max(radius * 0.155, 1.05);
     const centerBase = radial.clone().multiplyScalar(ladderRadius);
 
     const railHalfWidth = Math.max(radius * 0.032, 0.32);
@@ -1930,22 +1930,15 @@ function addLadderTankBrackets(group, radius, height, radial, tangent, centerBas
 }
 
 function createAlwaysVisibleMaterial(color, metalness, roughness, opacity) {
-    const material = new THREE.MeshStandardMaterial({
+    return new THREE.MeshStandardMaterial({
         color,
         metalness,
         roughness,
         side: THREE.DoubleSide,
-        transparent: true,
+        transparent: opacity < 1,
         opacity,
         envMapIntensity: 1.1
     });
-
-    material.depthTest = false;
-    material.depthWrite = false;
-    material.userData = material.userData || {};
-    material.userData.alwaysVisible = true;
-
-    return material;
 }
 
     function addHelicalStair(group, radius, height, angleOffset = 0) {
@@ -2264,6 +2257,7 @@ function createAlwaysVisibleMaterial(color, metalness, roughness, opacity) {
     }
 
 function addCylinderBetween(group, start, end, radius, material, segments) {
+
     const direction = new THREE.Vector3().subVectors(end, start);
     const length = direction.length();
 
@@ -2290,16 +2284,12 @@ function addCylinderBetween(group, start, end, radius, material, segments) {
     );
 
     mesh.quaternion.copy(quaternion);
+
     mesh.castShadow = true;
     mesh.receiveShadow = true;
 
-    if (material?.userData?.alwaysVisible) {
-        mesh.renderOrder = 500;
-    }
-
     group.add(mesh);
 }
-
 
     function bindTechnicalHover(viewer) {
         const raycaster = new THREE.Raycaster();
