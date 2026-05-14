@@ -1786,7 +1786,9 @@ function addVerticalLadderPlatform(
 
     const railHeight = Math.max(radius * 0.075, 0.72);
     const railRadius = Math.max(radius * 0.004, 0.020);
-
+    platform.material.depthTest = false;
+    platform.material.depthWrite = false;
+    platform.renderOrder = 500;
     addPlatformRails(
         group,
         center,
@@ -1928,15 +1930,22 @@ function addLadderTankBrackets(group, radius, height, radial, tangent, centerBas
 }
 
 function createAlwaysVisibleMaterial(color, metalness, roughness, opacity) {
-    return new THREE.MeshStandardMaterial({
+    const material = new THREE.MeshStandardMaterial({
         color,
         metalness,
         roughness,
         side: THREE.DoubleSide,
-        transparent: opacity < 1,
+        transparent: true,
         opacity,
         envMapIntensity: 1.1
     });
+
+    material.depthTest = false;
+    material.depthWrite = false;
+    material.userData = material.userData || {};
+    material.userData.alwaysVisible = true;
+
+    return material;
 }
 
     function addHelicalStair(group, radius, height, angleOffset = 0) {
@@ -2284,10 +2293,8 @@ function addCylinderBetween(group, start, end, radius, material, segments) {
     mesh.castShadow = true;
     mesh.receiveShadow = true;
 
-    group.add(mesh);
-
     if (material?.userData?.alwaysVisible) {
-        mesh.renderOrder = 200;
+        mesh.renderOrder = 500;
     }
 
     group.add(mesh);
