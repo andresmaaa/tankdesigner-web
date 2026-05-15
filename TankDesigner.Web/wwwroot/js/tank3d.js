@@ -86,6 +86,11 @@ function renderTank3D(container, tank, dotNetRef) {
         dotNetRef
     );
 
+    viewer.scale = scale;
+    viewer.rings = rings;
+    viewer.tank = tank;
+    );
+
     viewers.set(container, viewer);
 
     buildTank(viewer, tank, rings, scale);
@@ -915,7 +920,6 @@ function addManhole(group, radius, height) {
         bolt.quaternion.copy(quaternion);
 
         group.add(bolt);
-    }
     }
     function addTankConnections(group, radius, height) {
         addNozzle(group, radius, height, {
@@ -2309,13 +2313,124 @@ function addTechnicalControls(shell, container, tank, dotNetRef) {
     `;
 
     panel.querySelectorAll("input").forEach(input => {
+
         input.addEventListener("change", () => {
+
             technicalViewState[input.dataset.key] = input.checked;
-            renderTank3D(container, tank, dotNetRef);
+
+            const viewer = viewers.get(container);
+
+            if (!viewer) return;
+
+            rebuildTank(
+                viewer,
+                viewer.tank,
+                viewer.rings,
+                viewer.scale
+            );
         });
     });
 
     shell.appendChild(panel);
+}
+function addHelicalStair(group, radius, height, angleOffset = 0) {
+
+    const stairMaterial = new THREE.MeshStandardMaterial({
+        color: 0xd97706,
+        metalness: 0.82,
+        roughness: 0.2
+    });
+
+    const railMaterial = new THREE.MeshStandardMaterial({
+        color: 0xe5e7eb,
+        metalness: 0.9,
+        roughness: 0.16
+    });
+
+    const stairRadius = radius * 1.12;
+
+    const steps = Math.max(40, Math.floor(height * 2));
+
+    const stepWidth = Math.max(radius * 0.18, 0.8);
+    const stepDepth = Math.max(radius * 0.05, 0.22);
+    const stepThickness = 0.04;
+
+    const centerY = height / 2;
+
+    for (let i = 0; i < steps; i++) {
+
+        const t = i / steps;
+
+        const angle =
+            angleOffset +
+            (Math.PI * 2 * 1.25 * t);
+
+        const y = t * height;
+
+        const x = Math.cos(angle) * stairRadius;
+        const z = Math.sin(angle) * stairRadius;
+
+        const step = new THREE.Mesh(
+
+            new THREE.BoxGeometry(
+                stepWidth,
+                stepThickness,
+                stepDepth
+            ),
+
+            stairMaterial
+        );
+
+        step.position.set(x, y, z);
+
+        step.rotation.y = -angle;
+
+        step.castShadow = true;
+        step.receiveShadow = true;
+
+        group.add(step);
+    }
+
+    const railRadius = 0.018;
+
+    const railPoints = [];
+
+    for (let i = 0; i <= steps; i++) {
+
+        const t = i / steps;
+
+        const angle =
+            angleOffset +
+            (Math.PI * 2 * 1.25 * t);
+
+        const y = t * height + 0.55;
+
+        const x =
+            Math.cos(angle) *
+            (stairRadius + stepWidth * 0.42);
+
+        const z =
+            Math.sin(angle) *
+            (stairRadius + stepWidth * 0.42);
+
+        railPoints.push(
+            new THREE.Vector3(x, y, z)
+        );
+    }
+
+    for (let i = 0; i < railPoints.length - 1; i++) {
+
+        addCylinderBetween(
+            group,
+            railPoints[i],
+            railPoints[i + 1],
+            railRadius,
+            railMaterial,
+            8
+        );
+    }
+
+    group.position.y = -centerY;
 }
 
 function createTechnicalCheckbox(label, key) {
@@ -2442,7 +2557,25 @@ function normalizarTecho(value) {
 
     return { type: "flat", label: text };
 }
+function rebuildTank(viewer, tank, rings, scale) {
+    while (viewer.group.children.length > 0) {
+        const obj = viewer.group.children[0];
 
+        if (obj.geometry) obj.geometry.dispose();
+
+        if (obj.material) {
+            if (Array.isArray(obj.material)) {
+                obj.material.forEach(m => m.dispose());
+            } else {
+                obj.material.dispose();
+            }
+        }
+
+        viewer.group.remove(obj);
+    }
+
+    buildTank(viewer, tank, rings, scale);
+}
 function addRoofVent(group, radius, height, roofRaw) {
     const roof = normalizarTecho(roofRaw);
     if (roof.type === "none") return;
