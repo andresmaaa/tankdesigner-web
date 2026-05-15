@@ -236,18 +236,7 @@ function addLighting(scene, renderer) {
     scene.environment = pmrem.fromScene(envScene).texture;
 }
 
-function addGround(scene) {
-    const shadowPlane = new THREE.Mesh(
-        new THREE.PlaneGeometry(280, 280),
-        new THREE.ShadowMaterial({ opacity: 0.15 })
-    );
 
-    shadowPlane.rotation.x = -Math.PI / 2;
-    shadowPlane.position.y = -0.06;
-    shadowPlane.receiveShadow = true;
-
-    scene.add(shadowPlane);
-}
 
 function buildTank(viewer, tank, rings, scale) {
     const diameter = (Number(tank.diametro) || 1) * scale;
@@ -558,25 +547,154 @@ function addWaterLevelIfAvailable(group, radius, height, tank, scale) {
     addRingSeam(group, radius * 0.965, y + 0.01);
 }
 
-function addRoof(group, radius, height, roofRaw, vigasTechoConico, scale) {
-    const roof = normalizarTecho(roofRaw);
+function addRoofControls(shell, container, tank, dotNetRef) {
+    const roof = normalizarTecho(tank.techo);
 
-    if (roof.type === "none") {
-        addOpenTop(group, radius, height);
-        return;
+    if (roof.type !== "cone") return;
+
+    if (!tank.vigasTechoConico) {
+        tank.vigasTechoConico = {};
     }
 
-    if (roof.type === "cone") {
-        addConeRoof(group, radius, height, vigasTechoConico, scale);
-        return;
-    }
+    const config = tank.vigasTechoConico;
 
-    if (roof.type === "dome") {
-        addDomeRoof(group, radius, height);
-        return;
-    }
+    const currentBeamCount =
+        Math.max(0, Number(config.numeroVigas) || 0);
 
-    addFlatRoof(group, radius, height);
+    const currentHubDiameter =
+        Number(config.diametroNucleoCentralManual) ||
+        Number(config.diametroNucleoTechoConicoManual) ||
+        Number(config.diametroNucleoCentral) ||
+        Number(config.diametroNucleo) ||
+        1.5;
+
+    const currentConeHeight =
+        Number(config.alturaCono) || 1.0;
+
+    const panel = document.createElement("div");
+
+    panel.style.position = "absolute";
+    panel.style.right = "24px";
+    panel.style.top = "72px";
+    panel.style.zIndex = "10";
+    panel.style.width = "230px";
+    panel.style.padding = "16px";
+    panel.style.borderRadius = "18px";
+    panel.style.background = "rgba(15,23,42,0.90)";
+    panel.style.border = "1px solid rgba(255,255,255,0.10)";
+    panel.style.boxShadow = "0 18px 45px rgba(15,23,42,0.28)";
+    panel.style.backdropFilter = "blur(14px)";
+    panel.style.color = "#ffffff";
+    panel.style.font = "13px 'Segoe UI', Arial, sans-serif";
+
+    panel.innerHTML = `
+        <div style="font-weight:800;font-size:14px;margin-bottom:14px;">
+            Ajustes del techo cónico
+        </div>
+
+        <label style="display:block;color:#cbd5e1;margin-bottom:6px;">
+            Número de vigas
+        </label>
+
+        <div style="display:grid;grid-template-columns:34px 1fr 34px;gap:6px;margin-bottom:14px;">
+            <button type="button" data-action="beams-minus" style="${roofButtonStyle()}">−</button>
+            <input data-field="beams" type="number" min="0" max="160" step="1" value="${currentBeamCount}" style="${roofInputStyle()}">
+            <button type="button" data-action="beams-plus" style="${roofButtonStyle()}">+</button>
+        </div>
+
+        <label style="display:block;color:#cbd5e1;margin-bottom:6px;">
+            Diámetro del centro
+        </label>
+
+        <div style="display:grid;grid-template-columns:34px 1fr 34px;gap:6px;margin-bottom:14px;">
+            <button type="button" data-action="hub-minus" style="${roofButtonStyle()}">−</button>
+            <input data-field="hub" type="number" min="0.30" max="20" step="0.10" value="${currentHubDiameter.toFixed(2)}" style="${roofInputStyle()}">
+            <button type="button" data-action="hub-plus" style="${roofButtonStyle()}">+</button>
+        </div>
+
+        <label style="display:block;color:#cbd5e1;margin-bottom:6px;">
+            Altura del cono
+        </label>
+
+        <input data-field="height" type="number" min="0.10" max="20" step="0.10" value="${currentConeHeight.toFixed(2)}" style="${roofInputStyle()}">
+
+        <div data-status style="
+            margin-top:14px;
+            padding-top:12px;
+            border-top:1px solid rgba(255,255,255,0.10);
+            color:#22c55e;
+            font-weight:700;">
+            ✓ Guardado
+        </div>
+
+        <div style="margin-top:6px;color:#94a3b8;font-size:12px;line-height:1.35;">
+            Estos valores se mantienen al actualizar la vista.
+        </div>
+    `;
+
+    const beamsInput = panel.querySelector('[data-field="beams"]');
+    const hubInput = panel.querySelector('[data-field="hub"]');
+    const heightInput = panel.querySelector('[data-field="height"]');
+    const status = panel.querySelector("[data-status]");
+
+    const saveAndRebuild = () => {
+        const beams = Math.max(0, Math.min(160, Math.floor(Number(beamsInput.value) || 0)));
+        const hubDiameter = Math.max(0.30, Math.min(20, Number(hubInput.value) || 1.5));
+        const coneHeight = Math.max(0.10, Math.min(20, Number(heightInput.value) || 1.0));
+
+        beamsInput.value = beams;
+        hubInput.value = hubDiameter.toFixed(2);
+        heightInput.value = coneHeight.toFixed(2);
+
+        config.aplica = beams > 0;
+        config.numeroVigas = beams;
+        config.diametroNucleoCentralManual = hubDiameter;
+        config.diametroNucleoTechoConicoManual = hubDiameter;
+        config.alturaCono = coneHeight;
+
+        status.textContent = "✓ Guardado";
+
+        if (dotNetRef) {
+            dotNetRef.invokeMethodAsync(
+                "ActualizarConfiguracionTecho3D",
+                beams,
+                hubDiameter,
+                coneHeight
+            ).catch(() => { });
+        }
+
+        const viewer = viewers.get(container);
+
+        if (viewer) {
+            rebuildTank(viewer, viewer.tank, viewer.rings, viewer.scale);
+        }
+    };
+
+    panel.querySelector('[data-action="beams-minus"]').addEventListener("click", () => {
+        beamsInput.value = Math.max(0, Number(beamsInput.value) - 1);
+        saveAndRebuild();
+    });
+
+    panel.querySelector('[data-action="beams-plus"]').addEventListener("click", () => {
+        beamsInput.value = Math.min(160, Number(beamsInput.value) + 1);
+        saveAndRebuild();
+    });
+
+    panel.querySelector('[data-action="hub-minus"]').addEventListener("click", () => {
+        hubInput.value = Math.max(0.30, Number(hubInput.value) - 0.10).toFixed(2);
+        saveAndRebuild();
+    });
+
+    panel.querySelector('[data-action="hub-plus"]').addEventListener("click", () => {
+        hubInput.value = Math.min(20, Number(hubInput.value) + 0.10).toFixed(2);
+        saveAndRebuild();
+    });
+
+    beamsInput.addEventListener("change", saveAndRebuild);
+    hubInput.addEventListener("change", saveAndRebuild);
+    heightInput.addEventListener("change", saveAndRebuild);
+
+    shell.appendChild(panel);
 }
 
 function addOpenTop(group, radius, height) {
@@ -594,6 +712,32 @@ function addOpenTop(group, radius, height) {
             diametro: "—"
         }
     );
+}
+
+function roofButtonStyle() {
+    return `
+        border:1px solid rgba(255,255,255,0.12);
+        background:rgba(30,41,59,0.95);
+        color:#ffffff;
+        border-radius:8px;
+        font-size:20px;
+        line-height:1;
+        cursor:pointer;
+    `;
+}
+
+function roofInputStyle() {
+    return `
+        width:100%;
+        box-sizing:border-box;
+        border:1px solid rgba(255,255,255,0.12);
+        background:rgba(15,23,42,0.75);
+        color:#ffffff;
+        border-radius:8px;
+        padding:8px 10px;
+        font:600 13px 'Segoe UI', Arial, sans-serif;
+        text-align:center;
+    `;
 }
 
 function addFlatRoof(group, radius, height) {
