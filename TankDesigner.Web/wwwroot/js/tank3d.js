@@ -39,9 +39,7 @@ const VISUAL_CONFIG = {
     }
 };
 
-// ======================================================
 // RENDER PRINCIPAL
-// ======================================================
 
 function renderTank3D(container, tank, dotNetRef) {
 
@@ -89,7 +87,7 @@ function renderTank3D(container, tank, dotNetRef) {
     viewer.scale = scale;
     viewer.rings = rings;
     viewer.tank = tank;
-    );
+   
 
     viewers.set(container, viewer);
 
@@ -99,10 +97,7 @@ function renderTank3D(container, tank, dotNetRef) {
 
     viewer.renderer.render(viewer.scene, viewer.camera);
 }
-
-// ======================================================
 // DISPOSE
-// ======================================================
 
 function disposeViewer(container) {
 
@@ -920,6 +915,7 @@ function addManhole(group, radius, height) {
         bolt.quaternion.copy(quaternion);
 
         group.add(bolt);
+        }
     }
     function addTankConnections(group, radius, height) {
         addNozzle(group, radius, height, {
@@ -2429,8 +2425,6 @@ function addHelicalStair(group, radius, height, angleOffset = 0) {
             8
         );
     }
-
-    group.position.y = -centerY;
 }
 
 function createTechnicalCheckbox(label, key) {
