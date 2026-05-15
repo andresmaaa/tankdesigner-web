@@ -2011,34 +2011,10 @@ function addLadderTankBrackets(group, radius, height, radial, tangent, centerBas
 
 
 function addCylinderBetween(group, start, end, radius, material, segments) {
-    const direction = new THREE.Vector3().subVectors(end, start);
-    const length = direction.length();
-
-    if (length <= 0) return;
-
-    const geometry = new THREE.CylinderGeometry(
-        radius,
-        radius,
-        length,
-        segments || 16,
-        1,
-        false
-    );
 
     const mesh = new THREE.Mesh(geometry, material);
 
-    mesh.position.copy(start).add(end).multiplyScalar(0.5);
-
-    const quaternion = new THREE.Quaternion();
-
-    quaternion.setFromUnitVectors(
-        new THREE.Vector3(0, 1, 0),
-        direction.clone().normalize()
-    );
-
-    mesh.quaternion.copy(quaternion);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
+    mesh.frustumCulled = false;
 
     group.add(mesh);
 }
@@ -2217,18 +2193,18 @@ function fitCamera(viewer) {
     updateCamera(viewer);
 }
 
-    function updateCamera(viewer) {
-        const x = viewer.distance * Math.cos(viewer.pitch) * Math.sin(viewer.yaw);
-        const y = viewer.distance * Math.sin(viewer.pitch);
-        const z = viewer.distance * Math.cos(viewer.pitch) * Math.cos(viewer.yaw);
+function updateCamera(viewer) {
+    const x = viewer.distance * Math.cos(viewer.pitch) * Math.sin(viewer.yaw);
+    const y = viewer.distance * Math.sin(viewer.pitch);
+    const z = viewer.distance * Math.cos(viewer.pitch) * Math.cos(viewer.yaw);
 
-        viewer.camera.position.set(x, y, z);
-        viewer.camera.lookAt(viewer.target);
+    viewer.camera.position.set(x, y, z);
+    viewer.camera.lookAt(viewer.target);
 
-        viewer.camera.near = 0.1;
-        viewer.camera.far = Math.max(1000, viewer.distance * 8);
-        viewer.camera.updateProjectionMatrix();
-    }
+    viewer.camera.near = 0.01; 
+    viewer.camera.far = 20000;  
+    viewer.camera.updateProjectionMatrix();
+}
 
     function colorForMaterial(name) {
         const normalized = String(name || "").toUpperCase();
