@@ -2205,7 +2205,7 @@ function fitCamera(viewer) {
     const radius = viewer.modelRadius || 20;
     const maxSize = Math.max(height, radius * 2, 1);
 
-    viewer.inputDistance = maxSize * 2.45;
+    viewer.inputDistance = maxSize * 1.95;
     viewer.inputPitch = 0.22;
     viewer.inputYaw = 0.72;
 
@@ -2225,8 +2225,8 @@ function fitCamera(viewer) {
         viewer.camera.position.set(x, y, z);
         viewer.camera.lookAt(viewer.target);
 
-        viewer.camera.near = Math.max(0.1, viewer.distance * 0.08);
-        viewer.camera.far = Math.max(1000, viewer.distance * 5);
+        viewer.camera.near = 0.1;
+        viewer.camera.far = Math.max(1000, viewer.distance * 8);
         viewer.camera.updateProjectionMatrix();
     }
 
