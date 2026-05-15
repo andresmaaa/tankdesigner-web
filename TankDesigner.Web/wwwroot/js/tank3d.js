@@ -2009,49 +2009,6 @@ function addLadderTankBrackets(group, radius, height, radial, tangent, centerBas
     }
 }
 
-function addPlatformRails(group, center, radial, tangent, width, depth, y, thickness, railHeight, railRadius, material, options = {}) {
-    const p1 = center.clone()
-        .add(tangent.clone().multiplyScalar(-width / 2))
-        .add(radial.clone().multiplyScalar(depth / 2));
-
-    const p2 = center.clone()
-        .add(tangent.clone().multiplyScalar(width / 2))
-        .add(radial.clone().multiplyScalar(depth / 2));
-
-    const p3 = center.clone()
-        .add(tangent.clone().multiplyScalar(-width / 2))
-        .add(radial.clone().multiplyScalar(-depth / 2));
-
-    const p4 = center.clone()
-        .add(tangent.clone().multiplyScalar(width / 2))
-        .add(radial.clone().multiplyScalar(-depth / 2));
-
-    const posts = [p1, p2, p3, p4];
-    const tops = [];
-
-    posts.forEach(p => {
-        const bottom = p.clone();
-        bottom.y = y + thickness;
-
-        const top = p.clone();
-        top.y = bottom.y + railHeight;
-
-        tops.push(top);
-
-        addCylinderBetween(group, bottom, top, railRadius, material, 12);
-    });
-
-    if (!options.openFront) {
-        addCylinderBetween(group, tops[0], tops[1], railRadius, material, 12);
-    }
-
-    if (!options.openBack) {
-        addCylinderBetween(group, tops[2], tops[3], railRadius, material, 12);
-    }
-
-    addCylinderBetween(group, tops[0], tops[2], railRadius, material, 12);
-    addCylinderBetween(group, tops[1], tops[3], railRadius, material, 12);
-}
 
 function addCylinderBetween(group, start, end, radius, material, segments) {
     const direction = new THREE.Vector3().subVectors(end, start);
