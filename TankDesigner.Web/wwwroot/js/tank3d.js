@@ -140,9 +140,9 @@ function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
     scene.add(group);
 
     addLighting(scene, renderer);
-    addGround(scene);
 
     addScaleBadge(shell, metersPerUnit, tank);
+    addRoofControls(shell, container, tank, dotNetRef);
     addTechnicalControls(shell, container);
     addTechnicalInfoOverlay(shell);
     addDownloadPngButton(shell, renderer, tank);
@@ -739,6 +739,7 @@ function roofInputStyle() {
         text-align:center;
     `;
 }
+
 
 function addFlatRoof(group, radius, height) {
     const roof = new THREE.Mesh(
