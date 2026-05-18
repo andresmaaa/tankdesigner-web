@@ -140,9 +140,9 @@ function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
     scene.add(group);
 
     addLighting(scene, renderer);
+    addGround(scene);
 
     addScaleBadge(shell, metersPerUnit, tank);
-    addRoofControls(shell, container, tank, dotNetRef);
     addTechnicalControls(shell, container);
     addTechnicalInfoOverlay(shell);
     addDownloadPngButton(shell, renderer, tank);
@@ -712,32 +712,6 @@ function addOpenTop(group, radius, height) {
             diametro: "—"
         }
     );
-}
-
-function roofButtonStyle() {
-    return `
-        border:1px solid rgba(255,255,255,0.12);
-        background:rgba(30,41,59,0.95);
-        color:#ffffff;
-        border-radius:8px;
-        font-size:20px;
-        line-height:1;
-        cursor:pointer;
-    `;
-}
-
-function roofInputStyle() {
-    return `
-        width:100%;
-        box-sizing:border-box;
-        border:1px solid rgba(255,255,255,0.12);
-        background:rgba(15,23,42,0.75);
-        color:#ffffff;
-        border-radius:8px;
-        padding:8px 10px;
-        font:600 13px 'Segoe UI', Arial, sans-serif;
-        text-align:center;
-    `;
 }
 
 
