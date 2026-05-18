@@ -1937,21 +1937,16 @@ function readNumberFlexible(value, fallback = 0) {
 }
 
 function addRoofControls(shell, container, tank, dotNetRef) {
-    const roof = normalizarTecho(tank.techo);
-
     if (!tank.vigasTechoConico) {
         tank.vigasTechoConico = {
             aplica: true,
             numeroVigas: 16,
-            diametroNucleoCentralManual: 1.2
+            factorNucleo3D: 0.16
         };
     }
 
-    const currentBeamCount =
-        Math.max(0, Number(tank.vigasTechoConico.numeroVigas) || 0);
-
-    const currentHubDiameter =
-        Number(tank.vigasTechoConico.diametroNucleoCentralManual) || 1.2;
+    const currentBeamCount = Math.max(0, Number(tank.vigasTechoConico.numeroVigas) || 0);
+    const currentHubPercent = Math.round((Number(tank.vigasTechoConico.factorNucleo3D) || 0.16) * 100);
 
     const panel = document.createElement("div");
 
@@ -1959,124 +1954,109 @@ function addRoofControls(shell, container, tank, dotNetRef) {
     panel.style.left = "18px";
     panel.style.top = "18px";
     panel.style.zIndex = "6";
-    panel.style.width = "185px";
+    panel.style.width = "190px";
     panel.style.padding = "12px";
     panel.style.borderRadius = "14px";
     panel.style.background = "rgba(15,23,42,0.90)";
     panel.style.color = "#ffffff";
-    panel.style.font = "12px Arial";
-    panel.style.boxShadow = "0 18px 45px rgba(15,23,42,0.25)";
+    panel.style.font = "12px 'Segoe UI', Arial";
+    panel.style.boxShadow = "0 16px 38px rgba(15,23,42,0.24)";
 
     panel.innerHTML = `
-        <div style="font-weight:700;margin-bottom:10px;font-size:14px;">
+        <div style="font-weight:800;margin-bottom:10px;font-size:14px;">
             Ajustes del techo
         </div>
 
-        <label style="display:block;margin-bottom:6px;color:#cbd5e1;">
+        <label style="display:block;margin-bottom:5px;color:#cbd5e1;">
             Número de vigas
         </label>
 
-        <div style="display:flex;gap:6px;margin-bottom:12px;">
-            <button data-minus-beams style="${miniBtnStyle()}">−</button>
+        <input
+            data-tank3d-beams
+            type="number"
+            min="0"
+            max="160"
+            step="1"
+            value="${currentBeamCount}"
+            style="width:100%;box-sizing:border-box;border-radius:9px;border:1px solid #334155;background:#0f172a;color:white;padding:7px 9px;margin-bottom:10px;text-align:center;font-weight:700;"
+        >
 
-            <input
-                data-tank3d-beams
-                type="number"
-                min="0"
-                max="160"
-                step="1"
-                value="${currentBeamCount}"
-                style="${inputStyle()}"
-            >
-
-            <button data-plus-beams style="${miniBtnStyle()}">+</button>
-        </div>
-
-        <label style="display:block;margin-bottom:6px;color:#cbd5e1;">
-            Diámetro del centro
+        <label style="display:flex;justify-content:space-between;margin-bottom:5px;color:#cbd5e1;">
+            <span>Tamaño centro</span>
+            <strong data-tank3d-hub-label style="color:#fde68a;">${currentHubPercent}%</strong>
         </label>
 
-        <div style="display:flex;gap:6px;">
-            <button data-minus-hub style="${miniBtnStyle()}">−</button>
+        <input
+            data-tank3d-hub
+            type="range"
+            min="8"
+            max="32"
+            step="1"
+            value="${currentHubPercent}"
+            style="width:100%;"
+        >
 
-            <input
-                data-tank3d-hub
-                type="number"
-                min="0.4"
-                max="8"
-                step="0.1"
-                value="${currentHubDiameter.toFixed(1)}"
-                style="${inputStyle()}"
-            >
-
-            <button data-plus-hub style="${miniBtnStyle()}">+</button>
-        </div>
-
-        <div style="
-            margin-top:10px;
-            padding-top:8px;
-            border-top:1px solid rgba(255,255,255,0.08);
-            color:#22c55e;
-            font-size:11px;
-            font-weight:600;
-        ">
+        <div style="margin-top:8px;color:#22c55e;font-size:11px;font-weight:700;">
             ✓ Guardado
         </div>
     `;
 
     const beamsInput = panel.querySelector("[data-tank3d-beams]");
     const hubInput = panel.querySelector("[data-tank3d-hub]");
+    const hubLabel = panel.querySelector("[data-tank3d-hub-label]");
 
-    function applyChanges() {
-        const beams =
-            Math.max(0, Math.min(160, Math.floor(Number(beamsInput.value) || 0)));
+    let rebuildPending = false;
 
-        const hubDiameter =
-            Math.max(0.4, Math.min(8, Number(hubInput.value) || 1));
+    function rebuildOnly() {
+        if (rebuildPending) return;
+
+        rebuildPending = true;
+
+        requestAnimationFrame(() => {
+            rebuildPending = false;
+
+            const viewer = viewers.get(container);
+            if (!viewer) return;
+
+            rebuildTank(viewer);
+        });
+    }
+
+    function applyVisualChanges(saveToBackend) {
+        const beams = Math.max(0, Math.min(160, Math.floor(Number(beamsInput.value) || 0)));
+        const hubPercent = Math.max(8, Math.min(32, Number(hubInput.value) || 16));
 
         tank.vigasTechoConico.aplica = beams > 0;
         tank.vigasTechoConico.numeroVigas = beams;
+        tank.vigasTechoConico.factorNucleo3D = hubPercent / 100;
 
-        // IMPORTANTE
-        tank.vigasTechoConico.diametroNucleoCentralManual = hubDiameter;
+        // Evita que el diámetro manual anterior bloquee el slider
+        delete tank.vigasTechoConico.diametroNucleoCentralManual;
+        delete tank.vigasTechoConico.diametroNucleoTechoConicoManual;
+        delete tank.vigasTechoConico.diametroNucleoCentral;
+        delete tank.vigasTechoConico.diametroNucleo;
 
-        if (dotNetRef) {
+        hubLabel.textContent = `${hubPercent}%`;
+
+        rebuildOnly();
+
+        if (saveToBackend && dotNetRef) {
             dotNetRef.invokeMethodAsync(
                 "ActualizarConfiguracionTecho3D",
                 beams,
-                hubDiameter
-            );
+                hubPercent / 100
+            ).catch(() => { });
         }
-
-        renderTank3D(container, tank, dotNetRef);
     }
 
-    panel.querySelector("[data-minus-beams]").onclick = () => {
-        beamsInput.value = Math.max(0, Number(beamsInput.value) - 1);
-        applyChanges();
-    };
+    beamsInput.addEventListener("change", () => applyVisualChanges(true));
 
-    panel.querySelector("[data-plus-beams]").onclick = () => {
-        beamsInput.value = Number(beamsInput.value) + 1;
-        applyChanges();
-    };
+    hubInput.addEventListener("input", () => {
+        hubLabel.textContent = `${hubInput.value}%`;
+        applyVisualChanges(false);
+    });
 
-    panel.querySelector("[data-minus-hub]").onclick = () => {
-        hubInput.value =
-            (Math.max(0.4, Number(hubInput.value) - 0.1)).toFixed(1);
-
-        applyChanges();
-    };
-
-    panel.querySelector("[data-plus-hub]").onclick = () => {
-        hubInput.value =
-            (Math.min(8, Number(hubInput.value) + 0.1)).toFixed(1);
-
-        applyChanges();
-    };
-
-    beamsInput.addEventListener("change", applyChanges);
-    hubInput.addEventListener("change", applyChanges);
+    hubInput.addEventListener("change", () => applyVisualChanges(true));
 
     shell.appendChild(panel);
 }
@@ -2136,16 +2116,12 @@ function roofInputStyle() {
 }
 
 function calcularRadioNucleoTecho(radius, numeroVigas, vigasTechoConico, scale) {
+    const factorUsuario = Number(vigasTechoConico?.factorNucleo3D) || 0.16;
 
-    const manualDiameter =
-        Number(vigasTechoConico?.diametroNucleoCentralManual) || 1.2;
+    const factorSeguro = Math.max(0.08, Math.min(0.32, factorUsuario));
 
-    // diámetro real en metros → convertido al modelo 3D
-    const convertedRadius = (manualDiameter * scale) / 2;
-
-    return Math.max(convertedRadius, 0.12);
+    return Math.max(radius * factorSeguro, 0.35);
 }
-
 function getStarterRingHeight(tank, scale) {
     const rawHeight =
         Number(tank?.alturaStarterRing) ||
