@@ -143,6 +143,7 @@ function createViewer(container, scale, metersPerUnit, tank, dotNetRef) {
     addGround(scene);
 
     addScaleBadge(shell, metersPerUnit, tank);
+    addRoofControls(shell, container, tank, dotNetRef);
     addTechnicalControls(shell, container);
     addTechnicalInfoOverlay(shell);
     addDownloadPngButton(shell, renderer, tank);
@@ -236,7 +237,9 @@ function addLighting(scene, renderer) {
     scene.environment = pmrem.fromScene(envScene).texture;
 }
 
-
+function addGround(scene) {
+    return;
+}
 
 function buildTank(viewer, tank, rings, scale) {
     const diameter = (Number(tank.diametro) || 1) * scale;
@@ -558,8 +561,7 @@ function addRoofControls(shell, container, tank, dotNetRef) {
 
     const config = tank.vigasTechoConico;
 
-    const currentBeamCount =
-        Math.max(0, Number(config.numeroVigas) || 0);
+    const currentBeamCount = Math.max(0, Number(config.numeroVigas) || 0);
 
     const currentHubDiameter =
         Number(config.diametroNucleoCentralManual) ||
@@ -568,8 +570,7 @@ function addRoofControls(shell, container, tank, dotNetRef) {
         Number(config.diametroNucleo) ||
         1.5;
 
-    const currentConeHeight =
-        Number(config.alturaCono) || 1.0;
+    const currentConeHeight = Number(config.alturaCono) || 1.0;
 
     const panel = document.createElement("div");
 
@@ -666,7 +667,7 @@ function addRoofControls(shell, container, tank, dotNetRef) {
         const viewer = viewers.get(container);
 
         if (viewer) {
-            rebuildTank(viewer, viewer.tank, viewer.rings, viewer.scale);
+            rebuildTank(viewer);
         }
     };
 
@@ -697,6 +698,53 @@ function addRoofControls(shell, container, tank, dotNetRef) {
     shell.appendChild(panel);
 }
 
+function roofButtonStyle() {
+    return `
+        border:1px solid rgba(255,255,255,0.12);
+        background:rgba(30,41,59,0.95);
+        color:#ffffff;
+        border-radius:8px;
+        font-size:20px;
+        line-height:1;
+        cursor:pointer;
+    `;
+}
+
+function roofInputStyle() {
+    return `
+        width:100%;
+        box-sizing:border-box;
+        border:1px solid rgba(255,255,255,0.12);
+        background:rgba(15,23,42,0.75);
+        color:#ffffff;
+        border-radius:8px;
+        padding:8px 10px;
+        font:600 13px 'Segoe UI', Arial, sans-serif;
+        text-align:center;
+    `;
+}
+
+function addRoof(group, radius, height, roofRaw, vigasTechoConico, scale) {
+    const roof = normalizarTecho(roofRaw);
+
+    if (roof.type === "none") {
+        addOpenTop(group, radius, height);
+        return;
+    }
+
+    if (roof.type === "dome") {
+        addDomeRoof(group, radius, height);
+        return;
+    }
+
+    if (roof.type === "cone") {
+        addConeRoof(group, radius, height, vigasTechoConico, scale);
+        return;
+    }
+
+    addFlatRoof(group, radius, height);
+}
+
 function addOpenTop(group, radius, height) {
     addTorus(
         group,
@@ -713,7 +761,6 @@ function addOpenTop(group, radius, height) {
         }
     );
 }
-
 
 function addFlatRoof(group, radius, height) {
     const roof = new THREE.Mesh(
