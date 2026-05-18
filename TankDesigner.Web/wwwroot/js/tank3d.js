@@ -551,17 +551,14 @@ function addWaterLevelIfAvailable(group, radius, height, tank, scale) {
 }
 
 function addRoofControls(shell, container, tank, dotNetRef) {
-    const roof = normalizarTecho(tank.techo);
-
-    if (roof.type !== "cone") return;
-
     if (!tank.vigasTechoConico) {
         tank.vigasTechoConico = {};
     }
 
     const config = tank.vigasTechoConico;
 
-    const currentBeamCount = Math.max(0, Number(config.numeroVigas) || 0);
+    const currentBeamCount =
+        Math.max(0, Number(config.numeroVigas) || Number(tank.numeroVigasTecho) || 0);
 
     const currentHubDiameter =
         Number(config.diametroNucleoCentralManual) ||
@@ -570,16 +567,14 @@ function addRoofControls(shell, container, tank, dotNetRef) {
         Number(config.diametroNucleo) ||
         1.5;
 
-    const currentConeHeight = Number(config.alturaCono) || 1.0;
-
     const panel = document.createElement("div");
 
     panel.style.position = "absolute";
-    panel.style.right = "24px";
-    panel.style.top = "72px";
+    panel.style.left = "24px";
+    panel.style.top = "34px";
     panel.style.zIndex = "10";
-    panel.style.width = "230px";
-    panel.style.padding = "16px";
+    panel.style.width = "255px";
+    panel.style.padding = "18px";
     panel.style.borderRadius = "18px";
     panel.style.background = "rgba(15,23,42,0.90)";
     panel.style.border = "1px solid rgba(255,255,255,0.10)";
@@ -589,69 +584,59 @@ function addRoofControls(shell, container, tank, dotNetRef) {
     panel.style.font = "13px 'Segoe UI', Arial, sans-serif";
 
     panel.innerHTML = `
-        <div style="font-weight:800;font-size:14px;margin-bottom:14px;">
-            Ajustes del techo cónico
+        <div style="font-weight:800;font-size:15px;margin-bottom:16px;">
+            Ajustes del techo
         </div>
 
-        <label style="display:block;color:#cbd5e1;margin-bottom:6px;">
+        <label style="display:block;color:#cbd5e1;margin-bottom:7px;">
             Número de vigas
         </label>
 
-        <div style="display:grid;grid-template-columns:34px 1fr 34px;gap:6px;margin-bottom:14px;">
+        <div style="display:grid;grid-template-columns:36px 1fr 36px;gap:7px;margin-bottom:17px;">
             <button type="button" data-action="beams-minus" style="${roofButtonStyle()}">−</button>
             <input data-field="beams" type="number" min="0" max="160" step="1" value="${currentBeamCount}" style="${roofInputStyle()}">
             <button type="button" data-action="beams-plus" style="${roofButtonStyle()}">+</button>
         </div>
 
-        <label style="display:block;color:#cbd5e1;margin-bottom:6px;">
+        <label style="display:block;color:#cbd5e1;margin-bottom:7px;">
             Diámetro del centro
         </label>
 
-        <div style="display:grid;grid-template-columns:34px 1fr 34px;gap:6px;margin-bottom:14px;">
+        <div style="display:grid;grid-template-columns:36px 1fr 36px;gap:7px;margin-bottom:8px;">
             <button type="button" data-action="hub-minus" style="${roofButtonStyle()}">−</button>
             <input data-field="hub" type="number" min="0.30" max="20" step="0.10" value="${currentHubDiameter.toFixed(2)}" style="${roofInputStyle()}">
             <button type="button" data-action="hub-plus" style="${roofButtonStyle()}">+</button>
         </div>
-
-        <label style="display:block;color:#cbd5e1;margin-bottom:6px;">
-            Altura del cono
-        </label>
-
-        <input data-field="height" type="number" min="0.10" max="20" step="0.10" value="${currentConeHeight.toFixed(2)}" style="${roofInputStyle()}">
 
         <div data-status style="
             margin-top:14px;
             padding-top:12px;
             border-top:1px solid rgba(255,255,255,0.10);
             color:#22c55e;
-            font-weight:700;">
+            font-weight:800;">
             ✓ Guardado
         </div>
 
-        <div style="margin-top:6px;color:#94a3b8;font-size:12px;line-height:1.35;">
+        <div style="margin-top:8px;color:#94a3b8;font-size:12px;line-height:1.45;">
             Estos valores se mantienen al actualizar la vista.
         </div>
     `;
 
     const beamsInput = panel.querySelector('[data-field="beams"]');
     const hubInput = panel.querySelector('[data-field="hub"]');
-    const heightInput = panel.querySelector('[data-field="height"]');
     const status = panel.querySelector("[data-status]");
 
     const saveAndRebuild = () => {
         const beams = Math.max(0, Math.min(160, Math.floor(Number(beamsInput.value) || 0)));
         const hubDiameter = Math.max(0.30, Math.min(20, Number(hubInput.value) || 1.5));
-        const coneHeight = Math.max(0.10, Math.min(20, Number(heightInput.value) || 1.0));
 
         beamsInput.value = beams;
         hubInput.value = hubDiameter.toFixed(2);
-        heightInput.value = coneHeight.toFixed(2);
 
         config.aplica = beams > 0;
         config.numeroVigas = beams;
         config.diametroNucleoCentralManual = hubDiameter;
         config.diametroNucleoTechoConicoManual = hubDiameter;
-        config.alturaCono = coneHeight;
 
         status.textContent = "✓ Guardado";
 
@@ -660,7 +645,7 @@ function addRoofControls(shell, container, tank, dotNetRef) {
                 "ActualizarConfiguracionTecho3D",
                 beams,
                 hubDiameter,
-                coneHeight
+                Number(config.alturaCono) || 0
             ).catch(() => { });
         }
 
@@ -693,7 +678,6 @@ function addRoofControls(shell, container, tank, dotNetRef) {
 
     beamsInput.addEventListener("change", saveAndRebuild);
     hubInput.addEventListener("change", saveAndRebuild);
-    heightInput.addEventListener("change", saveAndRebuild);
 
     shell.appendChild(panel);
 }
@@ -703,7 +687,7 @@ function roofButtonStyle() {
         border:1px solid rgba(255,255,255,0.12);
         background:rgba(30,41,59,0.95);
         color:#ffffff;
-        border-radius:8px;
+        border-radius:9px;
         font-size:20px;
         line-height:1;
         cursor:pointer;
@@ -717,9 +701,9 @@ function roofInputStyle() {
         border:1px solid rgba(255,255,255,0.12);
         background:rgba(15,23,42,0.75);
         color:#ffffff;
-        border-radius:8px;
-        padding:8px 10px;
-        font:600 13px 'Segoe UI', Arial, sans-serif;
+        border-radius:9px;
+        padding:9px 10px;
+        font:800 13px 'Segoe UI', Arial, sans-serif;
         text-align:center;
     `;
 }
