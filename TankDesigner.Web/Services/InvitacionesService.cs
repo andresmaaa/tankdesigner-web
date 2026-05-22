@@ -58,7 +58,7 @@ namespace TankDesigner.Web.Services
 
             if (invitacionesPendientes.Count > 0)
             {
-                _logger.LogInformation("Se eliminan invitaciones pendientes anteriores para {Email}. Cantidad: {Cantidad}. CreadaPorUserId: {CreadaPorUserId}",
+                _logger.LogInformation("Se eliminan invitaciones pendientes anteriores para {Email} Cantidad: {Cantidad}. CreadaPorUserId: {CreadaPorUserId}",
                     email, invitacionesPendientes.Count, creadaPorUserId);
 
                 _db.InvitacionesUsuario.RemoveRange(invitacionesPendientes);
