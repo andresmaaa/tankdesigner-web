@@ -4,6 +4,8 @@ namespace TankDesigner.Web.Services
 {
     public class ProyectoState
     {
+        public event Action? OnChange;
+
         public ProyectoGeneralModel Proyecto { get; set; } = new();
         public TankModel Tanque { get; set; } = new();
         public CargasModel Cargas { get; set; } = new();
@@ -12,6 +14,10 @@ namespace TankDesigner.Web.Services
         public int? ProyectoIdActual { get; set; }
         public bool TieneProyectoGuardado => ProyectoIdActual.HasValue;
 
+        public void NotificarCambio()
+        {
+            OnChange?.Invoke();
+        }
 
         public void LimpiarTodo()
         {
@@ -21,8 +27,7 @@ namespace TankDesigner.Web.Services
             Cargas = new CargasModel();
             Instalacion = new InstalacionModel();
             Resultado = new ResultadoCalculoModel();
+            NotificarCambio();
         }
-
-
     }
 }

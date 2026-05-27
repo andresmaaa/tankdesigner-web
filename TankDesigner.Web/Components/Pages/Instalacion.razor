@@ -530,6 +530,8 @@
 
     protected override void OnInitialized()
     {
+        EstadoProyecto.OnChange += OnEstadoProyectoChanged;
+
         EstadoProyecto.Instalacion ??= new InstalacionModel();
         EstadoProyecto.Instalacion.Emplazamiento ??= new EmplazamientoInstalacionModel();
 
@@ -573,6 +575,37 @@
         {
             _mapaGrandeInicializado = true;
             await InicializarMapaAsync(LargeMapId, true);
+        }
+    }
+
+    private async void OnEstadoProyectoChanged()
+    {
+        await InvokeAsync(async () =>
+        {
+            EstadoProyecto.Instalacion ??= new InstalacionModel();
+            EstadoProyecto.Instalacion.Emplazamiento ??= new EmplazamientoInstalacionModel();
+            RecalcularAnalisis();
+            await ActualizarMarcadoresMapaAsync();
+            StateHasChanged();
+        });
+    }
+
+    private async Task ActualizarMarcadoresMapaAsync()
+    {
+        if (!Emplazamiento.Latitud.HasValue || !Emplazamiento.Longitud.HasValue)
+            return;
+
+        try
+        {
+            if (_miniMapaInicializado)
+                await JS.InvokeVoidAsync("tankDesignerMaps.setMarker", MiniMapId, Emplazamiento.Latitud.Value, Emplazamiento.Longitud.Value, 12);
+
+            if (_mapaGrandeInicializado)
+                await JS.InvokeVoidAsync("tankDesignerMaps.setMarker", LargeMapId, Emplazamiento.Latitud.Value, Emplazamiento.Longitud.Value, 13);
+        }
+        catch
+        {
+            // Si el mapa no está disponible, mantenemos los datos manuales sin bloquear la pantalla.
         }
     }
 
@@ -870,6 +903,8 @@
 
     public async ValueTask DisposeAsync()
     {
+        EstadoProyecto.OnChange -= OnEstadoProyectoChanged;
+
         try
         {
             await JS.InvokeVoidAsync("tankDesignerMaps.destroy", MiniMapId);

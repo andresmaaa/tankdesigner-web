@@ -1,9 +1,12 @@
 ﻿@inherits LayoutComponentBase
 @implements IDisposable
+@using TankDesigner.Web.Services
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ProyectoState EstadoProyecto
+@inject BrowserProyectoSnapshotService BrowserSnapshotService
 
 <div class="app-shell">
     <aside class="app-sidebar">
@@ -84,11 +87,33 @@
 @code {
     private ClaimsPrincipal? _usuario;
     private bool _mostrarMenuCuenta;
+    private PeriodicTimer? _autoGuardadoTimer;
+    private CancellationTokenSource? _autoGuardadoCts;
+    private bool _snapshotRestaurado;
 
     protected override async Task OnInitializedAsync()
     {
         await CargarUsuarioAsync();
         AuthenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        // Al refrescar la página se crea un circuito nuevo de Blazor Server.
+        // Restauramos aquí la copia temporal guardada en el navegador para que
+        // el proyecto no aparezca vacío tras pulsar F5.
+        _snapshotRestaurado = await BrowserSnapshotService.RestaurarAsync(EstadoProyecto, UsuarioSnapshotKey());
+
+        if (_snapshotRestaurado)
+        {
+            EstadoProyecto.NotificarCambio();
+            await InvokeAsync(StateHasChanged);
+        }
+
+        IniciarAutoGuardadoNavegador();
     }
 
     private async void OnAuthenticationStateChanged(Task<AuthenticationState> task)
@@ -107,6 +132,51 @@
     public void Dispose()
     {
         AuthenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+        _autoGuardadoCts?.Cancel();
+        _autoGuardadoCts?.Dispose();
+        _autoGuardadoTimer?.Dispose();
+    }
+
+    private void IniciarAutoGuardadoNavegador()
+    {
+        _autoGuardadoCts = new CancellationTokenSource();
+        _autoGuardadoTimer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+
+        _ = EjecutarAutoGuardadoNavegadorAsync(_autoGuardadoCts.Token);
+    }
+
+    private async Task EjecutarAutoGuardadoNavegadorAsync(CancellationToken cancellationToken)
+    {
+        if (_autoGuardadoTimer == null)
+            return;
+
+        try
+        {
+            while (await _autoGuardadoTimer.WaitForNextTickAsync(cancellationToken))
+            {
+                await InvokeAsync(async () =>
+                {
+                    await BrowserSnapshotService.GuardarAsync(
+                        EstadoProyecto,
+                        UsuarioSnapshotKey(),
+                        Nav.ToBaseRelativePath(Nav.Uri));
+                });
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private string UsuarioSnapshotKey()
+    {
+        if (_usuario is null)
+            return "anonimo";
+
+        return _usuario.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? _usuario.FindFirst(ClaimTypes.Email)?.Value
+            ?? _usuario.Identity?.Name
+            ?? "anonimo";
     }
 
     private void IrAMisProyectos()
