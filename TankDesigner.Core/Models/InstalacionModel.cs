@@ -39,6 +39,10 @@
         public string Ciudad { get; set; } = string.Empty;
         public string Provincia { get; set; } = string.Empty;
         public string Pais { get; set; } = string.Empty;
+        public string CodigoPostal { get; set; } = string.Empty;
+        public string DireccionResumen { get; set; } = string.Empty;
+        public string FuenteDatos { get; set; } = string.Empty;
+        public string FechaConsulta { get; set; } = string.Empty;
 
         public double? Latitud { get; set; }
         public double? Longitud { get; set; }
@@ -48,6 +52,7 @@
         public string AccesoObra { get; set; } = string.Empty;
         public string TipoTerreno { get; set; } = string.Empty;
         public string Ambiente { get; set; } = string.Empty;
+        public string ObservacionesInstalacion { get; set; } = string.Empty;
 
         public bool TieneDatos =>
             UbicacionSeleccionada
@@ -57,11 +62,14 @@
             || !string.IsNullOrWhiteSpace(Ciudad)
             || !string.IsNullOrWhiteSpace(Provincia)
             || !string.IsNullOrWhiteSpace(Pais)
+            || !string.IsNullOrWhiteSpace(CodigoPostal)
+            || !string.IsNullOrWhiteSpace(DireccionResumen)
             || !string.IsNullOrWhiteSpace(TipoEntorno)
             || !string.IsNullOrWhiteSpace(ExposicionViento)
             || !string.IsNullOrWhiteSpace(AccesoObra)
             || !string.IsNullOrWhiteSpace(TipoTerreno)
-            || !string.IsNullOrWhiteSpace(Ambiente);
+            || !string.IsNullOrWhiteSpace(Ambiente)
+            || !string.IsNullOrWhiteSpace(ObservacionesInstalacion);
     }
 
     public class AnalisisEmplazamientoResultadoModel
@@ -70,7 +78,12 @@
         public string RiesgoCorrosion { get; set; } = "No evaluado";
         public string DificultadMontaje { get; set; } = "No evaluada";
         public string ImpactoTransporte { get; set; } = "No evaluado";
+        public string ComplejidadGlobal { get; set; } = "No evaluada";
+        public int PuntuacionInstalacion { get; set; } = 0;
         public string RecomendacionPrincipal { get; set; } = "Completa la ubicación o las condiciones de instalación para obtener recomendaciones.";
+        public string ResumenProfesional { get; set; } = "El análisis de emplazamiento es opcional y no modifica el cálculo ni el presupuesto.";
         public List<string> Recomendaciones { get; set; } = new();
+        public List<string> AccionesRecomendadas { get; set; } = new();
+        public List<string> FactoresDetectados { get; set; } = new();
     }
 }

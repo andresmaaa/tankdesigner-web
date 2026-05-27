@@ -15,7 +15,7 @@
 <div class="instalacion-page">
     <div class="page-header">
         <h1>Instalación</h1>
-        <p>Configuración de montaje, accesos, conexiones, condiciones generales de obra y emplazamiento opcional del tanque.</p>
+        <p>Configuración de montaje, accesos, conexiones, condiciones generales de obra y análisis opcional del emplazamiento del tanque.</p>
     </div>
 
     <EditForm Model="EstadoProyecto.Instalacion">
@@ -86,7 +86,7 @@
                     <div class="td-panel__header">
                         <div class="section-kicker">Bloque 03</div>
                         <h2>Condiciones de obra</h2>
-                        <p>Parámetros de ejecución, equipo humano y características del emplazamiento.</p>
+                        <p>Parámetros de ejecución, equipo humano y características generales de obra.</p>
                     </div>
 
                     <div class="form-grid">
@@ -143,59 +143,66 @@
                     <div class="td-panel__header td-panel__header--split">
                         <div>
                             <div class="section-kicker">Bloque 04 · opcional</div>
-                            <h2>Ubicación y condiciones de instalación</h2>
+                            <h2>Ubicación y análisis de emplazamiento</h2>
                             <p>
-                                Selección opcional del emplazamiento. Si no se rellena, no afecta al cálculo,
-                                presupuesto ni validaciones principales.
+                                Selección opcional de la ubicación real de obra. El mapa puede completar ciudad,
+                                provincia y país automáticamente cuando sea posible. No modifica el cálculo estructural ni el presupuesto base.
                             </p>
                         </div>
 
                         <div class="map-actions">
-                            <button type="button" class="td-btn td-btn--primary" @onclick="AbrirSelectorMapa">Seleccionar ubicación</button>
+                            <button type="button" class="td-btn td-btn--primary" @onclick="AbrirSelectorMapa">Abrir análisis</button>
                             <button type="button" class="td-btn td-btn--ghost" @onclick="LimpiarUbicacion">Limpiar</button>
                         </div>
                     </div>
 
-                    <div class="map-card-grid">
+                    <div class="professional-map-layout">
                         <div class="mini-map-shell">
                             <div id="emplazamientoMiniMap" class="mini-map"></div>
+                            <div class="map-badge">OpenStreetMap</div>
                         </div>
 
-                        <div class="location-panel">
+                        <div class="location-panel location-panel--pro">
                             @if (!TieneEmplazamiento)
                             {
-                                <div class="empty-location">
-                                    <strong>Todavía no se ha seleccionado ubicación de instalación.</strong>
-                                    <span>Puedes dejarlo vacío. Esta mejora solo añade contexto y recomendaciones al informe.</span>
+                                <div class="empty-location empty-location--pro">
+                                    <strong>Emplazamiento pendiente de completar</strong>
+                                    <span>Puedes dejarlo vacío. Este bloque solo añade contexto, trazabilidad y recomendaciones al informe.</span>
+                                    <button type="button" class="td-btn td-btn--primary td-btn--inline" @onclick="AbrirSelectorMapa">Seleccionar ubicación</button>
                                 </div>
                             }
                             else
                             {
-                                <div class="location-title">@TextoUbicacion()</div>
-                                <div class="location-coordinates">@TextoCoordenadas()</div>
+                                <div class="location-headline">
+                                    <div>
+                                        <span class="location-eyebrow">Ubicación seleccionada</span>
+                                        <h3>@TextoUbicacion()</h3>
+                                        <p>@TextoDireccionResumen()</p>
+                                    </div>
+                                    <div class="score-pill @ClaseScore()">
+                                        <span>Índice instalación</span>
+                                        <strong>@TextoPuntuacion()</strong>
+                                    </div>
+                                </div>
+
+                                <div class="location-meta-grid">
+                                    <div><span>Ciudad</span><strong>@TextoSeguro(Emplazamiento.Ciudad)</strong></div>
+                                    <div><span>Provincia</span><strong>@TextoSeguro(Emplazamiento.Provincia)</strong></div>
+                                    <div><span>País</span><strong>@TextoSeguro(Emplazamiento.Pais)</strong></div>
+                                    <div><span>Coordenadas</span><strong>@TextoCoordenadasCorto()</strong></div>
+                                </div>
+
                                 <div class="location-tags">
-                                    @if (!string.IsNullOrWhiteSpace(Emplazamiento.TipoEntorno))
+                                    @foreach (var tag in EtiquetasEmplazamiento())
                                     {
-                                        <span>@Emplazamiento.TipoEntorno</span>
-                                    }
-                                    @if (!string.IsNullOrWhiteSpace(Emplazamiento.ExposicionViento))
-                                    {
-                                        <span>Viento: @Emplazamiento.ExposicionViento</span>
-                                    }
-                                    @if (!string.IsNullOrWhiteSpace(Emplazamiento.AccesoObra))
-                                    {
-                                        <span>Acceso: @Emplazamiento.AccesoObra</span>
-                                    }
-                                    @if (!string.IsNullOrWhiteSpace(Emplazamiento.Ambiente))
-                                    {
-                                        <span>@Emplazamiento.Ambiente</span>
+                                        <span>@tag</span>
                                     }
                                 </div>
                             }
 
-                            <div class="risk-grid">
+                            <div class="risk-grid risk-grid--pro">
                                 <div class="risk-card @ClaseRiesgo(_analisis.RiesgoViento)">
-                                    <span>Riesgo viento</span>
+                                    <span>Viento</span>
                                     <strong>@_analisis.RiesgoViento</strong>
                                 </div>
                                 <div class="risk-card @ClaseRiesgo(_analisis.RiesgoCorrosion)">
@@ -212,10 +219,18 @@
                                 </div>
                             </div>
 
-                            <div class="recommendation-box">
-                                <strong>Recomendación principal</strong>
-                                <p>@_analisis.RecomendacionPrincipal</p>
+                            <div class="recommendation-box recommendation-box--pro">
+                                <strong>Resumen automático</strong>
+                                <p>@_analisis.ResumenProfesional</p>
                             </div>
+
+                            @if (_analisis.AccionesRecomendadas.Count > 0 && TieneEmplazamiento)
+                            {
+                                <div class="action-strip">
+                                    <span>Acción recomendada</span>
+                                    <strong>@_analisis.AccionesRecomendadas.First()</strong>
+                                </div>
+                            }
                         </div>
                     </div>
                 </article>
@@ -271,7 +286,7 @@
                         </div>
 
                         <div class="summary-row">
-                            <span class="summary-row__label">Riesgo emplazamiento</span>
+                            <span class="summary-row__label">Complejidad emplazamiento</span>
                             <span class="summary-row__value @ClaseResumenRiesgo()">@ResumenRiesgos()</span>
                         </div>
                     </div>
@@ -285,22 +300,51 @@
 {
     <div class="map-modal-overlay" @onclick="CerrarSelectorMapa"></div>
 
-    <section class="map-modal" @onclick:stopPropagation="true">
+    <section class="map-modal map-modal--pro" @onclick:stopPropagation="true">
         <div class="map-modal__header">
             <div>
                 <div class="section-kicker">Análisis de emplazamiento</div>
                 <h2>Seleccionar ubicación de instalación</h2>
-                <p>Haz clic en el mapa o introduce los datos manualmente. Este bloque es orientativo y opcional.</p>
+                <p>Busca una ciudad o haz clic en el mapa. Si el servicio de mapas no responde, puedes rellenar los campos manualmente.</p>
             </div>
             <button type="button" class="map-modal__close" @onclick="CerrarSelectorMapa">×</button>
         </div>
 
-        <div class="map-modal__body">
-            <div class="large-map-shell">
-                <div id="emplazamientoLargeMap" class="large-map"></div>
+        <div class="map-modal__body map-modal__body--pro">
+            <div class="map-workspace">
+                <div class="map-search-card">
+                    <label>Buscar ubicación</label>
+                    <div class="map-search-row">
+                        <InputText class="td-input" @bind-Value="_busquedaUbicacion" placeholder="Ejemplo: Ciudad Real, España" />
+                        <button type="button" class="td-btn td-btn--primary" @onclick="BuscarUbicacionAsync">Buscar</button>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(_mensajeMapa))
+                    {
+                        <div class="map-message">@_mensajeMapa</div>
+                    }
+                </div>
+
+                <div class="large-map-shell large-map-shell--pro">
+                    <div id="emplazamientoLargeMap" class="large-map"></div>
+                </div>
+
+                <div class="map-info-card">
+                    <div>
+                        <span>Coordenadas</span>
+                        <strong>@TextoCoordenadas()</strong>
+                    </div>
+                    <div>
+                        <span>Fuente</span>
+                        <strong>@TextoSeguro(Emplazamiento.FuenteDatos)</strong>
+                    </div>
+                    <div>
+                        <span>Dirección detectada</span>
+                        <strong>@TextoDireccionResumen()</strong>
+                    </div>
+                </div>
             </div>
 
-            <div class="map-form-panel">
+            <div class="map-form-panel map-form-panel--pro">
                 <div class="form-grid form-grid--compact">
                     <div class="field field--full">
                         <label>Nombre ubicación / obra</label>
@@ -321,6 +365,11 @@
                     <div class="field">
                         <label>País</label>
                         <InputText class="td-input" @bind-Value="Emplazamiento.Pais" />
+                    </div>
+
+                    <div class="field">
+                        <label>Código postal</label>
+                        <InputText class="td-input" @bind-Value="Emplazamiento.CodigoPostal" />
                     </div>
 
                     <div class="field">
@@ -382,9 +431,26 @@
                             }
                         </InputSelect>
                     </div>
+
+                    <div class="field field--full">
+                        <label>Observaciones de instalación</label>
+                        <InputTextArea class="td-input" @bind-Value="Emplazamiento.ObservacionesInstalacion" />
+                        <small>Notas internas: acceso limitado, necesidad de grúa, zona de acopio, permisos, etc.</small>
+                    </div>
                 </div>
 
-                <div class="modal-analysis">
+                <div class="modal-analysis modal-analysis--pro">
+                    <div class="analysis-header">
+                        <div>
+                            <span>Complejidad global</span>
+                            <strong>@_analisis.ComplejidadGlobal</strong>
+                        </div>
+                        <div class="score-pill @ClaseScore()">
+                            <span>Índice</span>
+                            <strong>@TextoPuntuacion()</strong>
+                        </div>
+                    </div>
+
                     <div class="risk-grid risk-grid--modal">
                         <div class="risk-card @ClaseRiesgo(_analisis.RiesgoViento)">
                             <span>Viento</span>
@@ -400,12 +466,31 @@
                         </div>
                     </div>
 
-                    <ul class="recommendation-list">
-                        @foreach (var recomendacion in _analisis.Recomendaciones)
-                        {
-                            <li>@recomendacion</li>
-                        }
-                    </ul>
+                    <div class="recommendation-box">
+                        <strong>Resumen para informe</strong>
+                        <p>@_analisis.ResumenProfesional</p>
+                    </div>
+
+                    <div class="analysis-columns">
+                        <div>
+                            <h4>Factores detectados</h4>
+                            <ul class="recommendation-list">
+                                @foreach (var factor in _analisis.FactoresDetectados)
+                                {
+                                    <li>@factor</li>
+                                }
+                            </ul>
+                        </div>
+                        <div>
+                            <h4>Acciones recomendadas</h4>
+                            <ul class="recommendation-list">
+                                @foreach (var accion in _analisis.AccionesRecomendadas)
+                                {
+                                    <li>@accion</li>
+                                }
+                            </ul>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="modal-actions">
@@ -436,6 +521,8 @@
     private bool _mostrarSelectorMapa;
     private bool _miniMapaInicializado;
     private bool _mapaGrandeInicializado;
+    private string _busquedaUbicacion = string.Empty;
+    private string _mensajeMapa = string.Empty;
     private AnalisisEmplazamientoResultadoModel _analisis = new();
 
     private EmplazamientoInstalacionModel Emplazamiento => EstadoProyecto.Instalacion.Emplazamiento;
@@ -508,7 +595,7 @@
         }
         catch
         {
-            // El bloque es opcional: si Leaflet o el mapa no cargan, se mantiene la entrada manual.
+            _mensajeMapa = "No se ha podido cargar el mapa. Puedes introducir los datos manualmente.";
         }
     }
 
@@ -516,6 +603,7 @@
     {
         _mostrarSelectorMapa = true;
         _mapaGrandeInicializado = false;
+        _mensajeMapa = string.Empty;
         RecalcularAnalisis();
         await Task.CompletedTask;
     }
@@ -534,6 +622,35 @@
         }
     }
 
+    private async Task BuscarUbicacionAsync()
+    {
+        _mensajeMapa = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(_busquedaUbicacion))
+        {
+            _mensajeMapa = "Escribe una ciudad, provincia o dirección para buscar.";
+            return;
+        }
+
+        try
+        {
+            var resultado = await JS.InvokeAsync<UbicacionMapaDto?>("tankDesignerMaps.searchLocation", LargeMapId, _busquedaUbicacion);
+
+            if (resultado == null)
+            {
+                _mensajeMapa = "No se ha encontrado ninguna ubicación. Prueba con una búsqueda más concreta.";
+                return;
+            }
+
+            AplicarUbicacion(resultado);
+            _mensajeMapa = "Ubicación detectada y campos completados automáticamente.";
+        }
+        catch
+        {
+            _mensajeMapa = "No se ha podido buscar la ubicación. Puedes rellenar los campos manualmente.";
+        }
+    }
+
     private async Task GuardarUbicacion()
     {
         Emplazamiento.UbicacionSeleccionada = Emplazamiento.TieneDatos;
@@ -545,6 +662,8 @@
     private async Task LimpiarUbicacion()
     {
         EstadoProyecto.Instalacion.Emplazamiento = new EmplazamientoInstalacionModel();
+        _busquedaUbicacion = string.Empty;
+        _mensajeMapa = string.Empty;
         RecalcularAnalisis();
         await ActualizarMiniMapaAsync();
     }
@@ -577,21 +696,57 @@
             try
             {
                 await JS.InvokeVoidAsync("tankDesignerMaps.setMarker", LargeMapId, Emplazamiento.Latitud.Value, Emplazamiento.Longitud.Value, 13);
+                _mensajeMapa = "Marcador actualizado con las coordenadas manuales.";
             }
             catch
             {
+                _mensajeMapa = "No se ha podido mover el marcador. Los datos manuales se conservarán.";
             }
         }
     }
 
     [JSInvokable]
-    public void ActualizarCoordenadasDesdeMapa(double lat, double lng)
+    public void ActualizarUbicacionDesdeMapa(UbicacionMapaDto ubicacion)
     {
-        Emplazamiento.Latitud = Math.Round(lat, 6);
-        Emplazamiento.Longitud = Math.Round(lng, 6);
-        Emplazamiento.UbicacionSeleccionada = true;
-        RecalcularAnalisis();
+        AplicarUbicacion(ubicacion);
+        _mensajeMapa = "Ubicación detectada desde el mapa.";
         StateHasChanged();
+    }
+
+    private void AplicarUbicacion(UbicacionMapaDto? ubicacion)
+    {
+        if (ubicacion == null)
+            return;
+
+        Emplazamiento.Latitud = Math.Round(ubicacion.Latitud, 6);
+        Emplazamiento.Longitud = Math.Round(ubicacion.Longitud, 6);
+        Emplazamiento.UbicacionSeleccionada = true;
+
+        if (!string.IsNullOrWhiteSpace(ubicacion.NombreUbicacion))
+            Emplazamiento.NombreUbicacion = ubicacion.NombreUbicacion.Trim();
+
+        if (!string.IsNullOrWhiteSpace(ubicacion.Ciudad))
+            Emplazamiento.Ciudad = ubicacion.Ciudad.Trim();
+
+        if (!string.IsNullOrWhiteSpace(ubicacion.Provincia))
+            Emplazamiento.Provincia = ubicacion.Provincia.Trim();
+
+        if (!string.IsNullOrWhiteSpace(ubicacion.Pais))
+            Emplazamiento.Pais = ubicacion.Pais.Trim();
+
+        if (!string.IsNullOrWhiteSpace(ubicacion.CodigoPostal))
+            Emplazamiento.CodigoPostal = ubicacion.CodigoPostal.Trim();
+
+        if (!string.IsNullOrWhiteSpace(ubicacion.DireccionResumen))
+            Emplazamiento.DireccionResumen = ubicacion.DireccionResumen.Trim();
+
+        if (!string.IsNullOrWhiteSpace(ubicacion.FuenteDatos))
+            Emplazamiento.FuenteDatos = ubicacion.FuenteDatos.Trim();
+
+        if (!string.IsNullOrWhiteSpace(ubicacion.FechaConsulta))
+            Emplazamiento.FechaConsulta = ubicacion.FechaConsulta.Trim();
+
+        RecalcularAnalisis();
     }
 
     private void RecalcularAnalisis()
@@ -617,12 +772,51 @@
         return partes.Count > 0 ? string.Join(", ", partes) : "Ubicación sin nombre";
     }
 
+    private string TextoDireccionResumen()
+    {
+        if (!string.IsNullOrWhiteSpace(Emplazamiento.DireccionResumen))
+            return Emplazamiento.DireccionResumen.Trim();
+
+        return TieneEmplazamiento ? TextoCoordenadas() : "Sin datos de dirección";
+    }
+
     private string TextoCoordenadas()
     {
         if (!Emplazamiento.Latitud.HasValue || !Emplazamiento.Longitud.HasValue)
             return "Coordenadas sin indicar";
 
         return $"Lat. {Emplazamiento.Latitud.Value:0.######} · Long. {Emplazamiento.Longitud.Value:0.######}";
+    }
+
+    private string TextoCoordenadasCorto()
+    {
+        if (!Emplazamiento.Latitud.HasValue || !Emplazamiento.Longitud.HasValue)
+            return "—";
+
+        return $"{Emplazamiento.Latitud.Value:0.####}, {Emplazamiento.Longitud.Value:0.####}";
+    }
+
+    private string TextoPuntuacion()
+    {
+        return TieneEmplazamiento ? $"{_analisis.PuntuacionInstalacion}/100" : "—";
+    }
+
+    private IEnumerable<string> EtiquetasEmplazamiento()
+    {
+        if (!string.IsNullOrWhiteSpace(Emplazamiento.TipoEntorno))
+            yield return Emplazamiento.TipoEntorno;
+
+        if (!string.IsNullOrWhiteSpace(Emplazamiento.ExposicionViento))
+            yield return $"Viento: {Emplazamiento.ExposicionViento}";
+
+        if (!string.IsNullOrWhiteSpace(Emplazamiento.AccesoObra))
+            yield return $"Acceso: {Emplazamiento.AccesoObra}";
+
+        if (!string.IsNullOrWhiteSpace(Emplazamiento.TipoTerreno))
+            yield return $"Terreno: {Emplazamiento.TipoTerreno}";
+
+        if (!string.IsNullOrWhiteSpace(Emplazamiento.Ambiente))
+            yield return Emplazamiento.Ambiente;
     }
 
     private string ClaseRiesgo(string? valor)
@@ -641,20 +835,34 @@
         return "risk-card--empty";
     }
 
+    private string ClaseScore()
+    {
+        if (!TieneEmplazamiento)
+            return "score-pill--empty";
+
+        if (_analisis.PuntuacionInstalacion >= 82)
+            return "score-pill--low";
+
+        if (_analisis.PuntuacionInstalacion >= 58)
+            return "score-pill--medium";
+
+        return "score-pill--high";
+    }
+
     private string ResumenRiesgos()
     {
         if (!TieneEmplazamiento)
             return "No evaluado";
 
-        return $"Viento {_analisis.RiesgoViento} · Montaje {_analisis.DificultadMontaje}";
+        return $"{_analisis.ComplejidadGlobal} · {_analisis.PuntuacionInstalacion}/100";
     }
 
     private string ClaseResumenRiesgo()
     {
-        if (_analisis.RiesgoViento == "Alto" || _analisis.DificultadMontaje == "Alta" || _analisis.RiesgoCorrosion == "Alto")
+        if (_analisis.ComplejidadGlobal == "Alta")
             return "summary-value-warn";
 
-        if (_analisis.RiesgoViento == "Bajo" && _analisis.DificultadMontaje == "Baja")
+        if (_analisis.ComplejidadGlobal == "Baja")
             return "summary-value-ok";
 
         return string.Empty;
@@ -672,5 +880,19 @@
         }
 
         _dotNetRef?.Dispose();
+    }
+
+    public class UbicacionMapaDto
+    {
+        public double Latitud { get; set; }
+        public double Longitud { get; set; }
+        public string NombreUbicacion { get; set; } = string.Empty;
+        public string Ciudad { get; set; } = string.Empty;
+        public string Provincia { get; set; } = string.Empty;
+        public string Pais { get; set; } = string.Empty;
+        public string CodigoPostal { get; set; } = string.Empty;
+        public string DireccionResumen { get; set; } = string.Empty;
+        public string FuenteDatos { get; set; } = string.Empty;
+        public string FechaConsulta { get; set; } = string.Empty;
     }
 }

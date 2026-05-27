@@ -578,8 +578,11 @@ namespace TankDesigner.Core.Services
             html.Append(LabelValue(Lang("Ciudad", "City"), Html(TextoSeguroSinInventar(emplazamiento.Ciudad))));
             html.Append(LabelValue(Lang("Provincia", "Province"), Html(TextoSeguroSinInventar(emplazamiento.Provincia))));
             html.Append(LabelValue(Lang("País", "Country"), Html(TextoSeguroSinInventar(emplazamiento.Pais))));
+            html.Append(LabelValue(Lang("Código postal", "Postal code"), Html(TextoSeguroSinInventar(emplazamiento.CodigoPostal))));
             html.Append(LabelValue(Lang("Latitud", "Latitude"), emplazamiento.Latitud.HasValue ? Formato(emplazamiento.Latitud.Value, "0.######") : "—"));
             html.Append(LabelValue(Lang("Longitud", "Longitude"), emplazamiento.Longitud.HasValue ? Formato(emplazamiento.Longitud.Value, "0.######") : "—"));
+            html.Append(LabelValue(Lang("Dirección detectada", "Detected address"), Html(TextoSeguroSinInventar(emplazamiento.DireccionResumen))));
+            html.Append(LabelValue(Lang("Fuente de datos", "Data source"), Html(TextoSeguroSinInventar(emplazamiento.FuenteDatos))));
             html.Append("</div>");
 
             html.Append($"<div class='block'><h3>{Html(Lang("Condiciones de obra", "Site conditions"))}</h3>");
@@ -596,10 +599,12 @@ namespace TankDesigner.Core.Services
             html.Append(LabelValue(Lang("Riesgo por corrosión", "Corrosion risk"), Html(analisis.RiesgoCorrosion)));
             html.Append(LabelValue(Lang("Dificultad de montaje", "Assembly difficulty"), Html(analisis.DificultadMontaje)));
             html.Append(LabelValue(Lang("Impacto en transporte", "Transport impact"), Html(analisis.ImpactoTransporte)));
+            html.Append(LabelValue(Lang("Complejidad global", "Overall complexity"), Html($"{analisis.ComplejidadGlobal} · {analisis.PuntuacionInstalacion}/100")));
             html.Append("</div>");
 
             html.Append($"<div class='block'><h3>{Html(Lang("Recomendaciones", "Recommendations"))}</h3>");
-            html.Append($"<div class='multiline'><strong>{Html(Lang("Recomendación principal", "Main recommendation"))}:</strong> {Html(analisis.RecomendacionPrincipal)}<br/>");
+            html.Append($"<div class='multiline'><strong>{Html(Lang("Resumen automático", "Automatic summary"))}:</strong> {Html(analisis.ResumenProfesional)}<br/><br/>");
+            html.Append($"<strong>{Html(Lang("Recomendación principal", "Main recommendation"))}:</strong> {Html(analisis.RecomendacionPrincipal)}<br/>");
 
             if (analisis.Recomendaciones.Count > 0)
             {
@@ -611,7 +616,23 @@ namespace TankDesigner.Core.Services
                 html.Append("</ul>");
             }
 
-            html.Append($"<em>{Html(Lang("Este análisis es orientativo y no sustituye una comprobación normativa completa de viento, cimentación o corrosión.", "This analysis is indicative and does not replace a complete code check for wind, foundation or corrosion."))}</em>");
+            if (analisis.AccionesRecomendadas.Count > 0)
+            {
+                html.Append($"<strong>{Html(Lang("Acciones recomendadas", "Recommended actions"))}:</strong>");
+                html.Append("<ul>");
+                foreach (var accion in analisis.AccionesRecomendadas)
+                {
+                    html.Append($"<li>{Html(accion)}</li>");
+                }
+                html.Append("</ul>");
+            }
+
+            if (!string.IsNullOrWhiteSpace(emplazamiento.ObservacionesInstalacion))
+            {
+                html.Append($"<strong>{Html(Lang("Observaciones", "Notes"))}:</strong> {Html(emplazamiento.ObservacionesInstalacion)}<br/><br/>");
+            }
+
+            html.Append($"<em>{Html(Lang("Este análisis es orientativo y no sustituye una comprobación normativa completa de viento, cimentación o corrosión. No modifica el cálculo estructural ni el presupuesto base.", "This analysis is indicative and does not replace a complete code check for wind, foundation or corrosion. It does not modify structural calculation or base budget."))}</em>");
             html.Append("</div></div></div>");
 
             return html.ToString();
