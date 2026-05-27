@@ -564,17 +564,24 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && !_miniMapaInicializado)
+        // Importante: no inicializamos el mini mapa solo en firstRender.
+        // Al refrescar, MainLayout restaura el proyecto desde localStorage unos instantes después
+        // y la página se vuelve a pintar. Si el mapa se creó antes de tener tamaño real o antes de
+        // recuperar las coordenadas, Leaflet puede quedarse en blanco. Por eso lo reintentamos
+        // siempre que esté marcado como no inicializado.
+        if (!_miniMapaInicializado)
         {
-            _dotNetRef = DotNetObjectReference.Create(this);
+            _dotNetRef ??= DotNetObjectReference.Create(this);
             _miniMapaInicializado = true;
             await InicializarMapaAsync(MiniMapId, false);
+            await ActualizarMarcadoresMapaAsync();
         }
 
         if (_mostrarSelectorMapa && !_mapaGrandeInicializado)
         {
             _mapaGrandeInicializado = true;
             await InicializarMapaAsync(LargeMapId, true);
+            await ActualizarMarcadoresMapaAsync();
         }
     }
 
@@ -585,7 +592,21 @@
             EstadoProyecto.Instalacion ??= new InstalacionModel();
             EstadoProyecto.Instalacion.Emplazamiento ??= new EmplazamientoInstalacionModel();
             RecalcularAnalisis();
-            await ActualizarMarcadoresMapaAsync();
+
+            // Si el estado se ha restaurado después de un F5, forzamos una recreación limpia
+            // del mapa. Esto evita el mapa gris/blanco cuando Leaflet se inicializa antes de que
+            // el contenedor tenga tamaño definitivo.
+            _miniMapaInicializado = false;
+            _mapaGrandeInicializado = false;
+            try
+            {
+                await JS.InvokeVoidAsync("tankDesignerMaps.destroy", MiniMapId);
+                await JS.InvokeVoidAsync("tankDesignerMaps.destroy", LargeMapId);
+            }
+            catch
+            {
+            }
+
             StateHasChanged();
         });
     }
