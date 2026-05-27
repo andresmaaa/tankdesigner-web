@@ -207,7 +207,7 @@
 
 .actions-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     gap: 12px;
     margin-top: 18px;
 }
@@ -1111,5 +1111,286 @@
         line-height: 1;
         cursor: pointer;
     }
+}
 
+.action-btn--simulator {
+    background: linear-gradient(135deg, #0f766e, #115e59);
+}
+
+.budget-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.62);
+    backdrop-filter: blur(4px);
+    z-index: 1200;
+}
+
+.budget-modal {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: min(1180px, calc(100vw - 44px));
+    max-height: calc(100vh - 54px);
+    overflow: auto;
+    z-index: 1201;
+    background: #ffffff;
+    border: 1px solid #dbe3ee;
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: 0 30px 80px rgba(15, 23, 42, 0.32);
+}
+
+.budget-modal__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 18px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid #e5eaf2;
+    margin-bottom: 18px;
+}
+
+    .budget-modal__header h2 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 900;
+        color: #0f172a;
+        letter-spacing: -0.02em;
+    }
+
+    .budget-modal__header p {
+        margin: 8px 0 0;
+        max-width: 760px;
+        color: #64748b;
+        line-height: 1.6;
+        font-size: 14px;
+    }
+
+.budget-modal__close {
+    width: 42px;
+    height: 42px;
+    border: 1px solid #dbe3ee;
+    border-radius: 14px;
+    background: #f8fafc;
+    color: #334155;
+    font-size: 24px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.budget-warning {
+    padding: 16px 18px;
+    border-radius: 16px;
+    border: 1px solid #fed7aa;
+    background: #fff7ed;
+    color: #9a3412;
+    font-weight: 700;
+}
+
+.budget-modal__grid {
+    display: grid;
+    grid-template-columns: 0.92fr 1.08fr;
+    gap: 18px;
+}
+
+.budget-panel {
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    padding: 18px;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.budget-panel--base {
+    background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%);
+    border-color: #bfdbfe;
+}
+
+.budget-panel__title {
+    font-size: 16px;
+    font-weight: 900;
+    color: #0f172a;
+    margin-bottom: 8px;
+}
+
+.budget-panel__note {
+    margin: 0 0 14px;
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.budget-total-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    padding: 18px;
+    border-radius: 18px;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    margin-bottom: 14px;
+}
+
+    .budget-total-card span,
+    .budget-result-card span,
+    .budget-breakdown span,
+    .budget-meta-grid span {
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+
+    .budget-total-card strong {
+        color: #1d4ed8;
+        font-size: 24px;
+        font-weight: 900;
+    }
+
+.budget-breakdown,
+.budget-meta-grid {
+    display: grid;
+    gap: 10px;
+}
+
+    .budget-breakdown div,
+    .budget-meta-grid div {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 14px;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        background: #ffffff;
+    }
+
+    .budget-breakdown strong,
+    .budget-meta-grid strong {
+        color: #0f172a;
+        font-size: 15px;
+        font-weight: 900;
+    }
+
+.budget-meta-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 10px;
+}
+
+.budget-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+    .budget-form-grid label {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+        color: #334155;
+        font-size: 12px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .budget-form-grid input {
+        height: 44px;
+        border: 1px solid #dbe3ee;
+        border-radius: 12px;
+        padding: 0 12px;
+        font-size: 14px;
+        font-weight: 700;
+        color: #0f172a;
+        background: #ffffff;
+        outline: none;
+    }
+
+        .budget-form-grid input:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+        }
+
+.budget-actions-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 14px;
+}
+
+.budget-results {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 18px;
+}
+
+.budget-result-card {
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 16px;
+    border-radius: 18px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+}
+
+    .budget-result-card strong {
+        color: #0f172a;
+        font-size: 20px;
+        font-weight: 900;
+    }
+
+    .budget-result-card small {
+        color: #64748b;
+        line-height: 1.35;
+        font-weight: 700;
+    }
+
+.budget-result-card--total {
+    border-color: #93c5fd;
+    background: linear-gradient(135deg, #1d4ed8, #1e3a8a);
+}
+
+    .budget-result-card--total span,
+    .budget-result-card--total strong,
+    .budget-result-card--total small {
+        color: #ffffff;
+    }
+
+.budget-note-box {
+    margin-top: 18px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    border: 1px solid #c7d2fe;
+    background: #eef2ff;
+    color: #1e3a8a;
+    line-height: 1.55;
+}
+
+@media (max-width: 1080px) {
+    .budget-modal__grid,
+    .budget-results {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 720px) {
+    .budget-modal {
+        width: calc(100vw - 20px);
+        padding: 18px;
+    }
+
+    .budget-modal__header {
+        flex-direction: column;
+    }
+
+    .budget-form-grid,
+    .budget-meta-grid {
+        grid-template-columns: 1fr;
+    }
 }

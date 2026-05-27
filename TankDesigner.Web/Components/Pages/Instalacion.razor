@@ -1,954 +1,1345 @@
-﻿@page "/instalacion"
+﻿@page "/informe"
 @attribute [Authorize]
-@implements IAsyncDisposable
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.JSInterop
+@using System.IO.Compression
 @using TankDesigner.Core.Models
 @using TankDesigner.Core.Services
+@using TankDesigner.Core.Models.Presupuestos
 @using TankDesigner.Web.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using TankDesigner.Web.Data
+@using TankDesigner.Web.Services.Ai
+@using TankDesigner.Web.Components.Shared
 @inject ProyectoState EstadoProyecto
-@inject OpcionesFormularioService Opciones
 @inject IJSRuntime JS
+@inject AiEngineeringService AiEngineeringService
+@inject UserManager<ApplicationUser> UserManager
+@inject ProyectoPersistenciaService ProyectoPersistenciaService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+@inject ProyectoState EstadoProyecto
+@inject CalculoWebService CalculoWebService
+@inject FormularioValidacionService ValidacionService
+@inject CalculoGeometriaService CalculoGeometriaService
+@inject InformeHtmlService InformeHtmlService
+@inject PdfRenderService PdfRenderService
 
-<PageTitle>Instalación</PageTitle>
+<PageTitle>Informe</PageTitle>
 
-<div class="instalacion-page">
+
+<div class="informes-page">
     <div class="page-header">
-        <h1>Instalación</h1>
-        <p>Configuración de montaje, accesos, conexiones, condiciones generales de obra y análisis opcional del emplazamiento del tanque.</p>
+        <h1>Informe</h1>
+        <p>Generación, vista previa y exportación de la documentación técnica del proyecto.</p>
     </div>
 
-    <EditForm Model="EstadoProyecto.Instalacion">
-        <div class="page-layout">
-            <section class="main-column">
-                <article class="td-panel">
-                    <div class="td-panel__header">
-                        <div class="section-kicker">Bloque 01</div>
-                        <h2>Elementos auxiliares</h2>
-                        <p>Configuración de acceso y elementos principales de montaje.</p>
-                    </div>
-
-                    <div class="form-grid">
-                        <div class="field">
-                            <label>Tipo escalera</label>
-                            <InputSelect class="td-input td-select" @bind-Value="EstadoProyecto.Instalacion.TipoEscalera">
-                                @foreach (var item in _tiposEscalera)
-                                {
-                                    <option value="@item">@item</option>
-                                }
-                            </InputSelect>
-                            <small>Solución de acceso prevista para el depósito.</small>
-                        </div>
-
-                        <div class="field">
-                            <label>Número escaleras</label>
-                            <InputNumber class="td-input" @bind-Value="EstadoProyecto.Instalacion.NumeroEscaleras" />
-                            <small>Cantidad total de escaleras necesarias en la instalación.</small>
-                        </div>
-                    </div>
-                </article>
-
-                <article class="td-panel">
-                    <div class="td-panel__header">
-                        <div class="section-kicker">Bloque 02</div>
-                        <h2>Conexiones</h2>
-                        <p>Distribución de conexiones por rangos de diámetro nominal.</p>
-                    </div>
-
-                    <div class="form-grid">
-                        <div class="field">
-                            <label>DN25 - DN150</label>
-                            <InputNumber class="td-input" @bind-Value="EstadoProyecto.Instalacion.ConexionesDN25_DN150" />
-                            <small>Conexiones pequeñas y medias.</small>
-                        </div>
-
-                        <div class="field">
-                            <label>DN150 - DN300</label>
-                            <InputNumber class="td-input" @bind-Value="EstadoProyecto.Instalacion.ConexionesDN150_DN300" />
-                            <small>Conexiones de rango intermedio.</small>
-                        </div>
-
-                        <div class="field">
-                            <label>DN300 - DN500</label>
-                            <InputNumber class="td-input" @bind-Value="EstadoProyecto.Instalacion.ConexionesDN300_DN500" />
-                            <small>Conexiones de diámetro elevado.</small>
-                        </div>
-
-                        <div class="field">
-                            <label>&gt; DN500</label>
-                            <InputNumber class="td-input" @bind-Value="EstadoProyecto.Instalacion.ConexionesMayorDN500" />
-                            <small>Conexiones especiales o de gran diámetro.</small>
-                        </div>
-                    </div>
-                </article>
-
-                <article class="td-panel">
-                    <div class="td-panel__header">
-                        <div class="section-kicker">Bloque 03</div>
-                        <h2>Condiciones de obra</h2>
-                        <p>Parámetros de ejecución, equipo humano y características generales de obra.</p>
-                    </div>
-
-                    <div class="form-grid">
-                        <div class="field">
-                            <label>Tamaño cuadrilla</label>
-                            <InputNumber class="td-input" @bind-Value="EstadoProyecto.Instalacion.TamanoCuadrilla" />
-                            <small>Número de operarios principales de montaje.</small>
-                        </div>
-
-                        <div class="field">
-                            <label>Horas trabajo día (h/día)</label>
-                            <InputNumber class="td-input" @bind-Value="EstadoProyecto.Instalacion.HorasTrabajoDia" />
-                            <small>Jornada prevista de trabajo diario en horas por día.</small>
-                        </div>
-
-                        <div class="field">
-                            <label>Días lluvia (%)</label>
-                            <InputNumber class="td-input" @bind-Value="EstadoProyecto.Instalacion.DiasLluviaPorcentaje" />
-                            <small>Porcentaje estimado de afección meteorológica.</small>
-                        </div>
-
-                        <div class="field">
-                            <label>Site manager</label>
-                            <InputNumber class="td-input" @bind-Value="EstadoProyecto.Instalacion.SiteManager" />
-                            <small>Responsables de supervisión en obra.</small>
-                        </div>
-
-                        <div class="field">
-                            <label>Técnico seguridad</label>
-                            <InputNumber class="td-input" @bind-Value="EstadoProyecto.Instalacion.TecnicoSeguridad" />
-                            <small>Recursos de seguridad y prevención.</small>
-                        </div>
-
-                        <div class="field">
-                            <label>Lugar obra</label>
-                            <InputSelect class="td-input td-select" @bind-Value="EstadoProyecto.Instalacion.LugarObra">
-                                @foreach (var item in _lugaresObra)
-                                {
-                                    <option value="@item">@item</option>
-                                }
-                            </InputSelect>
-                            <small>Clasificación general del emplazamiento de obra.</small>
-                        </div>
-
-                        <div class="field field--full">
-                            <label>Distancia alojamiento - obra (h)</label>
-                            <InputNumber class="td-input" @bind-Value="EstadoProyecto.Instalacion.DistanciaAlojamientoObra" />
-                            <small>Tiempo estimado de desplazamiento entre alojamiento y obra, expresado en horas.</small>
-                        </div>
-                    </div>
-                </article>
-
-                <article class="td-panel td-panel--mapa">
-                    <div class="td-panel__header td-panel__header--split">
-                        <div>
-                            <div class="section-kicker">Bloque 04 · opcional</div>
-                            <h2>Ubicación y análisis de emplazamiento</h2>
-                            <p>
-                                Selección opcional de la ubicación real de obra. El mapa puede completar ciudad,
-                                provincia y país automáticamente cuando sea posible. No modifica el cálculo estructural ni el presupuesto base.
-                            </p>
-                        </div>
-
-                        <div class="map-actions">
-                            <button type="button" class="td-btn td-btn--primary" @onclick="AbrirSelectorMapa">Abrir análisis</button>
-                            <button type="button" class="td-btn td-btn--ghost" @onclick="LimpiarUbicacion">Limpiar</button>
-                        </div>
-                    </div>
-
-                    <div class="professional-map-layout">
-                        <div class="mini-map-shell">
-                            <div id="emplazamientoMiniMap" class="mini-map"></div>
-                            <div class="map-badge">OpenStreetMap</div>
-                        </div>
-
-                        <div class="location-panel location-panel--pro">
-                            @if (!TieneEmplazamiento)
-                            {
-                                <div class="empty-location empty-location--pro">
-                                    <strong>Emplazamiento pendiente de completar</strong>
-                                    <span>Puedes dejarlo vacío. Este bloque solo añade contexto, trazabilidad y recomendaciones al informe.</span>
-                                    <button type="button" class="td-btn td-btn--primary td-btn--inline" @onclick="AbrirSelectorMapa">Seleccionar ubicación</button>
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="location-headline">
-                                    <div>
-                                        <span class="location-eyebrow">Ubicación seleccionada</span>
-                                        <h3>@TextoUbicacion()</h3>
-                                        <p>@TextoDireccionResumen()</p>
-                                    </div>
-                                    <div class="score-pill @ClaseScore()">
-                                        <span>Índice instalación</span>
-                                        <strong>@TextoPuntuacion()</strong>
-                                    </div>
-                                </div>
-
-                                <div class="location-meta-grid">
-                                    <div><span>Ciudad</span><strong>@TextoSeguro(Emplazamiento.Ciudad)</strong></div>
-                                    <div><span>Provincia</span><strong>@TextoSeguro(Emplazamiento.Provincia)</strong></div>
-                                    <div><span>País</span><strong>@TextoSeguro(Emplazamiento.Pais)</strong></div>
-                                    <div><span>Coordenadas</span><strong>@TextoCoordenadasCorto()</strong></div>
-                                </div>
-
-                                <div class="location-tags">
-                                    @foreach (var tag in EtiquetasEmplazamiento())
-                                    {
-                                        <span>@tag</span>
-                                    }
-                                </div>
-                            }
-
-                            <div class="risk-grid risk-grid--pro">
-                                <div class="risk-card @ClaseRiesgo(_analisis.RiesgoViento)">
-                                    <span>Viento</span>
-                                    <strong>@_analisis.RiesgoViento</strong>
-                                </div>
-                                <div class="risk-card @ClaseRiesgo(_analisis.RiesgoCorrosion)">
-                                    <span>Corrosión</span>
-                                    <strong>@_analisis.RiesgoCorrosion</strong>
-                                </div>
-                                <div class="risk-card @ClaseRiesgo(_analisis.DificultadMontaje)">
-                                    <span>Montaje</span>
-                                    <strong>@_analisis.DificultadMontaje</strong>
-                                </div>
-                                <div class="risk-card @ClaseRiesgo(_analisis.ImpactoTransporte)">
-                                    <span>Transporte</span>
-                                    <strong>@_analisis.ImpactoTransporte</strong>
-                                </div>
-                            </div>
-
-                            <div class="recommendation-box recommendation-box--pro">
-                                <strong>Resumen automático</strong>
-                                <p>@_analisis.ResumenProfesional</p>
-                            </div>
-
-                            @if (_analisis.AccionesRecomendadas.Count > 0 && TieneEmplazamiento)
-                            {
-                                <div class="action-strip">
-                                    <span>Acción recomendada</span>
-                                    <strong>@_analisis.AccionesRecomendadas.First()</strong>
-                                </div>
-                            }
-                        </div>
-                    </div>
-                </article>
-            </section>
-
-            <aside class="side-column">
-                <article class="td-panel td-panel--compact td-panel--sticky">
-                    <div class="td-panel__header">
-                        <div class="section-kicker">Resumen vivo</div>
-                        <h2>Resumen de instalación</h2>
-                        <p>Vista rápida de la configuración activa de montaje y obra.</p>
-                    </div>
-
-                    <div class="summary-list">
-                        <div class="summary-row">
-                            <span class="summary-row__label">Tipo escalera</span>
-                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Instalacion.TipoEscalera)</span>
-                        </div>
-
-                        <div class="summary-row">
-                            <span class="summary-row__label">Número escaleras</span>
-                            <span class="summary-row__value">@EstadoProyecto.Instalacion.NumeroEscaleras</span>
-                        </div>
-
-                        <div class="summary-row">
-                            <span class="summary-row__label">Lugar obra</span>
-                            <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Instalacion.LugarObra)</span>
-                        </div>
-
-                        <div class="summary-row">
-                            <span class="summary-row__label">Cuadrilla</span>
-                            <span class="summary-row__value">@EstadoProyecto.Instalacion.TamanoCuadrilla</span>
-                        </div>
-
-                        <div class="summary-row">
-                            <span class="summary-row__label">Horas día (h/día)</span>
-                            <span class="summary-row__value">@EstadoProyecto.Instalacion.HorasTrabajoDia</span>
-                        </div>
-
-                        <div class="summary-row">
-                            <span class="summary-row__label">Días lluvia (%)</span>
-                            <span class="summary-row__value">@EstadoProyecto.Instalacion.DiasLluviaPorcentaje</span>
-                        </div>
-
-                        <div class="summary-row">
-                            <span class="summary-row__label">Alojamiento - obra (h)</span>
-                            <span class="summary-row__value">@EstadoProyecto.Instalacion.DistanciaAlojamientoObra</span>
-                        </div>
-
-                        <div class="summary-row">
-                            <span class="summary-row__label">Ubicación</span>
-                            <span class="summary-row__value">@(TieneEmplazamiento? TextoUbicacion() : "Opcional sin completar")</span>
-                        </div>
-
-                        <div class="summary-row">
-                            <span class="summary-row__label">Complejidad emplazamiento</span>
-                            <span class="summary-row__value @ClaseResumenRiesgo()">@ResumenRiesgos()</span>
-                        </div>
-                    </div>
-                </article>
-            </aside>
+    @if (!string.IsNullOrWhiteSpace(_mensaje))
+    {
+        <div class="alert-box">
+            <div class="alert-box__title">Aviso del módulo de informes</div>
+            <div>@_mensaje</div>
         </div>
-    </EditForm>
+    }
+
+    <div class="page-layout">
+        <section class="main-column">
+
+            <article class="td-panel">
+                <div class="td-panel__header td-panel__header--split">
+                    <div>
+                        <div class="section-kicker">Bloque 01</div>
+                        <h2>Control de informes</h2>
+                        <p>
+                            Selecciona el tipo de documento, idioma de salida y acciones
+                            de vista previa o exportación.
+                        </p>
+                    </div>
+
+                    <div class="toolbar-actions">
+                        <div class="idioma-switch">
+                            <button type="button" class="@ClaseIdioma("ES")" @onclick='() => CambiarIdioma("ES")'>ES</button>
+                            <button type="button" class="@ClaseIdioma("EN")" @onclick='() => CambiarIdioma("EN")'>EN</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="report-type-grid">
+                    <button type="button" class="@ClaseInforme("calculo")" @onclick='() => CambiarInforme("calculo")'>
+                        <span class="report-card__title">Cálculo estructural</span>
+                        <span class="report-card__text">Memoria técnica principal con tablas de cálculo y resultados.</span>
+                    </button>
+
+                    <button type="button" class="@ClaseInforme("presupuesto")" @onclick='() => CambiarInforme("presupuesto")'>
+                        <span class="report-card__title">Presupuesto</span>
+                        <span class="report-card__text">Resumen económico basado en precios reales de catálogo disponibles.</span>
+                    </button>
+
+                    <button type="button" class="@ClaseInforme("materiales")" @onclick='() => CambiarInforme("materiales")'>
+                        <span class="report-card__title">Listado de materiales</span>
+                        <span class="report-card__text">Desglose de planchas, tornillería y elementos auxiliares del tanque.</span>
+                    </button>
+                </div>
+
+                <div class="actions-grid">
+                    <button type="button" class="action-btn action-btn--primary" @onclick="RecalcularProyecto">
+                        Recalcular proyecto
+                    </button>
+
+                    <button type="button" class="action-btn action-btn--simulator" @onclick="AbrirSimuladorPresupuesto">
+                        Simular presupuesto
+                    </button>
+
+                    <button type="button" class="action-btn action-btn--dark" @onclick="VistaPreviaVentana">
+                        Abrir vista previa
+                    </button>
+
+                    <button type="button" class="action-btn action-btn--blue" @onclick="DescargarPdfActual">
+                        Descargar PDF actual
+                    </button>
+
+                    <button type="button" class="action-btn action-btn--gray" @onclick="DescargarTodosPdf">
+                        Descargar ZIP con los 3 informes
+                    </button>
+                </div>
+            </article>
+
+            <article class="td-panel">
+                <div class="td-panel__header td-panel__header--split">
+                    <div>
+                        <div class="section-kicker">Modelo 3D</div>
+                        <h2>Visualización del tanque</h2>
+                        <p>
+                            Abre una vista 3D generada con los datos reales del cálculo:
+                            diámetro, altura, anillos, materiales y espesores.
+                        </p>
+                    </div>
+
+                    <button type="button" class="action-btn action-btn--blue" @onclick="AbrirVista3D">
+                        Ver tanque en 3D
+                    </button>
+                </div>
+            </article>
+
+            <article class="td-panel">
+                <div class="td-panel__header">
+                    <div>
+                        <div class="section-kicker">Bloque 02</div>
+                        <h2>Vista previa del documento</h2>
+                        <p>
+                            Documento activo: <strong>@TituloActual()</strong>.
+                            La vista previa usa el idioma guardado en el proyecto.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="preview-shell">
+                    <iframe class="preview-frame" srcdoc="@_htmlActual"></iframe>
+                </div>
+            </article>
+        </section>
+
+        <aside class="side-column">
+            <article class="td-panel td-panel--compact td-panel--sticky">
+                <div class="td-panel__header">
+                    <div>
+                        <div class="section-kicker">Resumen vivo</div>
+                        <h2>Estado del informe</h2>
+                        <p>Información rápida del proyecto y del resultado actual.</p>
+                    </div>
+                </div>
+
+                <div class="summary-list">
+                    <div class="summary-row">
+                        <span class="summary-row__label">Estado del cálculo</span>
+                        <span class="summary-row__value @ClaseEstadoTexto()">@TextoEstadoCalculo()</span>
+                    </div>
+
+                    <div class="summary-row">
+                        <span class="summary-row__label">Idioma</span>
+                        <span class="summary-row__value">@IdiomaVisible()</span>
+                    </div>
+
+                    <div class="summary-row">
+                        <span class="summary-row__label">Informe activo</span>
+                        <span class="summary-row__value">@TituloActual()</span>
+                    </div>
+
+                    <div class="summary-row">
+                        <span class="summary-row__label">Proyecto</span>
+                        <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Proyecto?.NombreProyecto)</span>
+                    </div>
+
+                    <div class="summary-row">
+                        <span class="summary-row__label">Cliente</span>
+                        <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Proyecto?.ClienteReferencia)</span>
+                    </div>
+
+                    <div class="summary-row">
+                        <span class="summary-row__label">Fabricante</span>
+                        <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Proyecto?.Fabricante)</span>
+                    </div>
+
+                    <div class="summary-row">
+                        <span class="summary-row__label">Normativa</span>
+                        <span class="summary-row__value">@TextoSeguro(EstadoProyecto.Proyecto?.Normativa)</span>
+                    </div>
+
+                    <div class="summary-row">
+                        <span class="summary-row__label">Modelo</span>
+                        <span class="summary-row__value">@ModeloVisibleInforme()</span>
+                    </div>
+
+                    <div class="summary-row">
+                        <span class="summary-row__label">Anillos calculados</span>
+                        <span class="summary-row__value">@(EstadoProyecto.Resultado?.Anillos?.Count ?? 0)</span>
+                    </div>
+
+                    <div class="summary-row">
+                        <span class="summary-row__label">Resultado válido</span>
+                        <span class="summary-row__value">@((EstadoProyecto.Resultado?.EsValido ?? false) ? "Sí" : "No")</span>
+                    </div>
+
+                    <button type="button" class="action-btn action-btn--primary" @onclick="GuardarProyecto">
+                        Guardar proyecto
+                    </button>
+
+                    <div class="summary-row">
+                        <span class="summary-row__label">Resumen</span>
+                        <span class="summary-row__value">@ResumenEstadoCalculo()</span>
+                    </div>
+                </div>
+            </article>
+        </aside>
+    </div>
 </div>
 
-@if (_mostrarSelectorMapa)
+@if (_mostrarSimuladorPresupuesto)
 {
-    <div class="map-modal-overlay" @onclick="CerrarSelectorMapa"></div>
+    <div class="budget-modal-overlay" @onclick="CerrarSimuladorPresupuesto"></div>
 
-    <section class="map-modal map-modal--pro" @onclick:stopPropagation="true">
-        <div class="map-modal__header">
+    <section class="budget-modal" @onclick:stopPropagation="true">
+        <div class="budget-modal__header">
             <div>
-                <div class="section-kicker">Análisis de emplazamiento</div>
-                <h2>Seleccionar ubicación de instalación</h2>
-                <p>Busca una ciudad o haz clic en el mapa. Si el servicio de mapas no responde, puedes rellenar los campos manualmente.</p>
+                <div class="section-kicker">Simulador económico</div>
+                <h2>Simulador de presupuesto</h2>
+                <p>
+                    Simula escenarios comerciales sobre el presupuesto actual. No modifica cálculos,
+                    no cambia los JSON internos y no guarda importes en el proyecto.
+                </p>
             </div>
-            <button type="button" class="map-modal__close" @onclick="CerrarSelectorMapa">×</button>
+            <button type="button" class="budget-modal__close" @onclick="CerrarSimuladorPresupuesto">×</button>
         </div>
 
-        <div class="map-modal__body map-modal__body--pro">
-            <div class="map-workspace">
-                <div class="map-search-card">
-                    <label>Buscar ubicación</label>
-                    <div class="map-search-row">
-                        <InputText class="td-input" @bind-Value="_busquedaUbicacion" placeholder="Ejemplo: Ciudad Real, España" />
-                        <button type="button" class="td-btn td-btn--primary" @onclick="BuscarUbicacionAsync">Buscar</button>
+        @if (!string.IsNullOrWhiteSpace(_simuladorMensaje))
+        {
+            <div class="budget-warning">@_simuladorMensaje</div>
+        }
+        else
+        {
+            <div class="budget-modal__grid">
+                <div class="budget-panel budget-panel--base">
+                    <div class="budget-panel__title">Base real del proyecto</div>
+                    <p class="budget-panel__note">
+                        Importes obtenidos del presupuesto actual generado por TankDesigner con cantidades calculadas
+                        y precios disponibles en los catálogos JSON internos.
+                    </p>
+
+                    <div class="budget-total-card budget-total-card--main">
+                        <span>Total base</span>
+                        <strong>@FormatoEuro(_simBaseTotal)</strong>
                     </div>
-                    @if (!string.IsNullOrWhiteSpace(_mensajeMapa))
-                    {
-                        <div class="map-message">@_mensajeMapa</div>
-                    }
+
+                    <div class="budget-breakdown">
+                        <div>
+                            <span>Materiales sin transporte</span>
+                            <strong>@FormatoEuro(_simBaseMaterialesSinTransporte)</strong>
+                        </div>
+                        <div>
+                            <span>Transporte catálogo</span>
+                            <strong>@FormatoEuro(_simBaseTransporte)</strong>
+                        </div>
+                        <div>
+                            <span>Instalación</span>
+                            <strong>@FormatoEuro(_simBaseInstalacion)</strong>
+                        </div>
+                    </div>
+
+                    <div class="budget-meta-grid">
+                        <div>
+                            <span>Líneas material</span>
+                            <strong>@_simLineasMaterial</strong>
+                        </div>
+                        <div>
+                            <span>Partidas instalación</span>
+                            <strong>@_simPartidasInstalacion</strong>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="large-map-shell large-map-shell--pro">
-                    <div id="emplazamientoLargeMap" class="large-map"></div>
-                </div>
+                <div class="budget-panel">
+                    <div class="budget-panel__title">Escenario comercial</div>
+                    <p class="budget-panel__note">
+                        Ajusta porcentajes manuales para estudiar ofertas, margen, descuentos o imprevistos.
+                        Por defecto todo está a 0%, por tanto coincide con el presupuesto base.
+                    </p>
 
-                <div class="map-info-card">
-                    <div>
-                        <span>Coordenadas</span>
-                        <strong>@TextoCoordenadas()</strong>
+                    <div class="budget-form-grid">
+                        <label>
+                            Nombre del escenario
+                            <input type="text" @bind="_simNombreEscenario" />
+                        </label>
+
+                        <label>
+                            Ajuste materiales (%)
+                            <input type="number" step="0.1" @bind="_simAjusteMateriales" />
+                        </label>
+
+                        <label>
+                            Ajuste transporte (%)
+                            <input type="number" step="0.1" @bind="_simAjusteTransporte" />
+                        </label>
+
+                        <label>
+                            Ajuste instalación (%)
+                            <input type="number" step="0.1" @bind="_simAjusteInstalacion" />
+                        </label>
+
+                        <label>
+                            Imprevistos (%)
+                            <input type="number" step="0.1" min="0" @bind="_simImprevistos" />
+                        </label>
+
+                        <label>
+                            Margen comercial (%)
+                            <input type="number" step="0.1" min="0" @bind="_simMargen" />
+                        </label>
+
+                        <label>
+                            Descuento final (%)
+                            <input type="number" step="0.1" min="0" @bind="_simDescuento" />
+                        </label>
                     </div>
-                    <div>
-                        <span>Fuente</span>
-                        <strong>@TextoSeguro(Emplazamiento.FuenteDatos)</strong>
-                    </div>
-                    <div>
-                        <span>Dirección detectada</span>
-                        <strong>@TextoDireccionResumen()</strong>
+
+                    <div class="budget-actions-row">
+                        <button type="button" class="action-btn action-btn--dark" @onclick="ReiniciarSimuladorPresupuesto">
+                            Reiniciar escenario
+                        </button>
                     </div>
                 </div>
             </div>
 
-            <div class="map-form-panel map-form-panel--pro">
-                <div class="form-grid form-grid--compact">
-                    <div class="field field--full">
-                        <label>Nombre ubicación / obra</label>
-                        <InputText class="td-input" @bind-Value="Emplazamiento.NombreUbicacion" />
-                        <small>Ejemplo: Planta industrial Ciudad Real, parcela cliente, obra norte...</small>
-                    </div>
-
-                    <div class="field">
-                        <label>Ciudad</label>
-                        <InputText class="td-input" @bind-Value="Emplazamiento.Ciudad" />
-                    </div>
-
-                    <div class="field">
-                        <label>Provincia</label>
-                        <InputText class="td-input" @bind-Value="Emplazamiento.Provincia" />
-                    </div>
-
-                    <div class="field">
-                        <label>País</label>
-                        <InputText class="td-input" @bind-Value="Emplazamiento.Pais" />
-                    </div>
-
-                    <div class="field">
-                        <label>Código postal</label>
-                        <InputText class="td-input" @bind-Value="Emplazamiento.CodigoPostal" />
-                    </div>
-
-                    <div class="field">
-                        <label>Latitud</label>
-                        <InputNumber class="td-input" @bind-Value="Emplazamiento.Latitud" />
-                    </div>
-
-                    <div class="field">
-                        <label>Longitud</label>
-                        <InputNumber class="td-input" @bind-Value="Emplazamiento.Longitud" />
-                    </div>
-
-                    <div class="field">
-                        <label>Tipo de entorno</label>
-                        <InputSelect class="td-input td-select" @bind-Value="Emplazamiento.TipoEntorno">
-                            @foreach (var item in _tiposEntorno)
-                            {
-                                <option value="@item">@(string.IsNullOrWhiteSpace(item) ? "Sin indicar" : item)</option>
-                            }
-                        </InputSelect>
-                    </div>
-
-                    <div class="field">
-                        <label>Exposición al viento</label>
-                        <InputSelect class="td-input td-select" @bind-Value="Emplazamiento.ExposicionViento">
-                            @foreach (var item in _exposicionesViento)
-                            {
-                                <option value="@item">@(string.IsNullOrWhiteSpace(item) ? "Sin indicar" : item)</option>
-                            }
-                        </InputSelect>
-                    </div>
-
-                    <div class="field">
-                        <label>Acceso a obra</label>
-                        <InputSelect class="td-input td-select" @bind-Value="Emplazamiento.AccesoObra">
-                            @foreach (var item in _accesosObra)
-                            {
-                                <option value="@item">@(string.IsNullOrWhiteSpace(item) ? "Sin indicar" : item)</option>
-                            }
-                        </InputSelect>
-                    </div>
-
-                    <div class="field">
-                        <label>Tipo de terreno</label>
-                        <InputSelect class="td-input td-select" @bind-Value="Emplazamiento.TipoTerreno">
-                            @foreach (var item in _tiposTerreno)
-                            {
-                                <option value="@item">@(string.IsNullOrWhiteSpace(item) ? "Sin indicar" : item)</option>
-                            }
-                        </InputSelect>
-                    </div>
-
-                    <div class="field field--full">
-                        <label>Ambiente</label>
-                        <InputSelect class="td-input td-select" @bind-Value="Emplazamiento.Ambiente">
-                            @foreach (var item in _ambientes)
-                            {
-                                <option value="@item">@(string.IsNullOrWhiteSpace(item) ? "Sin indicar" : item)</option>
-                            }
-                        </InputSelect>
-                    </div>
-
-                    <div class="field field--full">
-                        <label>Observaciones de instalación</label>
-                        <InputTextArea class="td-input" @bind-Value="Emplazamiento.ObservacionesInstalacion" />
-                        <small>Notas internas: acceso limitado, necesidad de grúa, zona de acopio, permisos, etc.</small>
-                    </div>
+            <div class="budget-results">
+                <div class="budget-result-card">
+                    <span>Materiales simulados</span>
+                    <strong>@FormatoEuro(SimMateriales())</strong>
+                    <small>@FormatoVariacion(SimMateriales(), _simBaseMaterialesSinTransporte)</small>
                 </div>
 
-                <div class="modal-analysis modal-analysis--pro">
-                    <div class="analysis-header">
-                        <div>
-                            <span>Complejidad global</span>
-                            <strong>@_analisis.ComplejidadGlobal</strong>
-                        </div>
-                        <div class="score-pill @ClaseScore()">
-                            <span>Índice</span>
-                            <strong>@TextoPuntuacion()</strong>
-                        </div>
-                    </div>
-
-                    <div class="risk-grid risk-grid--modal">
-                        <div class="risk-card @ClaseRiesgo(_analisis.RiesgoViento)">
-                            <span>Viento</span>
-                            <strong>@_analisis.RiesgoViento</strong>
-                        </div>
-                        <div class="risk-card @ClaseRiesgo(_analisis.RiesgoCorrosion)">
-                            <span>Corrosión</span>
-                            <strong>@_analisis.RiesgoCorrosion</strong>
-                        </div>
-                        <div class="risk-card @ClaseRiesgo(_analisis.DificultadMontaje)">
-                            <span>Montaje</span>
-                            <strong>@_analisis.DificultadMontaje</strong>
-                        </div>
-                    </div>
-
-                    <div class="recommendation-box">
-                        <strong>Resumen para informe</strong>
-                        <p>@_analisis.ResumenProfesional</p>
-                    </div>
-
-                    <div class="analysis-columns">
-                        <div>
-                            <h4>Factores detectados</h4>
-                            <ul class="recommendation-list">
-                                @foreach (var factor in _analisis.FactoresDetectados)
-                                {
-                                    <li>@factor</li>
-                                }
-                            </ul>
-                        </div>
-                        <div>
-                            <h4>Acciones recomendadas</h4>
-                            <ul class="recommendation-list">
-                                @foreach (var accion in _analisis.AccionesRecomendadas)
-                                {
-                                    <li>@accion</li>
-                                }
-                            </ul>
-                        </div>
-                    </div>
+                <div class="budget-result-card">
+                    <span>Transporte simulado</span>
+                    <strong>@FormatoEuro(SimTransporte())</strong>
+                    <small>@FormatoVariacion(SimTransporte(), _simBaseTransporte)</small>
                 </div>
 
-                <div class="modal-actions">
-                    <button type="button" class="td-btn td-btn--ghost" @onclick="ActualizarMarcadorManual">Actualizar marcador</button>
-                    <button type="button" class="td-btn td-btn--primary" @onclick="GuardarUbicacion">Guardar ubicación</button>
+                <div class="budget-result-card">
+                    <span>Instalación simulada</span>
+                    <strong>@FormatoEuro(SimInstalacion())</strong>
+                    <small>@FormatoVariacion(SimInstalacion(), _simBaseInstalacion)</small>
+                </div>
+
+                <div class="budget-result-card">
+                    <span>Subtotal simulado</span>
+                    <strong>@FormatoEuro(SimSubtotal())</strong>
+                    <small>Antes de margen, descuento e imprevistos</small>
+                </div>
+
+                <div class="budget-result-card">
+                    <span>Importe imprevistos</span>
+                    <strong>@FormatoEuro(SimImporteImprevistos())</strong>
+                    <small>@FormatoPorcentaje(_simImprevistos)</small>
+                </div>
+
+                <div class="budget-result-card">
+                    <span>Importe margen</span>
+                    <strong>@FormatoEuro(SimImporteMargen())</strong>
+                    <small>@FormatoPorcentaje(_simMargen)</small>
+                </div>
+
+                <div class="budget-result-card">
+                    <span>Importe descuento</span>
+                    <strong>-@FormatoEuro(SimImporteDescuento())</strong>
+                    <small>@FormatoPorcentaje(_simDescuento)</small>
+                </div>
+
+                <div class="budget-result-card budget-result-card--total">
+                    <span>Total escenario</span>
+                    <strong>@FormatoEuro(SimTotalEscenario())</strong>
+                    <small>@FormatoVariacion(SimTotalEscenario(), _simBaseTotal)</small>
                 </div>
             </div>
-        </div>
+
+            <div class="budget-note-box">
+                <strong>Uso recomendado:</strong>
+                este simulador sirve para preparar escenarios de oferta sin alterar el diseño técnico.
+                El presupuesto oficial sigue siendo el informe de presupuesto generado por el sistema.
+            </div>
+        }
     </section>
 }
 
-@code {
-    private const string MiniMapId = "emplazamientoMiniMap";
-    private const string LargeMapId = "emplazamientoLargeMap";
+@if (_mostrarVista3D)
+{
+    <div class="vista3d-overlay" @onclick="CerrarVista3D"></div>
 
-    private readonly AnalisisEmplazamientoService _analisisService = new();
-    private DotNetObjectReference<Instalacion>? _dotNetRef;
+    <section class="vista3d-modal" @onclick:stopPropagation="true">
+        <div class="vista3d-modal__header">
+            <div>
+                <div class="section-kicker">Visualización 3D</div>
+                <h2>Modelo tridimensional del tanque</h2>
+                <p>
+                    Representación basada en los resultados calculados del proyecto actual.
+                </p>
+            </div>
 
-    private List<string> _tiposEscalera = new();
-    private List<string> _lugaresObra = new();
+            <button type="button" class="vista3d-modal__close" @onclick="CerrarVista3D">
+                ×
+            </button>
+        </div>
+        <Vista3D Resultado="EstadoProyecto.Resultado"
+                 Tanque="EstadoProyecto.Tanque"
+                 Cargas="EstadoProyecto.Cargas"
+                 Instalacion="EstadoProyecto.Instalacion"
+                 Proyecto="EstadoProyecto.Proyecto"
+                 OnConfiguracion3DChanged="GuardarConfiguracion3D" />
+    </section>
+}
 
-    private readonly List<string> _tiposEntorno = new() { "", "Urbano", "Industrial", "Rural", "Costero" };
-    private readonly List<string> _exposicionesViento = new() { "", "Protegida", "Normal", "Abierta", "Muy expuesta" };
-    private readonly List<string> _accesosObra = new() { "", "Bueno", "Medio", "Difícil" };
-    private readonly List<string> _tiposTerreno = new() { "", "Normal", "Irregular", "Blando", "Elevado" };
-    private readonly List<string> _ambientes = new() { "", "Interior seco", "Exterior normal", "Costero/corrosivo", "Industrial agresivo" };
+<button type="button" class="ia-fab" @onclick="AbrirPanelIa" title="Asistente IA">
+    IA
+</button>
 
-    private bool _mostrarSelectorMapa;
-    private bool _miniMapaInicializado;
-    private bool _mapaGrandeInicializado;
-    private string _busquedaUbicacion = string.Empty;
-    private string _mensajeMapa = string.Empty;
-    private AnalisisEmplazamientoResultadoModel _analisis = new();
+@if (_mostrarPanelIa)
+{
+    <div class="ia-modal-overlay" @onclick="CerrarPanelIa"></div>
 
-    private EmplazamientoInstalacionModel Emplazamiento => EstadoProyecto.Instalacion.Emplazamiento;
-    private bool TieneEmplazamiento => Emplazamiento.TieneDatos;
+    <div class="ia-modal-shell">
+        <section class="ia-modal" @onclick:stopPropagation="true">
+            <div class="ia-modal__header">
+                <div class="ia-modal__title-wrap">
+                    <div class="section-kicker">Asistente técnico</div>
+                    <h2>Análisis inteligente del informe</h2>
+                    <p>
+                        Revisa coherencia, advertencias e inconsistencias del proyecto actual
+                        a partir de los datos cargados en el sistema.
+                    </p>
+                </div>
 
-    protected override void OnInitialized()
-    {
-        EstadoProyecto.OnChange += OnEstadoProyectoChanged;
+                <button type="button" class="ia-modal__close" @onclick="CerrarPanelIa">×</button>
+            </div>
 
-        EstadoProyecto.Instalacion ??= new InstalacionModel();
-        EstadoProyecto.Instalacion.Emplazamiento ??= new EmplazamientoInstalacionModel();
+            <div class="ia-modal__toolbar">
+                <button type="button"
+                        class="action-btn action-btn--blue ia-modal__analyze-btn"
+                        @onclick="AnalizarProyectoConIa"
+                        disabled="@_analizandoIa">
+                    @(_analizandoIa ? "Analizando..." : "Analizar informe")
+                </button>
+            </div>
 
-        _tiposEscalera = Opciones.ObtenerTiposEscalera();
-        _lugaresObra = Opciones.ObtenerLugaresObra();
-
-        if (string.IsNullOrWhiteSpace(EstadoProyecto.Instalacion.TipoEscalera))
-            EstadoProyecto.Instalacion.TipoEscalera = "Sin escalera";
-
-        if (string.IsNullOrWhiteSpace(EstadoProyecto.Instalacion.LugarObra))
-            EstadoProyecto.Instalacion.LugarObra = "Nacional";
-
-        if (EstadoProyecto.Instalacion.TamanoCuadrilla <= 0)
-            EstadoProyecto.Instalacion.TamanoCuadrilla = 4;
-
-        if (EstadoProyecto.Instalacion.HorasTrabajoDia <= 0)
-            EstadoProyecto.Instalacion.HorasTrabajoDia = 8;
-
-        if (EstadoProyecto.Instalacion.DiasLluviaPorcentaje <= 0)
-            EstadoProyecto.Instalacion.DiasLluviaPorcentaje = 10;
-
-        if (EstadoProyecto.Instalacion.SiteManager <= 0)
-            EstadoProyecto.Instalacion.SiteManager = 1;
-
-        if (EstadoProyecto.Instalacion.TecnicoSeguridad <= 0)
-            EstadoProyecto.Instalacion.TecnicoSeguridad = 1;
-
-        RecalcularAnalisis();
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        // Importante: no inicializamos el mini mapa solo en firstRender.
-        // Al refrescar, MainLayout restaura el proyecto desde localStorage unos instantes después
-        // y la página se vuelve a pintar. Si el mapa se creó antes de tener tamaño real o antes de
-        // recuperar las coordenadas, Leaflet puede quedarse en blanco. Por eso lo reintentamos
-        // siempre que esté marcado como no inicializado.
-        if (!_miniMapaInicializado)
-        {
-            _dotNetRef ??= DotNetObjectReference.Create(this);
-            _miniMapaInicializado = true;
-            await InicializarMapaAsync(MiniMapId, false);
-            await ActualizarMarcadoresMapaAsync();
-        }
-
-        if (_mostrarSelectorMapa && !_mapaGrandeInicializado)
-        {
-            _mapaGrandeInicializado = true;
-            await InicializarMapaAsync(LargeMapId, true);
-            await ActualizarMarcadoresMapaAsync();
-        }
-    }
-
-    private async void OnEstadoProyectoChanged()
-    {
-        await InvokeAsync(async () =>
-        {
-            EstadoProyecto.Instalacion ??= new InstalacionModel();
-            EstadoProyecto.Instalacion.Emplazamiento ??= new EmplazamientoInstalacionModel();
-            RecalcularAnalisis();
-
-            // Si el estado se ha restaurado después de un F5, forzamos una recreación limpia
-            // del mapa. Esto evita el mapa gris/blanco cuando Leaflet se inicializa antes de que
-            // el contenedor tenga tamaño definitivo.
-            _miniMapaInicializado = false;
-            _mapaGrandeInicializado = false;
-            try
+            @if (!string.IsNullOrWhiteSpace(_errorIa))
             {
-                await JS.InvokeVoidAsync("tankDesignerMaps.destroy", MiniMapId);
-                await JS.InvokeVoidAsync("tankDesignerMaps.destroy", LargeMapId);
-            }
-            catch
-            {
+                <div class="ia-status ia-status--error">
+                    <strong>Error:</strong> @_errorIa
+                </div>
             }
 
-            StateHasChanged();
-        });
-    }
-
-    private async Task ActualizarMarcadoresMapaAsync()
-    {
-        if (!Emplazamiento.Latitud.HasValue || !Emplazamiento.Longitud.HasValue)
-            return;
-
-        try
-        {
-            if (_miniMapaInicializado)
-                await JS.InvokeVoidAsync("tankDesignerMaps.setMarker", MiniMapId, Emplazamiento.Latitud.Value, Emplazamiento.Longitud.Value, 12);
-
-            if (_mapaGrandeInicializado)
-                await JS.InvokeVoidAsync("tankDesignerMaps.setMarker", LargeMapId, Emplazamiento.Latitud.Value, Emplazamiento.Longitud.Value, 13);
-        }
-        catch
-        {
-            // Si el mapa no está disponible, mantenemos los datos manuales sin bloquear la pantalla.
-        }
-    }
-
-    private async Task InicializarMapaAsync(string id, bool interactivo)
-    {
-        double lat = Emplazamiento.Latitud ?? 40.4168;
-        double lng = Emplazamiento.Longitud ?? -3.7038;
-        int zoom = Emplazamiento.Latitud.HasValue && Emplazamiento.Longitud.HasValue ? 12 : 6;
-
-        try
-        {
-            await JS.InvokeVoidAsync("tankDesignerMaps.init", id, new
+            @if (_analizandoIa)
             {
-                lat,
-                lng,
-                zoom,
-                interactive = interactivo,
-                dotNetRef = interactivo ? _dotNetRef : null
-            });
-        }
-        catch
-        {
-            _mensajeMapa = "No se ha podido cargar el mapa. Puedes introducir los datos manualmente.";
-        }
-    }
-
-    private async Task AbrirSelectorMapa()
-    {
-        _mostrarSelectorMapa = true;
-        _mapaGrandeInicializado = false;
-        _mensajeMapa = string.Empty;
-        RecalcularAnalisis();
-        await Task.CompletedTask;
-    }
-
-    private async Task CerrarSelectorMapa()
-    {
-        _mostrarSelectorMapa = false;
-        _mapaGrandeInicializado = false;
-
-        try
-        {
-            await JS.InvokeVoidAsync("tankDesignerMaps.destroy", LargeMapId);
-        }
-        catch
-        {
-        }
-    }
-
-    private async Task BuscarUbicacionAsync()
-    {
-        _mensajeMapa = string.Empty;
-
-        if (string.IsNullOrWhiteSpace(_busquedaUbicacion))
-        {
-            _mensajeMapa = "Escribe una ciudad, provincia o dirección para buscar.";
-            return;
-        }
-
-        try
-        {
-            var resultado = await JS.InvokeAsync<UbicacionMapaDto?>("tankDesignerMaps.searchLocation", LargeMapId, _busquedaUbicacion);
-
-            if (resultado == null)
-            {
-                _mensajeMapa = "No se ha encontrado ninguna ubicación. Prueba con una búsqueda más concreta.";
-                return;
+                <div class="ia-loading-box">
+                    <div class="ia-loading-box__spinner"></div>
+                    <div class="ia-loading-box__text">
+                        <h3>Analizando proyecto</h3>
+                        <p>La IA está revisando los datos técnicos actuales.</p>
+                    </div>
+                </div>
             }
-
-            AplicarUbicacion(resultado);
-            _mensajeMapa = "Ubicación detectada y campos completados automáticamente.";
-        }
-        catch
-        {
-            _mensajeMapa = "No se ha podido buscar la ubicación. Puedes rellenar los campos manualmente.";
-        }
-    }
-
-    private async Task GuardarUbicacion()
-    {
-        Emplazamiento.UbicacionSeleccionada = Emplazamiento.TieneDatos;
-        RecalcularAnalisis();
-        await ActualizarMiniMapaAsync();
-        await CerrarSelectorMapa();
-    }
-
-    private async Task LimpiarUbicacion()
-    {
-        EstadoProyecto.Instalacion.Emplazamiento = new EmplazamientoInstalacionModel();
-        _busquedaUbicacion = string.Empty;
-        _mensajeMapa = string.Empty;
-        RecalcularAnalisis();
-        await ActualizarMiniMapaAsync();
-    }
-
-    private async Task ActualizarMiniMapaAsync()
-    {
-        try
-        {
-            if (Emplazamiento.Latitud.HasValue && Emplazamiento.Longitud.HasValue)
+            else if (_resultadoIa is not null)
             {
-                await JS.InvokeVoidAsync("tankDesignerMaps.setMarker", MiniMapId, Emplazamiento.Latitud.Value, Emplazamiento.Longitud.Value, 12);
+                <div class="ia-results">
+                    <div class="ia-results__top">
+                        <div class="ia-summary-card">
+                            <div class="ia-summary-card__label">Resumen general</div>
+                            <p>@_resultadoIa.ResumenGeneral</p>
+                        </div>
+
+                        <div class="ia-risk-card ia-risk-card--@((_resultadoIa.NivelRiesgo ?? "").ToLower())">
+                            <span class="ia-risk-card__label">Nivel de riesgo</span>
+                            <strong>@_resultadoIa.NivelRiesgo</strong>
+                        </div>
+                    </div>
+
+                    @if (_resultadoIa.Hallazgos?.Any() == true)
+                    {
+                        <div class="ia-finding-list">
+                            @foreach (var hallazgo in _resultadoIa.Hallazgos.OrderByDescending(h => h.Prioridad))
+                            {
+                                <article class="ia-finding-card ia-finding-card--@((hallazgo.Tipo ?? "").ToLower())">
+                                    <div class="ia-finding-card__head">
+                                        <span class="ia-chip ia-chip--@((hallazgo.Tipo ?? "").ToLower())">
+                                            @hallazgo.Tipo
+                                        </span>
+                                        <span class="ia-finding-card__priority">
+                                            Prioridad @hallazgo.Prioridad
+                                        </span>
+                                    </div>
+
+                                    <h3>@hallazgo.Titulo</h3>
+
+                                    @if (!string.IsNullOrWhiteSpace(hallazgo.Campo))
+                                    {
+                                        <div class="ia-finding-card__field">
+                                            Campo: @hallazgo.Campo
+                                        </div>
+                                    }
+
+                                    <p>@hallazgo.Descripcion</p>
+
+                                    @if (!string.IsNullOrWhiteSpace(hallazgo.Recomendacion))
+                                    {
+                                        <div class="ia-finding-card__recommendation">
+                                            <strong>Recomendación:</strong> @hallazgo.Recomendacion
+                                        </div>
+                                    }
+                                </article>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="ia-status">
+                            No se han detectado hallazgos para mostrar.
+                        </div>
+                    }
+                </div>
             }
             else
             {
-                await JS.InvokeVoidAsync("tankDesignerMaps.setMarker", MiniMapId, 40.4168, -3.7038, 6);
+                <div class="ia-empty-state">
+                    <div class="ia-empty-state__icon">✦</div>
+                    <h3>Asistente listo</h3>
+                    <p>
+                        Pulsa en <strong>Analizar informe</strong> para revisar el proyecto actual.
+                    </p>
+                </div>
             }
-        }
-        catch
+        </section>
+    </div>
+
+    <div class="ia-question-box">
+        <div class="ia-question-box__header">
+            <h3>Consulta técnica</h3>
+            <p>Haz una pregunta concreta sobre el proyecto actual y su resultado.</p>
+        </div>
+
+        <textarea class="ia-question-box__textarea"
+                  @bind="_preguntaIa"
+                  placeholder="Ejemplo: ¿Qué incoherencias detectas entre las cargas y el resultado del cálculo?">
+                </textarea>
+
+        <div class="ia-question-box__actions">
+            <button type="button"
+                    class="action-btn action-btn--dark"
+                    @onclick="PreguntarIa"
+                    disabled="@_preguntandoIa">
+                @(_preguntandoIa ? "Consultando..." : "Preguntar a la IA")
+            </button>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(_respuestaIa))
         {
+            <div class="ia-answer-box">
+                <div class="ia-answer-box__label">Respuesta de la IA</div>
+                <p>@_respuestaIa</p>
+            </div>
         }
-    }
+    </div>
+}
 
-    private async Task ActualizarMarcadorManual()
+@code {
+    private string _informeSeleccionado = "calculo";
+    private string _htmlActual = "";
+    private string _mensaje = "";
+
+    private bool _mostrarVista3D = false;
+    private bool _mostrarPanelIa = false;
+    private bool _analizandoIa = false;
+    private bool _preguntandoIa = false;
+
+    private string? _errorIa;
+    private AiAnalisisResultadoDto? _resultadoIa;
+    private string _preguntaIa = string.Empty;
+    private string? _respuestaIa;
+
+    private bool _mostrarSimuladorPresupuesto = false;
+    private string _simuladorMensaje = string.Empty;
+    private string _simNombreEscenario = "Escenario 1";
+    private decimal _simBaseMaterialesSinTransporte = 0m;
+    private decimal _simBaseTransporte = 0m;
+    private decimal _simBaseInstalacion = 0m;
+    private decimal _simBaseTotal = 0m;
+    private int _simLineasMaterial = 0;
+    private int _simPartidasInstalacion = 0;
+    private decimal _simAjusteMateriales = 0m;
+    private decimal _simAjusteTransporte = 0m;
+    private decimal _simAjusteInstalacion = 0m;
+    private decimal _simImprevistos = 0m;
+    private decimal _simMargen = 0m;
+    private decimal _simDescuento = 0m;
+
+
+    private void AbrirSimuladorPresupuesto()
     {
-        Emplazamiento.UbicacionSeleccionada = Emplazamiento.TieneDatos;
-        RecalcularAnalisis();
-
-        if (Emplazamiento.Latitud.HasValue && Emplazamiento.Longitud.HasValue)
-        {
-            try
-            {
-                await JS.InvokeVoidAsync("tankDesignerMaps.setMarker", LargeMapId, Emplazamiento.Latitud.Value, Emplazamiento.Longitud.Value, 13);
-                _mensajeMapa = "Marcador actualizado con las coordenadas manuales.";
-            }
-            catch
-            {
-                _mensajeMapa = "No se ha podido mover el marcador. Los datos manuales se conservarán.";
-            }
-        }
-    }
-
-    [JSInvokable]
-    public void ActualizarUbicacionDesdeMapa(UbicacionMapaDto ubicacion)
-    {
-        AplicarUbicacion(ubicacion);
-        _mensajeMapa = "Ubicación detectada desde el mapa.";
-        StateHasChanged();
-    }
-
-    private void AplicarUbicacion(UbicacionMapaDto? ubicacion)
-    {
-        if (ubicacion == null)
-            return;
-
-        Emplazamiento.Latitud = Math.Round(ubicacion.Latitud, 6);
-        Emplazamiento.Longitud = Math.Round(ubicacion.Longitud, 6);
-        Emplazamiento.UbicacionSeleccionada = true;
-
-        if (!string.IsNullOrWhiteSpace(ubicacion.NombreUbicacion))
-            Emplazamiento.NombreUbicacion = ubicacion.NombreUbicacion.Trim();
-
-        if (!string.IsNullOrWhiteSpace(ubicacion.Ciudad))
-            Emplazamiento.Ciudad = ubicacion.Ciudad.Trim();
-
-        if (!string.IsNullOrWhiteSpace(ubicacion.Provincia))
-            Emplazamiento.Provincia = ubicacion.Provincia.Trim();
-
-        if (!string.IsNullOrWhiteSpace(ubicacion.Pais))
-            Emplazamiento.Pais = ubicacion.Pais.Trim();
-
-        if (!string.IsNullOrWhiteSpace(ubicacion.CodigoPostal))
-            Emplazamiento.CodigoPostal = ubicacion.CodigoPostal.Trim();
-
-        if (!string.IsNullOrWhiteSpace(ubicacion.DireccionResumen))
-            Emplazamiento.DireccionResumen = ubicacion.DireccionResumen.Trim();
-
-        if (!string.IsNullOrWhiteSpace(ubicacion.FuenteDatos))
-            Emplazamiento.FuenteDatos = ubicacion.FuenteDatos.Trim();
-
-        if (!string.IsNullOrWhiteSpace(ubicacion.FechaConsulta))
-            Emplazamiento.FechaConsulta = ubicacion.FechaConsulta.Trim();
-
-        RecalcularAnalisis();
-    }
-
-    private void RecalcularAnalisis()
-    {
-        _analisis = _analisisService.Analizar(Emplazamiento);
-    }
-
-    private string TextoSeguro(string? texto)
-    {
-        return string.IsNullOrWhiteSpace(texto) ? "—" : texto.Trim();
-    }
-
-    private string TextoUbicacion()
-    {
-        if (!string.IsNullOrWhiteSpace(Emplazamiento.NombreUbicacion))
-            return Emplazamiento.NombreUbicacion.Trim();
-
-        var partes = new[] { Emplazamiento.Ciudad, Emplazamiento.Provincia, Emplazamiento.Pais }
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Select(x => x.Trim())
-            .ToList();
-
-        return partes.Count > 0 ? string.Join(", ", partes) : "Ubicación sin nombre";
-    }
-
-    private string TextoDireccionResumen()
-    {
-        if (!string.IsNullOrWhiteSpace(Emplazamiento.DireccionResumen))
-            return Emplazamiento.DireccionResumen.Trim();
-
-        return TieneEmplazamiento ? TextoCoordenadas() : "Sin datos de dirección";
-    }
-
-    private string TextoCoordenadas()
-    {
-        if (!Emplazamiento.Latitud.HasValue || !Emplazamiento.Longitud.HasValue)
-            return "Coordenadas sin indicar";
-
-        return $"Lat. {Emplazamiento.Latitud.Value:0.######} · Long. {Emplazamiento.Longitud.Value:0.######}";
-    }
-
-    private string TextoCoordenadasCorto()
-    {
-        if (!Emplazamiento.Latitud.HasValue || !Emplazamiento.Longitud.HasValue)
-            return "—";
-
-        return $"{Emplazamiento.Latitud.Value:0.####}, {Emplazamiento.Longitud.Value:0.####}";
-    }
-
-    private string TextoPuntuacion()
-    {
-        return TieneEmplazamiento ? $"{_analisis.PuntuacionInstalacion}/100" : "—";
-    }
-
-    private IEnumerable<string> EtiquetasEmplazamiento()
-    {
-        if (!string.IsNullOrWhiteSpace(Emplazamiento.TipoEntorno))
-            yield return Emplazamiento.TipoEntorno;
-
-        if (!string.IsNullOrWhiteSpace(Emplazamiento.ExposicionViento))
-            yield return $"Viento: {Emplazamiento.ExposicionViento}";
-
-        if (!string.IsNullOrWhiteSpace(Emplazamiento.AccesoObra))
-            yield return $"Acceso: {Emplazamiento.AccesoObra}";
-
-        if (!string.IsNullOrWhiteSpace(Emplazamiento.TipoTerreno))
-            yield return $"Terreno: {Emplazamiento.TipoTerreno}";
-
-        if (!string.IsNullOrWhiteSpace(Emplazamiento.Ambiente))
-            yield return Emplazamiento.Ambiente;
-    }
-
-    private string ClaseRiesgo(string? valor)
-    {
-        string texto = (valor ?? string.Empty).Trim().ToLowerInvariant();
-
-        if (texto == "alto" || texto == "alta")
-            return "risk-card--high";
-
-        if (texto == "medio" || texto == "media")
-            return "risk-card--medium";
-
-        if (texto == "bajo" || texto == "baja")
-            return "risk-card--low";
-
-        return "risk-card--empty";
-    }
-
-    private string ClaseScore()
-    {
-        if (!TieneEmplazamiento)
-            return "score-pill--empty";
-
-        if (_analisis.PuntuacionInstalacion >= 82)
-            return "score-pill--low";
-
-        if (_analisis.PuntuacionInstalacion >= 58)
-            return "score-pill--medium";
-
-        return "score-pill--high";
-    }
-
-    private string ResumenRiesgos()
-    {
-        if (!TieneEmplazamiento)
-            return "No evaluado";
-
-        return $"{_analisis.ComplejidadGlobal} · {_analisis.PuntuacionInstalacion}/100";
-    }
-
-    private string ClaseResumenRiesgo()
-    {
-        if (_analisis.ComplejidadGlobal == "Alta")
-            return "summary-value-warn";
-
-        if (_analisis.ComplejidadGlobal == "Baja")
-            return "summary-value-ok";
-
-        return string.Empty;
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        EstadoProyecto.OnChange -= OnEstadoProyectoChanged;
+        _mostrarSimuladorPresupuesto = true;
+        _simuladorMensaje = string.Empty;
 
         try
         {
-            await JS.InvokeVoidAsync("tankDesignerMaps.destroy", MiniMapId);
-            await JS.InvokeVoidAsync("tankDesignerMaps.destroy", LargeMapId);
-        }
-        catch
-        {
-        }
+            if (!AsegurarResultadoActual())
+            {
+                _simuladorMensaje = "No se puede abrir el simulador porque el proyecto todavía no tiene un presupuesto calculable.";
+                return;
+            }
 
-        _dotNetRef?.Dispose();
+            CargarBaseSimuladorDesdePresupuestoActual();
+        }
+        catch (Exception ex)
+        {
+            _simuladorMensaje = $"No se pudo preparar el simulador: {ex.Message}";
+        }
     }
 
-    public class UbicacionMapaDto
+    private void CerrarSimuladorPresupuesto()
     {
-        public double Latitud { get; set; }
-        public double Longitud { get; set; }
-        public string NombreUbicacion { get; set; } = string.Empty;
-        public string Ciudad { get; set; } = string.Empty;
-        public string Provincia { get; set; } = string.Empty;
-        public string Pais { get; set; } = string.Empty;
-        public string CodigoPostal { get; set; } = string.Empty;
-        public string DireccionResumen { get; set; } = string.Empty;
-        public string FuenteDatos { get; set; } = string.Empty;
-        public string FechaConsulta { get; set; } = string.Empty;
+        _mostrarSimuladorPresupuesto = false;
+    }
+
+    private void CargarBaseSimuladorDesdePresupuestoActual()
+    {
+        var resumen = InformeHtmlService.ObtenerResumenEconomicoPresupuesto(
+            EstadoProyecto.Proyecto,
+            EstadoProyecto.Tanque,
+            EstadoProyecto.Cargas,
+            EstadoProyecto.Instalacion,
+            ResultadoActual());
+
+        _simBaseTransporte = Math.Max(0m, (decimal)resumen.TotalTransporte);
+        decimal materialesIncluyendoTransporte = Math.Max(0m, (decimal)resumen.TotalMateriales);
+        _simBaseMaterialesSinTransporte = Math.Max(0m, materialesIncluyendoTransporte - _simBaseTransporte);
+        _simBaseInstalacion = Math.Max(0m, (decimal)resumen.TotalInstalacion);
+        _simBaseTotal = Math.Max(0m, _simBaseMaterialesSinTransporte + _simBaseTransporte + _simBaseInstalacion);
+        _simLineasMaterial = resumen.NumeroLineasMaterial;
+        _simPartidasInstalacion = resumen.NumeroPartidasInstalacion;
+
+        if (_simBaseTotal <= 0m)
+        {
+            _simuladorMensaje = "El presupuesto actual no tiene importes suficientes para simular. Revisa que existan precios en los JSON internos y recalcula el proyecto.";
+        }
+    }
+
+    private void ReiniciarSimuladorPresupuesto()
+    {
+        _simNombreEscenario = "Escenario 1";
+        _simAjusteMateriales = 0m;
+        _simAjusteTransporte = 0m;
+        _simAjusteInstalacion = 0m;
+        _simImprevistos = 0m;
+        _simMargen = 0m;
+        _simDescuento = 0m;
+    }
+
+    private decimal SimMateriales() => AplicarPorcentaje(_simBaseMaterialesSinTransporte, _simAjusteMateriales);
+
+    private decimal SimTransporte() => AplicarPorcentaje(_simBaseTransporte, _simAjusteTransporte);
+
+    private decimal SimInstalacion() => AplicarPorcentaje(_simBaseInstalacion, _simAjusteInstalacion);
+
+    private decimal SimSubtotal() => SimMateriales() + SimTransporte() + SimInstalacion();
+
+    private decimal SimImporteImprevistos() => Math.Max(0m, SimSubtotal() * (_simImprevistos / 100m));
+
+    private decimal SimImporteMargen() => Math.Max(0m, (SimSubtotal() + SimImporteImprevistos()) * (_simMargen / 100m));
+
+    private decimal SimImporteDescuento() => Math.Max(0m, (SimSubtotal() + SimImporteImprevistos() + SimImporteMargen()) * (_simDescuento / 100m));
+
+    private decimal SimTotalEscenario()
+    {
+        decimal total = SimSubtotal() + SimImporteImprevistos() + SimImporteMargen() - SimImporteDescuento();
+        return Math.Max(0m, total);
+    }
+
+    private static decimal AplicarPorcentaje(decimal importe, decimal porcentaje)
+    {
+        decimal factor = 1m + (porcentaje / 100m);
+        if (factor < 0m)
+            factor = 0m;
+
+        return Math.Round(importe * factor, 2, MidpointRounding.AwayFromZero);
+    }
+
+    private static string FormatoEuro(decimal valor)
+    {
+        return valor.ToString("N2", new System.Globalization.CultureInfo("es-ES")) + " €";
+    }
+
+    private static string FormatoPorcentaje(decimal valor)
+    {
+        return valor.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + " %";
+    }
+
+    private static string FormatoVariacion(decimal valor, decimal baseValor)
+    {
+        decimal diferencia = valor - baseValor;
+
+        if (baseValor <= 0m)
+            return diferencia == 0m ? "Sin variación" : $"Diferencia {FormatoEuro(diferencia)}";
+
+        decimal porcentaje = diferencia / baseValor * 100m;
+        string signo = diferencia > 0m ? "+" : "";
+        return $"{signo}{FormatoEuro(diferencia)} ({signo}{porcentaje:0.##} %)";
+    }
+
+    private async Task GuardarConfiguracion3D()
+    {
+        await GuardarProyecto();
+    }
+    private async Task AbrirVista3D()
+    {
+        _mensaje = "HAS PULSADO EL BOTÓN 3D";
+        _mostrarVista3D = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task CerrarVista3D()
+    {
+        _mostrarVista3D = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void AbrirPanelIa()
+    {
+        _mostrarPanelIa = true;
+    }
+
+    private void CerrarPanelIa()
+    {
+        _mostrarPanelIa = false;
+    }
+
+    private async Task AnalizarProyectoConIa()
+    {
+        _analizandoIa = true;
+        _errorIa = null;
+        _resultadoIa = null;
+
+        try
+        {
+            if (EstadoProyecto.Proyecto is null ||
+                EstadoProyecto.Tanque is null ||
+                EstadoProyecto.Cargas is null ||
+                EstadoProyecto.Instalacion is null)
+            {
+                _errorIa = "Faltan datos del proyecto para poder analizarlo con IA.";
+                return;
+            }
+
+            _resultadoIa = await AiEngineeringService.AnalizarProyectoAsync(
+                EstadoProyecto.Proyecto,
+                EstadoProyecto.Tanque,
+                EstadoProyecto.Cargas,
+                EstadoProyecto.Instalacion,
+                EstadoProyecto.Resultado);
+        }
+        catch (Exception ex)
+        {
+            _errorIa = ex.Message;
+        }
+        finally
+        {
+            _analizandoIa = false;
+        }
+    }
+
+    private async Task PreguntarIa()
+    {
+        _preguntandoIa = true;
+        _errorIa = null;
+        _respuestaIa = null;
+
+        try
+        {
+            if (EstadoProyecto.Proyecto is null ||
+                EstadoProyecto.Tanque is null ||
+                EstadoProyecto.Cargas is null ||
+                EstadoProyecto.Instalacion is null)
+            {
+                _errorIa = "Faltan datos del proyecto para consultar a la IA.";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(_preguntaIa))
+            {
+                _errorIa = "Escribe una pregunta antes de enviarla.";
+                return;
+            }
+
+            _respuestaIa = await AiEngineeringService.PreguntarSobreProyectoAsync(
+                EstadoProyecto.Proyecto,
+                EstadoProyecto.Tanque,
+                EstadoProyecto.Cargas,
+                EstadoProyecto.Instalacion,
+                EstadoProyecto.Resultado,
+                _preguntaIa);
+        }
+        catch (Exception ex)
+        {
+            _errorIa = ex.Message;
+        }
+        finally
+        {
+            _preguntandoIa = false;
+        }
+    }
+
+    private async Task GuardarProyecto()
+    {
+        try
+        {
+            _mensaje = "";
+
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var usuario = await UserManager.GetUserAsync(authState.User);
+
+            if (usuario == null)
+            {
+                RedirigirALogin();
+                return;
+            }
+
+            if (!AsegurarResultadoActual())
+                return;
+
+            var id = await ProyectoPersistenciaService.GuardarAsync(
+                usuario.Id,
+                EstadoProyecto.ProyectoIdActual,
+                EstadoProyecto.Proyecto,
+                EstadoProyecto.Tanque,
+                EstadoProyecto.Cargas,
+                EstadoProyecto.Instalacion,
+                EstadoProyecto.Resultado);
+
+            EstadoProyecto.ProyectoIdActual = id;
+            _mensaje = "Proyecto guardado correctamente.";
+        }
+        catch (Exception ex)
+        {
+            _mensaje = $"Error al guardar el proyecto: {ex.Message}";
+        }
+    }
+
+    private async Task<bool> UsuarioAutenticadoAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        return authState.User?.Identity?.IsAuthenticated ?? false;
+    }
+
+    private void RedirigirALogin()
+    {
+        var rutaActual = new Uri(NavigationManager.Uri).PathAndQuery;
+        var destino = $"/login?returnUrl={Uri.EscapeDataString(rutaActual)}";
+        NavigationManager.NavigateTo(destino, forceLoad: true);
+    }
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            EstadoProyecto.Proyecto ??= new ProyectoGeneralModel();
+            EstadoProyecto.Tanque ??= new TankModel();
+            EstadoProyecto.Cargas ??= new CargasModel();
+            EstadoProyecto.Instalacion ??= new InstalacionModel();
+            EstadoProyecto.Resultado ??= new ResultadoCalculoModel();
+
+            if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.IdiomaInforme))
+                EstadoProyecto.Proyecto.IdiomaInforme = "ES";
+
+            AsegurarCalculoInicial();
+            GenerarHtmlActual();
+        }
+        catch (Exception ex)
+        {
+            _mensaje = $"Error al abrir el informe: {ex.Message}";
+            _htmlActual = CrearHtmlErrorInforme(ex.Message);
+        }
+    }
+
+    private void AsegurarCalculoInicial()
+    {
+        try
+        {
+            SincronizarGeometriaActual();
+
+            var errores = ValidacionService.ValidarTodo(
+                EstadoProyecto.Proyecto,
+                EstadoProyecto.Tanque,
+                EstadoProyecto.Cargas,
+                EstadoProyecto.Instalacion);
+
+            if (errores.Count > 0)
+            {
+                _mensaje = "Todavía no se puede calcular el proyecto: " + string.Join(" | ", errores);
+                return;
+            }
+
+            EstadoProyecto.Resultado = CalculoWebService.Calcular(
+                EstadoProyecto.Proyecto,
+                EstadoProyecto.Tanque,
+                EstadoProyecto.Cargas,
+                EstadoProyecto.Instalacion);
+
+            if (!string.IsNullOrWhiteSpace(EstadoProyecto.Resultado?.Mensaje))
+                _mensaje = EstadoProyecto.Resultado.Mensaje;
+        }
+        catch (Exception ex)
+        {
+            _mensaje = $"Error al preparar el cálculo inicial: {ex.Message}";
+        }
+    }
+
+    private void SincronizarGeometriaActual()
+    {
+        if (EstadoProyecto.Proyecto is null || EstadoProyecto.Tanque is null)
+            return;
+
+        EstadoProyecto.Tanque.AlturaPanelBase =
+            CalculoGeometriaService.ObtenerAlturaPanelBase(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);
+
+        EstadoProyecto.Tanque.AlturaTotal =
+            CalculoGeometriaService.ObtenerAlturaTotal(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);
+
+        EstadoProyecto.Tanque.Diametro =
+            CalculoGeometriaService.ObtenerDiametro(EstadoProyecto.Tanque, EstadoProyecto.Proyecto);
+    }
+
+    private string ModeloVisibleInforme()
+    {
+        string modeloTecnico = TextoSeguro(EstadoProyecto.Tanque?.Modelo);
+
+        if (modeloTecnico != "—")
+            return modeloTecnico;
+
+        string fabricante = (EstadoProyecto.Proyecto?.Fabricante ?? string.Empty).Trim();
+        int chapasPorAnillo = EstadoProyecto.Tanque?.ChapasPorAnillo ?? 0;
+        double numeroAnillos = EstadoProyecto.Tanque?.NumeroAnillos ?? 0;
+        string tipoMedioAnillo = (EstadoProyecto.Instalacion?.TipoMedioAnillo ?? string.Empty).Trim();
+
+        if (string.Equals(tipoMedioAnillo, "1/2 anillo", StringComparison.OrdinalIgnoreCase))
+            numeroAnillos += 0.5;
+        else if (string.Equals(tipoMedioAnillo, "1/4 anillo", StringComparison.OrdinalIgnoreCase))
+            numeroAnillos += 0.25;
+
+        if (chapasPorAnillo <= 0 || numeroAnillos <= 0)
+            return TextoSeguro(EstadoProyecto.Proyecto?.ModeloCalculo);
+
+        string letraFabricante = "";
+
+        if (fabricante.Contains("BALMORAL", StringComparison.OrdinalIgnoreCase))
+            letraFabricante = "B";
+        else if (fabricante.Contains("PERMASTORE", StringComparison.OrdinalIgnoreCase))
+            letraFabricante = "P";
+        else if (fabricante.Contains("DL2", StringComparison.OrdinalIgnoreCase))
+            letraFabricante = "D";
+        else if (!string.IsNullOrWhiteSpace(fabricante))
+            letraFabricante = fabricante.Trim().Substring(0, 1).ToUpperInvariant();
+
+        if (string.IsNullOrWhiteSpace(letraFabricante))
+            return TextoSeguro(EstadoProyecto.Proyecto?.ModeloCalculo);
+
+        string anillosTexto = numeroAnillos % 1 == 0
+            ? ((int)numeroAnillos).ToString(System.Globalization.CultureInfo.InvariantCulture)
+            : numeroAnillos.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
+
+        return $"{letraFabricante}{chapasPorAnillo}/{anillosTexto}";
+    }
+
+    private bool HayResultadoUtilizable()
+    {
+        var r = EstadoProyecto.Resultado;
+
+        if (r == null)
+            return false;
+
+        if (!r.EsValido)
+            return false;
+
+        if (r.Anillos != null && r.Anillos.Count > 0)
+            return true;
+
+        return r.Diametro > 0
+            && r.AlturaTotal > 0
+            && r.AlturaPanelBase > 0
+            && r.NumeroAnillos > 0
+            && r.ChapasPorAnillo > 0;
+    }
+
+    private bool RecalcularProyectoInterno()
+    {
+        SincronizarGeometriaActual();
+
+        var errores = ValidacionService.ValidarTodo(
+            EstadoProyecto.Proyecto,
+            EstadoProyecto.Tanque,
+            EstadoProyecto.Cargas,
+            EstadoProyecto.Instalacion);
+
+        if (errores.Count > 0)
+        {
+            _mensaje = "No se puede calcular hasta corregir estos datos: " + string.Join(" | ", errores);
+            return false;
+        }
+
+        EstadoProyecto.Resultado = CalculoWebService.Calcular(
+            EstadoProyecto.Proyecto,
+            EstadoProyecto.Tanque,
+            EstadoProyecto.Cargas,
+            EstadoProyecto.Instalacion);
+
+        _mensaje = EstadoProyecto.Resultado?.Mensaje ?? "Cálculo ejecutado.";
+        return EstadoProyecto.Resultado != null;
+    }
+
+    private async Task RecalcularProyecto()
+    {
+        try
+        {
+            _mensaje = "";
+            RecalcularProyectoInterno();
+            GenerarHtmlActual();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            _mensaje = $"Error al calcular: {ex.Message}";
+        }
+    }
+
+    private bool AsegurarResultadoActual()
+    {
+        if (HayResultadoUtilizable())
+            return true;
+
+        return RecalcularProyectoInterno();
+    }
+
+    private void CambiarInforme(string tipo)
+    {
+        _informeSeleccionado = tipo;
+        GenerarHtmlActual();
+        _mensaje = "";
+    }
+
+    private void CambiarIdioma(string idioma)
+    {
+        EstadoProyecto.Proyecto.IdiomaInforme = idioma;
+        GenerarHtmlActual();
+        _mensaje = "";
+    }
+
+    private ResultadoCalculoModel ResultadoActual()
+    {
+        return EstadoProyecto.Resultado ?? new ResultadoCalculoModel();
+    }
+
+    private void GenerarHtmlActual()
+    {
+        try
+        {
+            var resultado = ResultadoActual();
+
+            _htmlActual = _informeSeleccionado switch
+            {
+                "presupuesto" => InformeHtmlService.GenerarInformePresupuesto(
+                    EstadoProyecto.Proyecto,
+                    EstadoProyecto.Tanque,
+                    EstadoProyecto.Cargas,
+                    EstadoProyecto.Instalacion,
+                    resultado),
+
+                "materiales" => InformeHtmlService.GenerarInformeMateriales(
+                    EstadoProyecto.Proyecto,
+                    EstadoProyecto.Tanque,
+                    EstadoProyecto.Cargas,
+                    EstadoProyecto.Instalacion,
+                    resultado),
+
+                _ => InformeHtmlService.GenerarInformeCalculo(
+                    EstadoProyecto.Proyecto,
+                    EstadoProyecto.Tanque,
+                    EstadoProyecto.Cargas,
+                    EstadoProyecto.Instalacion,
+                    resultado)
+            };
+        }
+        catch (Exception ex)
+        {
+            _mensaje = $"Error generando el HTML del informe: {ex.Message}";
+            _htmlActual = CrearHtmlErrorInforme(ex.Message);
+        }
+    }
+    private static string CrearHtmlErrorInforme(string mensaje)
+    {
+        var mensajeSeguro = System.Net.WebUtility.HtmlEncode(mensaje);
+
+        return "<!DOCTYPE html>" +
+               "<html lang=\"es\">" +
+               "<head>" +
+               "<meta charset=\"utf-8\">" +
+               "<style>" +
+               "body {" +
+               "font-family: Arial, sans-serif;" +
+               "padding: 32px;" +
+               "color: #1f2937;" +
+               "}" +
+               ".box {" +
+               "border: 1px solid #fecaca;" +
+               "background: #fef2f2;" +
+               "color: #991b1b;" +
+               "padding: 20px;" +
+               "border-radius: 12px;" +
+               "}" +
+               "h1 {" +
+               "margin-top: 0;" +
+               "}" +
+               "</style>" +
+               "</head>" +
+               "<body>" +
+               "<div class=\"box\">" +
+               "<h1>No se pudo generar el informe</h1>" +
+               "<p>" + mensajeSeguro + "</p>" +
+               "<p>Recalcula el proyecto o revisa los datos de geometría, cargas e instalación.</p>" +
+               "</div>" +
+               "</body>" +
+               "</html>";
+    }
+    private async Task VistaPreviaVentana()
+    {
+        try
+        {
+            if (!AsegurarResultadoActual())
+                return;
+
+            GenerarHtmlActual();
+
+            var ok = await JS.InvokeAsync<bool>(
+                "tankInformes.openPreview",
+                TituloActual(),
+                _htmlActual);
+
+            if (!ok)
+                _mensaje = "No se pudo abrir la vista previa. Revisa si el navegador ha bloqueado la ventana emergente.";
+        }
+        catch (Exception ex)
+        {
+            _mensaje = $"Error al abrir la vista previa: {ex.Message}";
+        }
+    }
+
+    private async Task DescargarPdfActual()
+    {
+        try
+        {
+            _mensaje = "";
+
+            if (!await UsuarioAutenticadoAsync())
+            {
+                RedirigirALogin();
+                return;
+            }
+
+            if (!AsegurarResultadoActual())
+                return;
+
+            GenerarHtmlActual();
+
+            var nombre = _informeSeleccionado switch
+            {
+                "presupuesto" => EstadoProyecto.Proyecto.IdiomaInforme == "EN" ? "budget.pdf" : "presupuesto.pdf",
+                "materiales" => EstadoProyecto.Proyecto.IdiomaInforme == "EN" ? "materials-list.pdf" : "listado-materiales.pdf",
+                _ => EstadoProyecto.Proyecto.IdiomaInforme == "EN" ? "structural-calculation.pdf" : "calculo-estructural.pdf"
+            };
+
+            var pdf = await PdfRenderService.GenerarPdfDesdeHtmlAsync(_htmlActual);
+            var base64 = Convert.ToBase64String(pdf);
+
+            var resultado = await JS.InvokeAsync<ResultadoGuardadoJs>(
+                "tankInformes.saveFileFromBytes",
+                nombre,
+                "application/pdf",
+                base64);
+
+            if (!resultado.Ok && !resultado.Cancelled)
+                _mensaje = resultado.Message ?? "No se pudo guardar el PDF.";
+        }
+        catch (Exception ex)
+        {
+            _mensaje = $"Error al descargar PDF: {ex.Message}";
+        }
+    }
+
+    private class ResultadoGuardadoJs
+    {
+        public bool Ok { get; set; }
+        public bool Cancelled { get; set; }
+        public bool UsedPicker { get; set; }
+        public string? Message { get; set; }
+    }
+
+    private async Task DescargarTodosPdf()
+    {
+        try
+        {
+            _mensaje = "";
+
+            if (!await UsuarioAutenticadoAsync())
+            {
+                RedirigirALogin();
+                return;
+            }
+
+            if (!AsegurarResultadoActual())
+                return;
+
+            var resultado = ResultadoActual();
+
+            var htmlCalculo = InformeHtmlService.GenerarInformeCalculo(
+                EstadoProyecto.Proyecto,
+                EstadoProyecto.Tanque,
+                EstadoProyecto.Cargas,
+                EstadoProyecto.Instalacion,
+                resultado);
+
+            var htmlPresupuesto = InformeHtmlService.GenerarInformePresupuesto(
+                EstadoProyecto.Proyecto,
+                EstadoProyecto.Tanque,
+                EstadoProyecto.Cargas,
+                EstadoProyecto.Instalacion,
+                resultado);
+
+            var htmlMateriales = InformeHtmlService.GenerarInformeMateriales(
+                EstadoProyecto.Proyecto,
+                EstadoProyecto.Tanque,
+                EstadoProyecto.Cargas,
+                EstadoProyecto.Instalacion,
+                resultado);
+
+            var pdfCalculo = await PdfRenderService.GenerarPdfDesdeHtmlAsync(htmlCalculo);
+            var pdfPresupuesto = await PdfRenderService.GenerarPdfDesdeHtmlAsync(htmlPresupuesto);
+            var pdfMateriales = await PdfRenderService.GenerarPdfDesdeHtmlAsync(htmlMateriales);
+
+            using var ms = new MemoryStream();
+
+            using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, true))
+            {
+                var nombreCalculo = EstadoProyecto.Proyecto.IdiomaInforme == "EN"
+                    ? "structural-calculation.pdf"
+                    : "calculo-estructural.pdf";
+
+                var nombrePresupuesto = EstadoProyecto.Proyecto.IdiomaInforme == "EN"
+                    ? "budget.pdf"
+                    : "presupuesto.pdf";
+
+                var nombreMateriales = EstadoProyecto.Proyecto.IdiomaInforme == "EN"
+                    ? "materials-list.pdf"
+                    : "listado-materiales.pdf";
+
+                var e1 = zip.CreateEntry(nombreCalculo);
+                await using (var s1 = e1.Open())
+                    await s1.WriteAsync(pdfCalculo, 0, pdfCalculo.Length);
+
+                var e2 = zip.CreateEntry(nombrePresupuesto);
+                await using (var s2 = e2.Open())
+                    await s2.WriteAsync(pdfPresupuesto, 0, pdfPresupuesto.Length);
+
+                var e3 = zip.CreateEntry(nombreMateriales);
+                await using (var s3 = e3.Open())
+                    await s3.WriteAsync(pdfMateriales, 0, pdfMateriales.Length);
+            }
+
+            var zipBytes = ms.ToArray();
+
+            var zipNombre = EstadoProyecto.Proyecto.IdiomaInforme == "EN"
+                ? "tank-reports.zip"
+                : "informes-tanque.zip";
+
+            var ok = await JS.InvokeAsync<bool>(
+                "tankInformes.downloadFileFromBytes",
+                zipNombre,
+                "application/zip",
+                Convert.ToBase64String(zipBytes));
+
+            if (!ok)
+                _mensaje = "No se pudo descargar el ZIP con los informes.";
+        }
+        catch (Exception ex)
+        {
+            _mensaje = $"Error al descargar todos los informes: {ex.Message}";
+        }
+    }
+
+    private string ClaseInforme(string tipo) =>
+        _informeSeleccionado == tipo ? "report-card report-card--active" : "report-card";
+
+    private string ClaseIdioma(string idioma) =>
+        EstadoProyecto.Proyecto.IdiomaInforme == idioma ? "lang active" : "lang";
+
+    private string TituloActual() => _informeSeleccionado switch
+    {
+        "presupuesto" => EstadoProyecto.Proyecto.IdiomaInforme == "EN" ? "Budget" : "Presupuesto",
+        "materiales" => EstadoProyecto.Proyecto.IdiomaInforme == "EN" ? "Materials list" : "Listado de materiales",
+        _ => EstadoProyecto.Proyecto.IdiomaInforme == "EN" ? "Structural calculation" : "Cálculo estructural"
+    };
+
+    private string IdiomaVisible() =>
+        EstadoProyecto.Proyecto.IdiomaInforme == "EN" ? "English" : "Español";
+
+    private string TextoSeguro(string? texto) =>
+        string.IsNullOrWhiteSpace(texto) ? "—" : texto.Trim();
+
+    private string TextoEstadoCalculo()
+    {
+        if (EstadoProyecto.Resultado?.EsValido == true)
+            return "Resultado disponible";
+
+        return "Pendiente de revisión";
+    }
+
+    private string ClaseEstadoTexto()
+    {
+        if (EstadoProyecto.Resultado?.EsValido == true)
+            return "summary-value-ok";
+
+        return "summary-value-warn";
+    }
+
+    private string ResumenEstadoCalculo()
+    {
+        var anillos = EstadoProyecto.Resultado?.Anillos?.Count ?? 0;
+
+        if (EstadoProyecto.Resultado?.EsValido == true)
+            return $"Se han obtenido {anillos} anillos con datos de cálculo disponibles.";
+
+        return "Todavía faltan datos válidos o el cálculo debe revisarse.";
     }
 }
+
