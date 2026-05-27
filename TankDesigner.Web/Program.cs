@@ -208,8 +208,8 @@ app.Use(async (context, next) =>
     context.Response.Headers["Content-Security-Policy"] =
         "default-src 'self'; " +
         "img-src 'self' data: https:; " +
-        "style-src 'self' 'unsafe-inline'; " +
-        "script-src 'self' 'unsafe-inline'; " +
+        "style-src 'self' 'unsafe-inline' https://unpkg.com; " +
+        "script-src 'self' 'unsafe-inline' https://unpkg.com; " +
         "font-src 'self' data:; " +
         "connect-src 'self' https: wss:; " +
         "frame-ancestors 'none'; " +

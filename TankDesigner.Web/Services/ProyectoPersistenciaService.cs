@@ -163,6 +163,7 @@ namespace TankDesigner.Web.Services
             estado.Tanque ??= new TankModel();
             estado.Cargas ??= new CargasModel();
             estado.Instalacion ??= new InstalacionModel();
+            estado.Instalacion.Emplazamiento ??= new EmplazamientoInstalacionModel();
             estado.Resultado ??= new ResultadoCalculoModel();
 
             if (estado.Tanque.ChapasPorAnillo <= 0)

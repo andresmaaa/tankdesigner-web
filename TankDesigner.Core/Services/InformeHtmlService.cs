@@ -14,6 +14,7 @@ namespace TankDesigner.Core.Services
 
         private readonly CalculoTanqueService _calculoTanqueService = new();
         private readonly JsonCatalogService _jsonCatalogService = new();
+        private readonly AnalisisEmplazamientoService _analisisEmplazamientoService = new();
 
         // Contexto del informe actual.
         // Estos campos se cargan una vez con SetContext(...) y luego los reutilizo
@@ -181,6 +182,8 @@ namespace TankDesigner.Core.Services
             html.Append(LabelValue(Lang("Área proyectada", "Projected area"), roofProjectedArea > 0 ? Formato(roofProjectedArea, "0.##") + " m²" : "—"));
             html.Append(LabelValue(Lang("Ángulo superior", "Top angle"), topAngle));
             html.Append("</div></div>");
+
+            html.Append(GenerarBloqueEmplazamientoInstalacion());
 
             html.Append("<div class='grid3'>");
             html.Append($"<div class='block'><h3>{Html(Lang("Viento", "Wind"))}</h3>");
@@ -457,6 +460,8 @@ namespace TankDesigner.Core.Services
                 html.Append("</div>");
                 html.Append("</div>");
 
+                html.Append(GenerarBloqueEmplazamientoInstalacion());
+
                 html.Append("<table><thead><tr>");
                 html.Append($"<th>{Html(Lang("Código", "Code"))}</th>");
                 html.Append($"<th>{Html(Lang("Concepto", "Item"))}</th>");
@@ -554,6 +559,75 @@ namespace TankDesigner.Core.Services
             _cargas = cargas ?? new CargasModel();
             _instalacion = instalacion ?? new InstalacionModel();
             _resultado = resultado ?? new ResultadoCalculoModel();
+        }
+
+        private string GenerarBloqueEmplazamientoInstalacion()
+        {
+            var emplazamiento = _instalacion?.Emplazamiento;
+
+            if (emplazamiento == null || !emplazamiento.TieneDatos)
+                return string.Empty;
+
+            var analisis = _analisisEmplazamientoService.Analizar(emplazamiento);
+            var html = new StringBuilder();
+
+            html.Append($"<div class='section-title'>{Html(Lang("Ubicación y condiciones de instalación", "Installation location and conditions"))}</div>");
+            html.Append("<div class='grid2'>");
+            html.Append($"<div class='block'><h3>{Html(Lang("Emplazamiento", "Site location"))}</h3>");
+            html.Append(LabelValue(Lang("Ubicación", "Location"), Html(TextoUbicacionEmplazamiento(emplazamiento))));
+            html.Append(LabelValue(Lang("Ciudad", "City"), Html(TextoSeguroSinInventar(emplazamiento.Ciudad))));
+            html.Append(LabelValue(Lang("Provincia", "Province"), Html(TextoSeguroSinInventar(emplazamiento.Provincia))));
+            html.Append(LabelValue(Lang("País", "Country"), Html(TextoSeguroSinInventar(emplazamiento.Pais))));
+            html.Append(LabelValue(Lang("Latitud", "Latitude"), emplazamiento.Latitud.HasValue ? Formato(emplazamiento.Latitud.Value, "0.######") : "—"));
+            html.Append(LabelValue(Lang("Longitud", "Longitude"), emplazamiento.Longitud.HasValue ? Formato(emplazamiento.Longitud.Value, "0.######") : "—"));
+            html.Append("</div>");
+
+            html.Append($"<div class='block'><h3>{Html(Lang("Condiciones de obra", "Site conditions"))}</h3>");
+            html.Append(LabelValue(Lang("Tipo de entorno", "Environment type"), Html(TextoSeguroSinInventar(emplazamiento.TipoEntorno))));
+            html.Append(LabelValue(Lang("Exposición al viento", "Wind exposure"), Html(TextoSeguroSinInventar(emplazamiento.ExposicionViento))));
+            html.Append(LabelValue(Lang("Acceso a obra", "Site access"), Html(TextoSeguroSinInventar(emplazamiento.AccesoObra))));
+            html.Append(LabelValue(Lang("Tipo de terreno", "Ground type"), Html(TextoSeguroSinInventar(emplazamiento.TipoTerreno))));
+            html.Append(LabelValue(Lang("Ambiente", "Atmosphere"), Html(TextoSeguroSinInventar(emplazamiento.Ambiente))));
+            html.Append("</div></div>");
+
+            html.Append("<div class='grid2'>");
+            html.Append($"<div class='block'><h3>{Html(Lang("Análisis orientativo", "Indicative analysis"))}</h3>");
+            html.Append(LabelValue(Lang("Riesgo por viento", "Wind risk"), Html(analisis.RiesgoViento)));
+            html.Append(LabelValue(Lang("Riesgo por corrosión", "Corrosion risk"), Html(analisis.RiesgoCorrosion)));
+            html.Append(LabelValue(Lang("Dificultad de montaje", "Assembly difficulty"), Html(analisis.DificultadMontaje)));
+            html.Append(LabelValue(Lang("Impacto en transporte", "Transport impact"), Html(analisis.ImpactoTransporte)));
+            html.Append("</div>");
+
+            html.Append($"<div class='block'><h3>{Html(Lang("Recomendaciones", "Recommendations"))}</h3>");
+            html.Append($"<div class='multiline'><strong>{Html(Lang("Recomendación principal", "Main recommendation"))}:</strong> {Html(analisis.RecomendacionPrincipal)}<br/>");
+
+            if (analisis.Recomendaciones.Count > 0)
+            {
+                html.Append("<ul>");
+                foreach (var recomendacion in analisis.Recomendaciones)
+                {
+                    html.Append($"<li>{Html(recomendacion)}</li>");
+                }
+                html.Append("</ul>");
+            }
+
+            html.Append($"<em>{Html(Lang("Este análisis es orientativo y no sustituye una comprobación normativa completa de viento, cimentación o corrosión.", "This analysis is indicative and does not replace a complete code check for wind, foundation or corrosion."))}</em>");
+            html.Append("</div></div></div>");
+
+            return html.ToString();
+        }
+
+        private static string TextoUbicacionEmplazamiento(EmplazamientoInstalacionModel emplazamiento)
+        {
+            if (!string.IsNullOrWhiteSpace(emplazamiento.NombreUbicacion))
+                return emplazamiento.NombreUbicacion.Trim();
+
+            var partes = new[] { emplazamiento.Ciudad, emplazamiento.Provincia, emplazamiento.Pais }
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x.Trim())
+                .ToList();
+
+            return partes.Count > 0 ? string.Join(", ", partes) : "—";
         }
 
         private int NumeroAnillos() => _resultado?.NumeroAnillos > 0 ? _resultado.NumeroAnillos : (_tanque?.NumeroAnillos ?? 0);

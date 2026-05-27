@@ -6,6 +6,7 @@
     <base href="/" />
 
     <link rel="icon" type="image/png" href="/assets/images/logoWeb.png" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="app.css" />
     <link rel="stylesheet" href="TankDesigner.Web.styles.css" />
 
@@ -14,6 +15,8 @@
 <body>
     <Routes @rendermode="InteractiveServer" />
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/js/emplazamiento-map.js"></script>
     <script src="/js/informes.js"></script>
     <script src="/js/three.min.js"></script>
     <script src="/js/tank3d.js"></script>
