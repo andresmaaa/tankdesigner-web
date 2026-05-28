@@ -3,16 +3,20 @@
 @implements IAsyncDisposable
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
 @using Microsoft.JSInterop
-@using System.Security.Claims
 @using TankDesigner.Core.Models
 @using TankDesigner.Core.Services
 @using TankDesigner.Web.Services
+@using TankDesigner.Web.Data
 @inject ProyectoState EstadoProyecto
 @inject OpcionesFormularioService Opciones
 @inject IJSRuntime JS
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UserManager<ApplicationUser> UserManager
 @inject ProyectoPersistenciaService ProyectoPersistenciaService
+@inject BrowserProyectoSnapshotService BrowserSnapshotService
+@inject NavigationManager NavigationManager
 
 <PageTitle>Instalación</PageTitle>
 
@@ -326,6 +330,10 @@
                     {
                         <div class="map-message">@_mensajeMapa</div>
                     }
+                    @if (!string.IsNullOrWhiteSpace(_mensajePersistencia))
+                    {
+                        <div class="map-message map-message--save">@_mensajePersistencia</div>
+                    }
                 </div>
 
                 <div class="large-map-shell large-map-shell--pro">
@@ -499,7 +507,7 @@
 
                 <div class="modal-actions">
                     <button type="button" class="td-btn td-btn--ghost" @onclick="ActualizarMarcadorManual">Actualizar marcador</button>
-                    <button type="button" class="td-btn td-btn--primary" @onclick="GuardarUbicacion">Guardar ubicación</button>
+                    <button type="button" class="td-btn td-btn--primary" @onclick="GuardarUbicacion" disabled="@_guardandoUbicacion">@(_guardandoUbicacion ? "Guardando..." : "Guardar ubicación")</button>
                 </div>
             </div>
         </div>
@@ -527,6 +535,8 @@
     private bool _mapaGrandeInicializado;
     private string _busquedaUbicacion = string.Empty;
     private string _mensajeMapa = string.Empty;
+    private string _mensajePersistencia = string.Empty;
+    private bool _guardandoUbicacion;
     private AnalisisEmplazamientoResultadoModel _analisis = new();
 
     private EmplazamientoInstalacionModel Emplazamiento => EstadoProyecto.Instalacion.Emplazamiento;
@@ -711,52 +721,85 @@
 
     private async Task GuardarUbicacion()
     {
-        Emplazamiento.UbicacionSeleccionada = Emplazamiento.TieneDatos;
-        RecalcularAnalisis();
+        if (_guardandoUbicacion)
+            return;
 
-        await GuardarEmplazamientoEnProyectoActualAsync();
-        await ActualizarMiniMapaAsync();
-        await CerrarSelectorMapa();
+        _guardandoUbicacion = true;
+        _mensajePersistencia = string.Empty;
+
+        try
+        {
+            Emplazamiento.UbicacionSeleccionada = Emplazamiento.TieneDatos;
+            RecalcularAnalisis();
+
+            var guardado = await GuardarProyectoActualAsync();
+            await ActualizarMiniMapaAsync();
+            await CerrarSelectorMapa();
+
+            _mensajePersistencia = guardado
+                ? "Ubicación guardada en este proyecto. Al cambiar de proyecto o recargar la página se conservará."
+                : "Ubicación aplicada temporalmente. Para guardarla definitivamente, inicia sesión y abre un proyecto guardado.";
+        }
+        finally
+        {
+            _guardandoUbicacion = false;
+        }
     }
 
     private async Task LimpiarUbicacion()
     {
-        EstadoProyecto.Instalacion.Emplazamiento = new EmplazamientoInstalacionModel();
-        _busquedaUbicacion = string.Empty;
-        _mensajeMapa = string.Empty;
-        RecalcularAnalisis();
-
-        await GuardarEmplazamientoEnProyectoActualAsync();
-        await ActualizarMiniMapaAsync();
-    }
-
-    private async Task GuardarEmplazamientoEnProyectoActualAsync()
-    {
-        // El mapa sigue siendo opcional: no afecta a cálculo ni presupuesto.
-        // Pero si el proyecto ya existe en base de datos, guardamos inmediatamente
-        // la ubicación dentro de ese proyecto para que no se pierda al cambiar a otro
-        // proyecto o volver desde “Mis proyectos”.
-        if (!EstadoProyecto.ProyectoIdActual.HasValue)
-        {
-            _mensajeMapa = string.IsNullOrWhiteSpace(_mensajeMapa)
-                ? "Ubicación guardada temporalmente. Guarda el proyecto desde Informe para conservarla definitivamente."
-                : _mensajeMapa;
-
+        if (_guardandoUbicacion)
             return;
-        }
 
-        var usuarioId = await ObtenerUsuarioIdActualAsync();
-
-        if (string.IsNullOrWhiteSpace(usuarioId))
-        {
-            _mensajeMapa = "Ubicación actualizada en pantalla, pero no se ha podido confirmar el usuario para guardarla en base de datos.";
-            return;
-        }
+        _guardandoUbicacion = true;
+        _mensajePersistencia = string.Empty;
 
         try
         {
+            EstadoProyecto.Instalacion.Emplazamiento = new EmplazamientoInstalacionModel();
+            _busquedaUbicacion = string.Empty;
+            _mensajeMapa = string.Empty;
+            RecalcularAnalisis();
+            await ActualizarMiniMapaAsync();
+
+            var guardado = await GuardarProyectoActualAsync();
+            _mensajePersistencia = guardado
+                ? "Ubicación eliminada y cambio guardado en este proyecto."
+                : "Ubicación eliminada temporalmente. Guarda el proyecto para conservar el cambio.";
+        }
+        finally
+        {
+            _guardandoUbicacion = false;
+        }
+    }
+
+    private async Task<bool> GuardarProyectoActualAsync()
+    {
+        try
+        {
+            EstadoProyecto.Proyecto ??= new ProyectoGeneralModel();
+            EstadoProyecto.Tanque ??= new TankModel();
+            EstadoProyecto.Cargas ??= new CargasModel();
+            EstadoProyecto.Instalacion ??= new InstalacionModel();
+            EstadoProyecto.Instalacion.Emplazamiento ??= new EmplazamientoInstalacionModel();
+            EstadoProyecto.Resultado ??= new ResultadoCalculoModel();
+
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var usuario = await UserManager.GetUserAsync(authState.User);
+
+            if (usuario == null)
+            {
+                await BrowserSnapshotService.GuardarAsync(
+                    EstadoProyecto,
+                    UsuarioSnapshotKey(authState.User),
+                    NavigationManager.ToBaseRelativePath(NavigationManager.Uri));
+
+                EstadoProyecto.NotificarCambio();
+                return false;
+            }
+
             var id = await ProyectoPersistenciaService.GuardarAsync(
-                usuarioId,
+                usuario.Id,
                 EstadoProyecto.ProyectoIdActual,
                 EstadoProyecto.Proyecto,
                 EstadoProyecto.Tanque,
@@ -765,27 +808,44 @@
                 EstadoProyecto.Resultado);
 
             EstadoProyecto.ProyectoIdActual = id;
-            _mensajeMapa = TieneEmplazamiento
-                ? "Ubicación guardada en el proyecto actual."
-                : "Ubicación eliminada del proyecto actual.";
+
+            await BrowserSnapshotService.GuardarAsync(
+                EstadoProyecto,
+                UsuarioSnapshotKey(authState.User),
+                NavigationManager.ToBaseRelativePath(NavigationManager.Uri));
+
+            EstadoProyecto.NotificarCambio();
+            return true;
         }
-        catch
+        catch (Exception ex)
         {
-            _mensajeMapa = "La ubicación se ha actualizado en pantalla, pero no se ha podido guardar en base de datos. Revisa la conexión y guarda el proyecto desde Informe.";
+            _mensajePersistencia = $"No se ha podido guardar la ubicación en base de datos: {ex.Message}";
+            try
+            {
+                var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+                await BrowserSnapshotService.GuardarAsync(
+                    EstadoProyecto,
+                    UsuarioSnapshotKey(authState.User),
+                    NavigationManager.ToBaseRelativePath(NavigationManager.Uri));
+            }
+            catch
+            {
+            }
+
+            EstadoProyecto.NotificarCambio();
+            return false;
         }
     }
 
-    private async Task<string?> ObtenerUsuarioIdActualAsync()
+    private static string UsuarioSnapshotKey(System.Security.Claims.ClaimsPrincipal? usuario)
     {
-        try
-        {
-            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-            return authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        }
-        catch
-        {
-            return null;
-        }
+        if (usuario is null)
+            return "anonimo";
+
+        return usuario.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            ?? usuario.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
+            ?? usuario.Identity?.Name
+            ?? "anonimo";
     }
 
     private async Task ActualizarMiniMapaAsync()
