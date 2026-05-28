@@ -76,6 +76,50 @@ namespace TankDesigner.Web.Services
             return entidad.Id;
         }
 
+        public async Task<InstalacionModel?> ObtenerInstalacionAsync(string usuarioId, int proyectoId)
+        {
+            await using var context = await _dbContextFactory.CreateDbContextAsync();
+
+            var instalacionJson = await context.Proyectos
+                .Where(p => p.Id == proyectoId && p.UsuarioId == usuarioId)
+                .Select(p => p.InstalacionJson)
+                .FirstOrDefaultAsync();
+
+            if (string.IsNullOrWhiteSpace(instalacionJson))
+                return null;
+
+            try
+            {
+                var instalacion = JsonConvert.DeserializeObject<InstalacionModel>(instalacionJson) ?? new InstalacionModel();
+                instalacion.Emplazamiento ??= new EmplazamientoInstalacionModel();
+                return instalacion;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public async Task<bool> ActualizarInstalacionAsync(string usuarioId, int proyectoId, InstalacionModel instalacion)
+        {
+            await using var context = await _dbContextFactory.CreateDbContextAsync();
+
+            var entidad = await context.Proyectos
+                .FirstOrDefaultAsync(p => p.Id == proyectoId && p.UsuarioId == usuarioId);
+
+            if (entidad == null)
+                return false;
+
+            instalacion ??= new InstalacionModel();
+            instalacion.Emplazamiento ??= new EmplazamientoInstalacionModel();
+
+            entidad.InstalacionJson = JsonConvert.SerializeObject(instalacion);
+            entidad.FechaModificacion = DateTime.UtcNow;
+
+            await context.SaveChangesAsync();
+            return true;
+        }
+
         public async Task<List<ProyectoEntidad>> ObtenerListaAsync(string usuarioId)
         {
             await using var context = await _dbContextFactory.CreateDbContextAsync();
@@ -102,6 +146,7 @@ namespace TankDesigner.Web.Services
             estado.Tanque = JsonConvert.DeserializeObject<TankModel>(entidad.TanqueJson) ?? new();
             estado.Cargas = JsonConvert.DeserializeObject<CargasModel>(entidad.CargasJson) ?? new();
             estado.Instalacion = JsonConvert.DeserializeObject<InstalacionModel>(entidad.InstalacionJson) ?? new();
+            estado.Instalacion.Emplazamiento ??= new EmplazamientoInstalacionModel();
             estado.Resultado = JsonConvert.DeserializeObject<ResultadoCalculoModel>(entidad.ResultadoJson) ?? new();
 
             NormalizarEstadoCargado(estado);

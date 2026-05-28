@@ -18,20 +18,10 @@ window.tankDesignerMaps = (() => {
 
     function destroy(containerId) {
         const current = maps.get(containerId);
-        if (current && current.resizeObserver) {
-            try { current.resizeObserver.disconnect(); } catch { }
-        }
         if (current && current.map) {
-            try { current.map.remove(); } catch { }
+            current.map.remove();
         }
         maps.delete(containerId);
-
-        const el = document.getElementById(containerId);
-        if (el) {
-            el.classList.remove("leaflet-container", "leaflet-touch", "leaflet-fade-anim", "leaflet-grab", "leaflet-touch-drag", "leaflet-touch-zoom");
-            el.innerHTML = "";
-            delete el._leaflet_id;
-        }
     }
 
     function buildResult(lat, lng, raw) {
@@ -62,7 +52,12 @@ window.tankDesignerMaps = (() => {
 
         try {
             const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&accept-language=es&addressdetails=1`;
-            const response = await fetch(url, { headers: { "Accept": "application/json" } });
+            const response = await fetch(url, {
+                headers: {
+                    "Accept": "application/json"
+                }
+            });
+
             if (!response.ok) throw new Error(`Nominatim error ${response.status}`);
 
             const raw = await response.json();
@@ -89,38 +84,7 @@ window.tankDesignerMaps = (() => {
         await dotNetRef.invokeMethodAsync("ActualizarUbicacionDesdeMapa", result);
     }
 
-    function sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    async function waitForRealSize(el) {
-        // En Blazor Server, tras F5 el navegador puede restaurar el scroll y pintar el DOM
-        // antes de que el contenedor del mapa tenga ancho/alto definitivo. Leaflet en ese
-        // momento calcula mal las teselas y se queda gris. Esperamos unos frames y reintentamos.
-        for (let i = 0; i < 25; i++) {
-            const rect = el.getBoundingClientRect();
-            if (rect.width > 80 && rect.height > 80) return true;
-            await sleep(80);
-        }
-        return false;
-    }
-
-    function scheduleInvalidations(containerId) {
-        const current = maps.get(containerId);
-        if (!current || !current.map) return;
-
-        const delays = [60, 180, 400, 800, 1400, 2200];
-        delays.forEach(delay => {
-            setTimeout(() => {
-                const again = maps.get(containerId);
-                if (again && again.map) {
-                    try { again.map.invalidateSize(true); } catch { }
-                }
-            }, delay);
-        });
-    }
-
-    async function init(containerId, options) {
+    function init(containerId, options) {
         const el = document.getElementById(containerId);
         if (!el) return false;
 
@@ -128,12 +92,6 @@ window.tankDesignerMaps = (() => {
 
         if (!hasLeaflet()) {
             createFallback(containerId, "Puedes introducir latitud y longitud manualmente.");
-            return false;
-        }
-
-        const hasSize = await waitForRealSize(el);
-        if (!hasSize) {
-            createFallback(containerId, "El contenedor del mapa no tiene tamaño suficiente. Puedes introducir los datos manualmente.");
             return false;
         }
 
@@ -157,20 +115,12 @@ window.tankDesignerMaps = (() => {
             attribution: "&copy; OpenStreetMap"
         }).addTo(map);
 
-        const marker = L.marker([lat, lng], { draggable: interactive }).addTo(map);
+        const marker = L.marker([lat, lng], {
+            draggable: interactive
+        }).addTo(map);
+
         const dotNetRef = options?.dotNetRef || null;
         setPopup(marker, buildResult(lat, lng, null));
-
-        let resizeObserver = null;
-        if (typeof ResizeObserver !== "undefined") {
-            resizeObserver = new ResizeObserver(() => {
-                const current = maps.get(containerId);
-                if (current && current.map) {
-                    try { current.map.invalidateSize(true); } catch { }
-                }
-            });
-            resizeObserver.observe(el);
-        }
 
         if (interactive) {
             map.on("click", async function (e) {
@@ -183,8 +133,9 @@ window.tankDesignerMaps = (() => {
             });
         }
 
-        maps.set(containerId, { map, marker, resizeObserver });
-        scheduleInvalidations(containerId);
+        maps.set(containerId, { map, marker });
+
+        setTimeout(() => map.invalidateSize(), 120);
         return true;
     }
 
@@ -196,7 +147,7 @@ window.tankDesignerMaps = (() => {
         current.marker.setLatLng(point);
         current.map.setView(point, Number(zoom ?? current.map.getZoom()));
         setPopup(current.marker, buildResult(point[0], point[1], null));
-        scheduleInvalidations(containerId);
+        setTimeout(() => current.map.invalidateSize(), 80);
         return true;
     }
 
@@ -213,7 +164,12 @@ window.tankDesignerMaps = (() => {
 
         try {
             const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(text)}&accept-language=es&addressdetails=1&limit=1`;
-            const response = await fetch(url, { headers: { "Accept": "application/json" } });
+            const response = await fetch(url, {
+                headers: {
+                    "Accept": "application/json"
+                }
+            });
+
             if (!response.ok) throw new Error(`Nominatim error ${response.status}`);
 
             const results = await response.json();
@@ -231,28 +187,17 @@ window.tankDesignerMaps = (() => {
     }
 
     function invalidate(containerId) {
-        scheduleInvalidations(containerId);
-    }
-
-    function exists(containerId) {
         const current = maps.get(containerId);
-        return !!(current && current.map);
+        if (current && current.map) {
+            setTimeout(() => current.map.invalidateSize(), 80);
+        }
     }
-
-    window.addEventListener("resize", () => {
-        maps.forEach((_, containerId) => scheduleInvalidations(containerId));
-    });
-
-    window.addEventListener("load", () => {
-        maps.forEach((_, containerId) => scheduleInvalidations(containerId));
-    });
 
     return {
         init,
         destroy,
         setMarker,
         searchLocation,
-        invalidate,
-        exists
+        invalidate
     };
 })();

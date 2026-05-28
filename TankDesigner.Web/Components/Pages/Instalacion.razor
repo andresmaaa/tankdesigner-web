@@ -537,6 +537,8 @@
     private string _mensajeMapa = string.Empty;
     private string _mensajePersistencia = string.Empty;
     private bool _guardandoUbicacion;
+    private bool _cargandoInstalacionDesdeDb;
+    private int? _ultimoProyectoInstalacionCargadoDesdeDb;
     private AnalisisEmplazamientoResultadoModel _analisis = new();
 
     private EmplazamientoInstalacionModel Emplazamiento => EstadoProyecto.Instalacion.Emplazamiento;
@@ -578,6 +580,11 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (firstRender)
+        {
+            await CargarInstalacionActualDesdeBaseDatosSiProcedeAsync();
+        }
+
         // Importante: no inicializamos el mini mapa solo en firstRender.
         // Al refrescar, MainLayout restaura el proyecto desde localStorage unos instantes después
         // y la página se vuelve a pintar. Si el mapa se creó antes de tener tamaño real o antes de
@@ -605,6 +612,11 @@
         {
             EstadoProyecto.Instalacion ??= new InstalacionModel();
             EstadoProyecto.Instalacion.Emplazamiento ??= new EmplazamientoInstalacionModel();
+
+            // Si el estado se acaba de restaurar después de F5, puede venir del navegador.
+            // Para que la ubicación sea realmente la del proyecto abierto, se vuelve a leer
+            // la instalación desde la base de datos usando ProyectoIdActual.
+            await CargarInstalacionActualDesdeBaseDatosSiProcedeAsync();
             RecalcularAnalisis();
 
             // Si el estado se ha restaurado después de un F5, forzamos una recreación limpia
@@ -773,6 +785,55 @@
         }
     }
 
+    private async Task CargarInstalacionActualDesdeBaseDatosSiProcedeAsync()
+    {
+        if (_cargandoInstalacionDesdeDb)
+            return;
+
+        if (!EstadoProyecto.ProyectoIdActual.HasValue)
+            return;
+
+        if (_ultimoProyectoInstalacionCargadoDesdeDb == EstadoProyecto.ProyectoIdActual.Value)
+            return;
+
+        _cargandoInstalacionDesdeDb = true;
+
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var usuario = await UserManager.GetUserAsync(authState.User);
+
+            if (usuario == null)
+                return;
+
+            var instalacionDb = await ProyectoPersistenciaService.ObtenerInstalacionAsync(usuario.Id, EstadoProyecto.ProyectoIdActual.Value);
+
+            if (instalacionDb == null)
+                return;
+
+            instalacionDb.Emplazamiento ??= new EmplazamientoInstalacionModel();
+            EstadoProyecto.Instalacion = instalacionDb;
+            _ultimoProyectoInstalacionCargadoDesdeDb = EstadoProyecto.ProyectoIdActual.Value;
+
+            RecalcularAnalisis();
+            await ActualizarMiniMapaAsync();
+
+            await BrowserSnapshotService.GuardarAsync(
+                EstadoProyecto,
+                UsuarioSnapshotKey(authState.User),
+                NavigationManager.ToBaseRelativePath(NavigationManager.Uri));
+        }
+        catch
+        {
+            // Si la lectura de BD falla, se mantiene el estado actual de la pantalla.
+            // No bloqueamos Instalación porque el emplazamiento es opcional.
+        }
+        finally
+        {
+            _cargandoInstalacionDesdeDb = false;
+        }
+    }
+
     private async Task<bool> GuardarProyectoActualAsync()
     {
         try
@@ -798,16 +859,31 @@
                 return false;
             }
 
-            var id = await ProyectoPersistenciaService.GuardarAsync(
-                usuario.Id,
-                EstadoProyecto.ProyectoIdActual,
-                EstadoProyecto.Proyecto,
-                EstadoProyecto.Tanque,
-                EstadoProyecto.Cargas,
-                EstadoProyecto.Instalacion,
-                EstadoProyecto.Resultado);
+            if (EstadoProyecto.ProyectoIdActual.HasValue)
+            {
+                var actualizado = await ProyectoPersistenciaService.ActualizarInstalacionAsync(
+                    usuario.Id,
+                    EstadoProyecto.ProyectoIdActual.Value,
+                    EstadoProyecto.Instalacion);
 
-            EstadoProyecto.ProyectoIdActual = id;
+                if (!actualizado)
+                    return false;
+            }
+            else
+            {
+                var id = await ProyectoPersistenciaService.GuardarAsync(
+                    usuario.Id,
+                    EstadoProyecto.ProyectoIdActual,
+                    EstadoProyecto.Proyecto,
+                    EstadoProyecto.Tanque,
+                    EstadoProyecto.Cargas,
+                    EstadoProyecto.Instalacion,
+                    EstadoProyecto.Resultado);
+
+                EstadoProyecto.ProyectoIdActual = id;
+            }
+
+            _ultimoProyectoInstalacionCargadoDesdeDb = EstadoProyecto.ProyectoIdActual;
 
             await BrowserSnapshotService.GuardarAsync(
                 EstadoProyecto,
