@@ -19,7 +19,6 @@
 @inject ProyectoPersistenciaService ProyectoPersistenciaService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager NavigationManager
-@inject ProyectoState EstadoProyecto
 @inject CalculoWebService CalculoWebService
 @inject FormularioValidacionService ValidacionService
 @inject CalculoGeometriaService CalculoGeometriaService
@@ -87,8 +86,9 @@
                         Recalcular proyecto
                     </button>
 
-                    <button type="button" class="action-btn action-btn--simulator" @onclick="AbrirSimuladorPresupuesto">
-                        Simular presupuesto
+                    <button type="button" class="action-btn action-btn--simulator" @onclick="AbrirSimuladorPresupuesto" title="Abrir simulador comercial de presupuesto">
+                        <span class="action-btn__icon">€</span>
+                        <span>Simular presupuesto</span>
                     </button>
 
                     <button type="button" class="action-btn action-btn--dark" @onclick="VistaPreviaVentana">
@@ -546,7 +546,7 @@
         <textarea class="ia-question-box__textarea"
                   @bind="_preguntaIa"
                   placeholder="Ejemplo: ¿Qué incoherencias detectas entre las cargas y el resultado del cálculo?">
-                    </textarea>
+                        </textarea>
 
         <div class="ia-question-box__actions">
             <button type="button"
@@ -599,7 +599,7 @@
     private decimal _simDescuento = 0m;
 
 
-    private void AbrirSimuladorPresupuesto()
+    private async Task AbrirSimuladorPresupuesto()
     {
         _mostrarSimuladorPresupuesto = true;
         _simuladorMensaje = string.Empty;
@@ -608,7 +608,8 @@
         {
             if (!AsegurarResultadoActual())
             {
-                _simuladorMensaje = "No se puede abrir el simulador porque el proyecto todavía no tiene un presupuesto calculable.";
+                _simuladorMensaje = "No se puede abrir el simulador porque el proyecto todavía no tiene un presupuesto calculable. Revisa los datos principales y pulsa Recalcular proyecto.";
+                await InvokeAsync(StateHasChanged);
                 return;
             }
 
@@ -618,11 +619,14 @@
         {
             _simuladorMensaje = $"No se pudo preparar el simulador: {ex.Message}";
         }
+
+        await InvokeAsync(StateHasChanged);
     }
 
-    private void CerrarSimuladorPresupuesto()
+    private async Task CerrarSimuladorPresupuesto()
     {
         _mostrarSimuladorPresupuesto = false;
+        await InvokeAsync(StateHasChanged);
     }
 
     private void CargarBaseSimuladorDesdePresupuestoActual()
