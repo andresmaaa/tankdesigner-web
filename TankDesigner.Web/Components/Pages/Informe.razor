@@ -81,7 +81,7 @@
                     </button>
                 </div>
 
-                <div class="actions-grid">
+                <div class="actions-grid actions-grid--primary">
                     <button type="button" class="action-btn action-btn--primary" @onclick="RecalcularProyecto">
                         Recalcular proyecto
                     </button>
@@ -98,8 +98,10 @@
                     <button type="button" class="action-btn action-btn--blue" @onclick="DescargarPdfActual">
                         Descargar PDF actual
                     </button>
+                </div>
 
-                    <button type="button" class="action-btn action-btn--gray" @onclick="DescargarTodosPdf">
+                <div class="actions-grid-secondary">
+                    <button type="button" class="action-btn action-btn--gray action-btn--zip" @onclick="DescargarTodosPdf">
                         Descargar ZIP con los 3 informes
                     </button>
                 </div>
@@ -546,7 +548,7 @@
         <textarea class="ia-question-box__textarea"
                   @bind="_preguntaIa"
                   placeholder="Ejemplo: ¿Qué incoherencias detectas entre las cargas y el resultado del cálculo?">
-                        </textarea>
+                            </textarea>
 
         <div class="ia-question-box__actions">
             <button type="button"
