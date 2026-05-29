@@ -1,12 +1,16 @@
 ﻿@inherits LayoutComponentBase
 @implements IDisposable
-@using TankDesigner.Web.Services
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
+@using TankDesigner.Web.Services
+@using TankDesigner.Web.Data
+@using Microsoft.AspNetCore.Identity
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UserManager<ApplicationUser> UserManager
+@inject ProyectoPersistenciaService ProyectoPersistenciaService
 @inject ProyectoState EstadoProyecto
-@inject BrowserProyectoSnapshotService BrowserSnapshotService
+@inject BrowserProyectoActivoService BrowserProyectoActivoService
 
 <div class="app-shell">
     <aside class="app-sidebar">
@@ -87,9 +91,7 @@
 @code {
     private ClaimsPrincipal? _usuario;
     private bool _mostrarMenuCuenta;
-    private PeriodicTimer? _autoGuardadoTimer;
-    private CancellationTokenSource? _autoGuardadoCts;
-    private bool _snapshotRestaurado;
+    private bool _restauracionProyectoIntentada;
 
     protected override async Task OnInitializedAsync()
     {
@@ -99,21 +101,53 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender)
+        if (!firstRender || _restauracionProyectoIntentada)
             return;
 
-        // Al refrescar la página se crea un circuito nuevo de Blazor Server.
-        // Restauramos aquí la copia temporal guardada en el navegador para que
-        // el proyecto no aparezca vacío tras pulsar F5.
-        _snapshotRestaurado = await BrowserSnapshotService.RestaurarAsync(EstadoProyecto, UsuarioSnapshotKey());
+        _restauracionProyectoIntentada = true;
+        await RestaurarProyectoActivoSiHaceFaltaAsync();
+    }
 
-        if (_snapshotRestaurado)
+    private async Task RestaurarProyectoActivoSiHaceFaltaAsync()
+    {
+        var ruta = RutaActual();
+
+        if (ruta is "" or "login" or "register" or "forgot-password" or "reset-password")
+            return;
+
+        if (ruta.StartsWith("invitacion", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        if (EstadoProyecto.ProyectoIdActual.HasValue || HayDatosProyectoEnMemoria())
+            return;
+
+        var idActivo = await BrowserProyectoActivoService.ObtenerProyectoActivoAsync();
+        if (!idActivo.HasValue)
+            return;
+
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var usuario = await UserManager.GetUserAsync(authState.User);
+
+        if (usuario == null)
+            return;
+
+        var ok = await ProyectoPersistenciaService.CargarAsync(usuario.Id, idActivo.Value, EstadoProyecto);
+        if (!ok)
         {
-            EstadoProyecto.NotificarCambio();
-            await InvokeAsync(StateHasChanged);
+            await BrowserProyectoActivoService.LimpiarProyectoActivoAsync();
+            return;
         }
 
-        IniciarAutoGuardadoNavegador();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private bool HayDatosProyectoEnMemoria()
+    {
+        return !string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto?.NombreProyecto)
+            || !string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto?.ClienteReferencia)
+            || !string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto?.Fabricante)
+            || (EstadoProyecto.Tanque?.NumeroAnillos ?? 0) > 0
+            || (EstadoProyecto.Resultado?.Anillos?.Count ?? 0) > 0;
     }
 
     private async void OnAuthenticationStateChanged(Task<AuthenticationState> task)
@@ -132,51 +166,6 @@
     public void Dispose()
     {
         AuthenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
-        _autoGuardadoCts?.Cancel();
-        _autoGuardadoCts?.Dispose();
-        _autoGuardadoTimer?.Dispose();
-    }
-
-    private void IniciarAutoGuardadoNavegador()
-    {
-        _autoGuardadoCts = new CancellationTokenSource();
-        _autoGuardadoTimer = new PeriodicTimer(TimeSpan.FromSeconds(1));
-
-        _ = EjecutarAutoGuardadoNavegadorAsync(_autoGuardadoCts.Token);
-    }
-
-    private async Task EjecutarAutoGuardadoNavegadorAsync(CancellationToken cancellationToken)
-    {
-        if (_autoGuardadoTimer == null)
-            return;
-
-        try
-        {
-            while (await _autoGuardadoTimer.WaitForNextTickAsync(cancellationToken))
-            {
-                await InvokeAsync(async () =>
-                {
-                    await BrowserSnapshotService.GuardarAsync(
-                        EstadoProyecto,
-                        UsuarioSnapshotKey(),
-                        Nav.ToBaseRelativePath(Nav.Uri));
-                });
-            }
-        }
-        catch (OperationCanceledException)
-        {
-        }
-    }
-
-    private string UsuarioSnapshotKey()
-    {
-        if (_usuario is null)
-            return "anonimo";
-
-        return _usuario.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? _usuario.FindFirst(ClaimTypes.Email)?.Value
-            ?? _usuario.Identity?.Name
-            ?? "anonimo";
     }
 
     private void IrAMisProyectos()

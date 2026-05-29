@@ -154,7 +154,7 @@ builder.Services.AddScoped<AdminService>();
 builder.Services.AddScoped<InvitacionesService>();
 builder.Services.AddScoped<ProyectoPersistenciaService>();
 builder.Services.AddScoped<ProyectoState>();
-builder.Services.AddScoped<BrowserProyectoSnapshotService>();
+builder.Services.AddScoped<BrowserProyectoActivoService>();
 builder.Services.AddScoped<CalculoWebService>();
 builder.Services.AddScoped<CatalogoJsonService>();
 builder.Services.AddScoped<OpcionesFormularioService>();
@@ -209,8 +209,8 @@ app.Use(async (context, next) =>
     context.Response.Headers["Content-Security-Policy"] =
         "default-src 'self'; " +
         "img-src 'self' data: https:; " +
-        "style-src 'self' 'unsafe-inline' https://unpkg.com; " +
-        "script-src 'self' 'unsafe-inline' https://unpkg.com; " +
+        "style-src 'self' 'unsafe-inline'; " +
+        "script-src 'self' 'unsafe-inline'; " +
         "font-src 'self' data:; " +
         "connect-src 'self' https: wss:; " +
         "frame-ancestors 'none'; " +
