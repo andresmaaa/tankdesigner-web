@@ -1,10 +1,12 @@
 ﻿@page "/informe"
 @attribute [Authorize]
+@implements IDisposable
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.JSInterop
 @using System.IO.Compression
 @using TankDesigner.Core.Models
 @using TankDesigner.Core.Services
+@using TankDesigner.Core.Models.Presupuestos
 @using TankDesigner.Web.Services
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Identity
@@ -23,7 +25,6 @@
 @inject CalculoGeometriaService CalculoGeometriaService
 @inject InformeHtmlService InformeHtmlService
 @inject PdfRenderService PdfRenderService
-@inject BrowserProyectoActivoService BrowserProyectoActivoService
 
 <PageTitle>Informe</PageTitle>
 
@@ -84,6 +85,11 @@
                 <div class="actions-grid">
                     <button type="button" class="action-btn action-btn--primary" @onclick="RecalcularProyecto">
                         Recalcular proyecto
+                    </button>
+
+                    <button type="button" class="action-btn action-btn--simulator" @onclick="AbrirSimuladorPresupuesto" title="Abrir simulador comercial de presupuesto">
+                        <span class="action-btn__icon">€</span>
+                        <span>Simular presupuesto</span>
                     </button>
 
                     <button type="button" class="action-btn action-btn--dark" @onclick="VistaPreviaVentana">
@@ -209,6 +215,180 @@
         </aside>
     </div>
 </div>
+
+@if (_mostrarSimuladorPresupuesto)
+{
+    <div class="budget-modal-overlay" @onclick="CerrarSimuladorPresupuesto"></div>
+
+    <section class="budget-modal" @onclick:stopPropagation="true">
+        <div class="budget-modal__header">
+            <div>
+                <div class="section-kicker">Simulador económico</div>
+                <h2>Simulador de presupuesto</h2>
+                <p>
+                    Simula escenarios comerciales sobre el presupuesto actual. No modifica cálculos,
+                    no cambia los JSON internos y no guarda importes en el proyecto.
+                </p>
+            </div>
+            <button type="button" class="budget-modal__close" @onclick="CerrarSimuladorPresupuesto">×</button>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(_simuladorMensaje))
+        {
+            <div class="budget-warning">@_simuladorMensaje</div>
+        }
+        else
+        {
+            <div class="budget-modal__grid">
+                <div class="budget-panel budget-panel--base">
+                    <div class="budget-panel__title">Base real del proyecto</div>
+                    <p class="budget-panel__note">
+                        Importes obtenidos del presupuesto actual generado por TankDesigner con cantidades calculadas
+                        y precios disponibles en los catálogos JSON internos.
+                    </p>
+
+                    <div class="budget-total-card budget-total-card--main">
+                        <span>Total base</span>
+                        <strong>@FormatoEuro(_simBaseTotal)</strong>
+                    </div>
+
+                    <div class="budget-breakdown">
+                        <div>
+                            <span>Materiales sin transporte</span>
+                            <strong>@FormatoEuro(_simBaseMaterialesSinTransporte)</strong>
+                        </div>
+                        <div>
+                            <span>Transporte catálogo</span>
+                            <strong>@FormatoEuro(_simBaseTransporte)</strong>
+                        </div>
+                        <div>
+                            <span>Instalación</span>
+                            <strong>@FormatoEuro(_simBaseInstalacion)</strong>
+                        </div>
+                    </div>
+
+                    <div class="budget-meta-grid">
+                        <div>
+                            <span>Líneas material</span>
+                            <strong>@_simLineasMaterial</strong>
+                        </div>
+                        <div>
+                            <span>Partidas instalación</span>
+                            <strong>@_simPartidasInstalacion</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="budget-panel">
+                    <div class="budget-panel__title">Escenario comercial</div>
+                    <p class="budget-panel__note">
+                        Ajusta porcentajes manuales para estudiar ofertas, margen, descuentos o imprevistos.
+                        Por defecto todo está a 0%, por tanto coincide con el presupuesto base.
+                    </p>
+
+                    <div class="budget-form-grid">
+                        <label>
+                            Nombre del escenario
+                            <input type="text" @bind="_simNombreEscenario" />
+                        </label>
+
+                        <label>
+                            Ajuste materiales (%)
+                            <input type="number" step="0.1" @bind="_simAjusteMateriales" />
+                        </label>
+
+                        <label>
+                            Ajuste transporte (%)
+                            <input type="number" step="0.1" @bind="_simAjusteTransporte" />
+                        </label>
+
+                        <label>
+                            Ajuste instalación (%)
+                            <input type="number" step="0.1" @bind="_simAjusteInstalacion" />
+                        </label>
+
+                        <label>
+                            Imprevistos (%)
+                            <input type="number" step="0.1" min="0" @bind="_simImprevistos" />
+                        </label>
+
+                        <label>
+                            Margen comercial (%)
+                            <input type="number" step="0.1" min="0" @bind="_simMargen" />
+                        </label>
+
+                        <label>
+                            Descuento final (%)
+                            <input type="number" step="0.1" min="0" @bind="_simDescuento" />
+                        </label>
+                    </div>
+
+                    <div class="budget-actions-row">
+                        <button type="button" class="action-btn action-btn--dark" @onclick="ReiniciarSimuladorPresupuesto">
+                            Reiniciar escenario
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="budget-results">
+                <div class="budget-result-card">
+                    <span>Materiales simulados</span>
+                    <strong>@FormatoEuro(SimMateriales())</strong>
+                    <small>@FormatoVariacion(SimMateriales(), _simBaseMaterialesSinTransporte)</small>
+                </div>
+
+                <div class="budget-result-card">
+                    <span>Transporte simulado</span>
+                    <strong>@FormatoEuro(SimTransporte())</strong>
+                    <small>@FormatoVariacion(SimTransporte(), _simBaseTransporte)</small>
+                </div>
+
+                <div class="budget-result-card">
+                    <span>Instalación simulada</span>
+                    <strong>@FormatoEuro(SimInstalacion())</strong>
+                    <small>@FormatoVariacion(SimInstalacion(), _simBaseInstalacion)</small>
+                </div>
+
+                <div class="budget-result-card">
+                    <span>Subtotal simulado</span>
+                    <strong>@FormatoEuro(SimSubtotal())</strong>
+                    <small>Antes de margen, descuento e imprevistos</small>
+                </div>
+
+                <div class="budget-result-card">
+                    <span>Importe imprevistos</span>
+                    <strong>@FormatoEuro(SimImporteImprevistos())</strong>
+                    <small>@FormatoPorcentaje(_simImprevistos)</small>
+                </div>
+
+                <div class="budget-result-card">
+                    <span>Importe margen</span>
+                    <strong>@FormatoEuro(SimImporteMargen())</strong>
+                    <small>@FormatoPorcentaje(_simMargen)</small>
+                </div>
+
+                <div class="budget-result-card">
+                    <span>Importe descuento</span>
+                    <strong>-@FormatoEuro(SimImporteDescuento())</strong>
+                    <small>@FormatoPorcentaje(_simDescuento)</small>
+                </div>
+
+                <div class="budget-result-card budget-result-card--total">
+                    <span>Total escenario</span>
+                    <strong>@FormatoEuro(SimTotalEscenario())</strong>
+                    <small>@FormatoVariacion(SimTotalEscenario(), _simBaseTotal)</small>
+                </div>
+            </div>
+
+            <div class="budget-note-box">
+                <strong>Uso recomendado:</strong>
+                este simulador sirve para preparar escenarios de oferta sin alterar el diseño técnico.
+                El presupuesto oficial sigue siendo el informe de presupuesto generado por el sistema.
+            </div>
+        }
+    </section>
+}
 
 @if (_mostrarVista3D)
 {
@@ -367,7 +547,7 @@
         <textarea class="ia-question-box__textarea"
                   @bind="_preguntaIa"
                   placeholder="Ejemplo: ¿Qué incoherencias detectas entre las cargas y el resultado del cálculo?">
-                </textarea>
+                            </textarea>
 
         <div class="ia-question-box__actions">
             <button type="button"
@@ -392,8 +572,6 @@
     private string _informeSeleccionado = "calculo";
     private string _htmlActual = "";
     private string _mensaje = "";
-    private bool _restauracionIntentada;
-    private bool _restaurandoProyecto;
 
     private bool _mostrarVista3D = false;
     private bool _mostrarPanelIa = false;
@@ -405,6 +583,137 @@
     private string _preguntaIa = string.Empty;
     private string? _respuestaIa;
 
+    private bool _mostrarSimuladorPresupuesto = false;
+    private string _simuladorMensaje = string.Empty;
+    private string _simNombreEscenario = "Escenario 1";
+    private decimal _simBaseMaterialesSinTransporte = 0m;
+    private decimal _simBaseTransporte = 0m;
+    private decimal _simBaseInstalacion = 0m;
+    private decimal _simBaseTotal = 0m;
+    private int _simLineasMaterial = 0;
+    private int _simPartidasInstalacion = 0;
+    private decimal _simAjusteMateriales = 0m;
+    private decimal _simAjusteTransporte = 0m;
+    private decimal _simAjusteInstalacion = 0m;
+    private decimal _simImprevistos = 0m;
+    private decimal _simMargen = 0m;
+    private decimal _simDescuento = 0m;
+
+
+    private async Task AbrirSimuladorPresupuesto()
+    {
+        _mostrarSimuladorPresupuesto = true;
+        _simuladorMensaje = string.Empty;
+
+        try
+        {
+            if (!AsegurarResultadoActual())
+            {
+                _simuladorMensaje = "No se puede abrir el simulador porque el proyecto todavía no tiene un presupuesto calculable. Revisa los datos principales y pulsa Recalcular proyecto.";
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+
+            CargarBaseSimuladorDesdePresupuestoActual();
+        }
+        catch (Exception ex)
+        {
+            _simuladorMensaje = $"No se pudo preparar el simulador: {ex.Message}";
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task CerrarSimuladorPresupuesto()
+    {
+        _mostrarSimuladorPresupuesto = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void CargarBaseSimuladorDesdePresupuestoActual()
+    {
+        var resumen = InformeHtmlService.ObtenerResumenEconomicoPresupuesto(
+            EstadoProyecto.Proyecto,
+            EstadoProyecto.Tanque,
+            EstadoProyecto.Cargas,
+            EstadoProyecto.Instalacion,
+            ResultadoActual());
+
+        _simBaseTransporte = Math.Max(0m, (decimal)resumen.TotalTransporte);
+        decimal materialesIncluyendoTransporte = Math.Max(0m, (decimal)resumen.TotalMateriales);
+        _simBaseMaterialesSinTransporte = Math.Max(0m, materialesIncluyendoTransporte - _simBaseTransporte);
+        _simBaseInstalacion = Math.Max(0m, (decimal)resumen.TotalInstalacion);
+        _simBaseTotal = Math.Max(0m, _simBaseMaterialesSinTransporte + _simBaseTransporte + _simBaseInstalacion);
+        _simLineasMaterial = resumen.NumeroLineasMaterial;
+        _simPartidasInstalacion = resumen.NumeroPartidasInstalacion;
+
+        if (_simBaseTotal <= 0m)
+        {
+            _simuladorMensaje = "El presupuesto actual no tiene importes suficientes para simular. Revisa que existan precios en los JSON internos y recalcula el proyecto.";
+        }
+    }
+
+    private void ReiniciarSimuladorPresupuesto()
+    {
+        _simNombreEscenario = "Escenario 1";
+        _simAjusteMateriales = 0m;
+        _simAjusteTransporte = 0m;
+        _simAjusteInstalacion = 0m;
+        _simImprevistos = 0m;
+        _simMargen = 0m;
+        _simDescuento = 0m;
+    }
+
+    private decimal SimMateriales() => AplicarPorcentaje(_simBaseMaterialesSinTransporte, _simAjusteMateriales);
+
+    private decimal SimTransporte() => AplicarPorcentaje(_simBaseTransporte, _simAjusteTransporte);
+
+    private decimal SimInstalacion() => AplicarPorcentaje(_simBaseInstalacion, _simAjusteInstalacion);
+
+    private decimal SimSubtotal() => SimMateriales() + SimTransporte() + SimInstalacion();
+
+    private decimal SimImporteImprevistos() => Math.Max(0m, SimSubtotal() * (_simImprevistos / 100m));
+
+    private decimal SimImporteMargen() => Math.Max(0m, (SimSubtotal() + SimImporteImprevistos()) * (_simMargen / 100m));
+
+    private decimal SimImporteDescuento() => Math.Max(0m, (SimSubtotal() + SimImporteImprevistos() + SimImporteMargen()) * (_simDescuento / 100m));
+
+    private decimal SimTotalEscenario()
+    {
+        decimal total = SimSubtotal() + SimImporteImprevistos() + SimImporteMargen() - SimImporteDescuento();
+        return Math.Max(0m, total);
+    }
+
+    private static decimal AplicarPorcentaje(decimal importe, decimal porcentaje)
+    {
+        decimal factor = 1m + (porcentaje / 100m);
+        if (factor < 0m)
+            factor = 0m;
+
+        return Math.Round(importe * factor, 2, MidpointRounding.AwayFromZero);
+    }
+
+    private static string FormatoEuro(decimal valor)
+    {
+        return valor.ToString("N2", new System.Globalization.CultureInfo("es-ES")) + " €";
+    }
+
+    private static string FormatoPorcentaje(decimal valor)
+    {
+        return valor.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + " %";
+    }
+
+    private static string FormatoVariacion(decimal valor, decimal baseValor)
+    {
+        decimal diferencia = valor - baseValor;
+
+        if (baseValor <= 0m)
+            return diferencia == 0m ? "Sin variación" : $"Diferencia {FormatoEuro(diferencia)}";
+
+        decimal porcentaje = diferencia / baseValor * 100m;
+        string signo = diferencia > 0m ? "+" : "";
+        return $"{signo}{FormatoEuro(diferencia)} ({signo}{porcentaje:0.##} %)";
+    }
 
     private async Task GuardarConfiguracion3D()
     {
@@ -536,7 +845,6 @@
                 EstadoProyecto.Resultado);
 
             EstadoProyecto.ProyectoIdActual = id;
-            await BrowserProyectoActivoService.GuardarProyectoActivoAsync(id);
             _mensaje = "Proyecto guardado correctamente.";
         }
         catch (Exception ex)
@@ -560,6 +868,8 @@
 
     protected override void OnInitialized()
     {
+        EstadoProyecto.OnChange += OnEstadoProyectoChanged;
+
         try
         {
             EstadoProyecto.Proyecto ??= new ProyectoGeneralModel();
@@ -571,95 +881,13 @@
             if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.IdiomaInforme))
                 EstadoProyecto.Proyecto.IdiomaInforme = "ES";
 
-            // Si el usuario llega a Informe después de un F5 o redeploy, el estado scoped puede venir vacío.
-            // En ese caso, OnAfterRenderAsync recuperará el proyecto activo desde localStorage y base de datos.
-            if (EstadoProyecto.ProyectoIdActual.HasValue || HayDatosBasicosEnMemoria())
-            {
-                AsegurarCalculoInicial();
-                GenerarHtmlActual();
-            }
-            else
-            {
-                _mensaje = "Restaurando proyecto activo...";
-            }
+            AsegurarCalculoInicial();
+            GenerarHtmlActual();
         }
         catch (Exception ex)
         {
             _mensaje = $"Error al abrir el informe: {ex.Message}";
             _htmlActual = CrearHtmlErrorInforme(ex.Message);
-        }
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!firstRender || _restauracionIntentada)
-            return;
-
-        _restauracionIntentada = true;
-        await RestaurarProyectoActivoSiHaceFaltaAsync();
-    }
-
-    private bool HayDatosBasicosEnMemoria()
-    {
-        return !string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto?.NombreProyecto)
-            || !string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto?.ClienteReferencia)
-            || !string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto?.Fabricante)
-            || (EstadoProyecto.Tanque?.NumeroAnillos ?? 0) > 0
-            || (EstadoProyecto.Resultado?.Anillos?.Count ?? 0) > 0;
-    }
-
-    private async Task RestaurarProyectoActivoSiHaceFaltaAsync()
-    {
-        if (EstadoProyecto.ProyectoIdActual.HasValue || HayDatosBasicosEnMemoria())
-            return;
-
-        try
-        {
-            _restaurandoProyecto = true;
-            StateHasChanged();
-
-            var idActivo = await BrowserProyectoActivoService.ObtenerProyectoActivoAsync();
-            if (!idActivo.HasValue)
-            {
-                _mensaje = "No hay un proyecto activo para restaurar. Abre un proyecto desde Mis proyectos.";
-                GenerarHtmlActual();
-                return;
-            }
-
-            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-            var usuario = await UserManager.GetUserAsync(authState.User);
-
-            if (usuario == null)
-            {
-                RedirigirALogin();
-                return;
-            }
-
-            var ok = await ProyectoPersistenciaService.CargarAsync(usuario.Id, idActivo.Value, EstadoProyecto);
-            if (!ok)
-            {
-                await BrowserProyectoActivoService.LimpiarProyectoActivoAsync();
-                _mensaje = "No se pudo restaurar el proyecto activo. Abre de nuevo el proyecto desde Mis proyectos.";
-                GenerarHtmlActual();
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.IdiomaInforme))
-                EstadoProyecto.Proyecto.IdiomaInforme = "ES";
-
-            AsegurarCalculoInicial();
-            GenerarHtmlActual();
-            _mensaje = "Proyecto restaurado correctamente.";
-        }
-        catch (Exception ex)
-        {
-            _mensaje = $"Error al restaurar el proyecto activo: {ex.Message}";
-            _htmlActual = CrearHtmlErrorInforme(ex.Message);
-        }
-        finally
-        {
-            _restaurandoProyecto = false;
-            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -1120,5 +1348,39 @@
 
         return "Todavía faltan datos válidos o el cálculo debe revisarse.";
     }
+
+    private async void OnEstadoProyectoChanged()
+    {
+        await InvokeAsync(() =>
+        {
+            try
+            {
+                EstadoProyecto.Proyecto ??= new ProyectoGeneralModel();
+                EstadoProyecto.Tanque ??= new TankModel();
+                EstadoProyecto.Cargas ??= new CargasModel();
+                EstadoProyecto.Instalacion ??= new InstalacionModel();
+                EstadoProyecto.Resultado ??= new ResultadoCalculoModel();
+
+                if (string.IsNullOrWhiteSpace(EstadoProyecto.Proyecto.IdiomaInforme))
+                    EstadoProyecto.Proyecto.IdiomaInforme = "ES";
+
+                AsegurarCalculoInicial();
+                GenerarHtmlActual();
+            }
+            catch (Exception ex)
+            {
+                _mensaje = $"Error al restaurar el informe: {ex.Message}";
+                _htmlActual = CrearHtmlErrorInforme(ex.Message);
+            }
+
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        EstadoProyecto.OnChange -= OnEstadoProyectoChanged;
+    }
+
 }
 

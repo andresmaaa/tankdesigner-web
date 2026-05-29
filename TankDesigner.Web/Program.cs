@@ -154,7 +154,6 @@ builder.Services.AddScoped<AdminService>();
 builder.Services.AddScoped<InvitacionesService>();
 builder.Services.AddScoped<ProyectoPersistenciaService>();
 builder.Services.AddScoped<ProyectoState>();
-builder.Services.AddScoped<BrowserProyectoActivoService>();
 builder.Services.AddScoped<CalculoWebService>();
 builder.Services.AddScoped<CatalogoJsonService>();
 builder.Services.AddScoped<OpcionesFormularioService>();
